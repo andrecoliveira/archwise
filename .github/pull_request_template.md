@@ -17,6 +17,7 @@ List commands run and their results. For documentation-only changes, check links
 ## Checklist
 
 - [ ] The change has one coherent scope.
+- [ ] New contribution commits include my DCO `Signed-off-by` trailer.
 - [ ] Relevant tests or documentation checks were run.
 - [ ] No secrets, private fixtures, or machine-specific paths are included.
 - [ ] Implemented behavior is distinguished from future proposals.

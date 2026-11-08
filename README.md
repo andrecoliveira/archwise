@@ -50,4 +50,4 @@ The specification is the current source of truth. Before implementing a feature,
 
 ## License
 
-No license has been selected yet. Until a license file is added, copyright remains with the repository owner and the code is not legally open source despite the intended direction. Choosing an OSI-approved license is an explicit MVP prerequisite.
+Licensed under [Apache-2.0](LICENSE). Contributions use the [DCO process](CONTRIBUTING.md#contribution-certification). The repository remains private while the foundation is developed; adopting the license does not change repository visibility.

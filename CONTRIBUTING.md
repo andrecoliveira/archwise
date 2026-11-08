@@ -1,6 +1,14 @@
 # Contributing to Archwise
 
-Archwise is preparing its open-source foundation. The repository currently contains specifications and governance documents, not an installable application. License, contributor-signoff policy, and the private security channel require the owner's decision before public launch. This document grants no additional license rights.
+Archwise is preparing its open-source foundation under [Apache-2.0](LICENSE). The repository currently contains specifications and governance documents, not an installable application. Contributions use the Developer Certificate of Origin (DCO). Report vulnerabilities through the [private security process](SECURITY.md).
+
+## Contribution certification
+
+Read the [Developer Certificate of Origin 1.1](https://developercertificate.org/). Each new contribution commit must include a `Signed-off-by: Name <email>` trailer certifying that you have the right to submit the contribution under the project license. Use your own contributor identity and only certify contributions you are entitled to submit.
+
+Use `git commit -s` to add the trailer. This is a certification of origin, not a cryptographic signature or copyright transfer. No CLA is required. Existing commits predating adoption are not rewritten retroactively. Maintainers verify new commit trailers during review; automated enforcement is not installed yet.
+
+If you forgot the trailer on an unpublished commit, use `git commit --amend --no-edit -s`. Coordinate any changes to already published history with reviewers and collaborators; do not force-push shared branches without agreement.
 
 ## Understand the project
 
@@ -31,7 +39,7 @@ The foundation phase will introduce a pinned toolchain and `pnpm check`. That co
 
 ## Fixtures and privacy
 
-Use synthetic fixtures or explicitly licensed public examples. Never commit credentials, private source snapshots, machine-specific paths, provider prompts containing sensitive content, or generated caches. Reports should include the smallest sanitized reproduction. Do not post suspected vulnerabilities or exploit details in issues; the private reporting channel must be established before public launch.
+Use synthetic fixtures or explicitly licensed public examples. Never commit credentials, private source snapshots, machine-specific paths, provider prompts containing sensitive content, or generated caches. Reports should include the smallest sanitized reproduction. Do not post suspected vulnerabilities or exploit details in issues; use the private reporting channel in `SECURITY.md`.
 
 ## Review and collaboration
 

@@ -24,6 +24,7 @@ These instructions apply to human-assisted agents and subagents working anywhere
 
 - Use a feature branch; never implement directly on `main`.
 - Prefer small, reversible commits and focused pull requests.
+- Follow the DCO policy in `CONTRIBUTING.md`; use the configured contributor identity and signed-off commits for authorized contributions. Never invent an identity or rewrite earlier commits to add retroactive certification.
 - Write or update tests with behavioral changes. Run narrow tests first, then the complete affected suite.
 - Update documentation and ADRs in the same PR when behavior, data formats, security boundaries, or CLI contracts change.
 - Do not add dependencies without explaining why the standard library or an existing dependency is insufficient.
