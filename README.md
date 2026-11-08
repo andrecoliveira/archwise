@@ -44,6 +44,8 @@ The product starts from code already on a developer's machine. From a selected w
 
 ## Contributing
 
+Start with the [contribution guide](CONTRIBUTING.md) for the current workflow and verification instructions.
+
 The specification is the current source of truth. Before implementing a feature, read [AGENTS.md](AGENTS.md), identify the relevant document, and propose an ADR when changing an invariant or major boundary. Keep local-only workflows functional and do not make a cloud account a prerequisite for core features.
 
 ## License

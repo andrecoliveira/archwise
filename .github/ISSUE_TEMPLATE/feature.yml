@@ -1,0 +1,35 @@
+name: Feature proposal
+description: Propose a focused improvement to the open-source core.
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem and desired outcome
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and acceptance criteria
+    validations:
+      required: true
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: Local-first and architecture impact
+      description: Explain offline behavior, data sharing, package boundaries, and compatibility.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: true
+  - type: input
+    id: roadmap
+    attributes:
+      label: Related roadmap phase or specification
+    validations:
+      required: true

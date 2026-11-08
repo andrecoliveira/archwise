@@ -53,6 +53,8 @@ Finalization does not mean development stops. It establishes a reliable open-sou
 
 ## Phase 0 — Governance and irreversible decisions
 
+Status: in progress. Contribution guidelines, issue forms, a PR template, and initial code ownership are prepared. License, DCO/CLA policy, and private security reporting await owner decisions; the phase exit gate is not yet satisfied.
+
 ### Goal
 
 Make legal, contribution, compatibility, and architectural expectations explicit before code attracts dependencies and contributors.

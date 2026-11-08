@@ -1,0 +1,46 @@
+name: Bug report
+description: Report a reproducible defect using a sanitized example.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: Do not include secrets, private source, or vulnerability details. Archwise is currently in its foundation stage.
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Operating system and runtime
+      description: Include browser and Node versions when relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Provide a minimal synthetic example or documentation link.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior and sanitized diagnostics
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed secrets, private source code, and personal paths from this report.
+          required: true
