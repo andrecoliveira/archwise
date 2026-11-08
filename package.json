@@ -1,0 +1,24 @@
+{
+  "name": "archwise",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "packageManager": "pnpm@10.34.9",
+  "engines": {
+    "node": ">=24 <25 || >=26 <27"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "vitest run",
+    "format": "prettier --write package.json pnpm-workspace.yaml turbo.json tsconfig.base.json prettier.config.mjs vitest.config.ts packages .github/workflows",
+    "format:check": "prettier --check package.json pnpm-workspace.yaml turbo.json tsconfig.base.json prettier.config.mjs vitest.config.ts packages .github/workflows",
+    "check": "pnpm format:check && pnpm build && pnpm typecheck && pnpm test"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "vitest": "5.1.0",
+    "turbo": "2.11.10",
+    "prettier": "3.9.10"
+  }
+}

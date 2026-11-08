@@ -16,6 +16,8 @@ The owner approved Apache-2.0, DCO, and GitHub Private Vulnerability Reporting. 
 
 ## Target structure
 
+Execution update: the initial slice uses the versions and compatibility policy in ADR 0003. `vitest.config.ts` with projects replaces the deprecated workspace configuration below. Root tooling and core packages are implemented; Task 2's lint/boundary gates and Task 4's fixture helpers remain incomplete. Treat the original examples below as design history where superseded by ADR 0003 and the current manifests.
+
 ```text
 apps/{cli,server,web}
 packages/{domain,schemas,application,test-fixtures}

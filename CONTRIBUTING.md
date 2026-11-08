@@ -1,6 +1,6 @@
 # Contributing to Archwise
 
-Archwise is preparing its open-source foundation under [Apache-2.0](LICENSE). The repository currently contains specifications and governance documents, not an installable application. Contributions use the Developer Certificate of Origin (DCO). Report vulnerabilities through the [private security process](SECURITY.md).
+Archwise is preparing its open-source foundation under [Apache-2.0](LICENSE). The repository contains specifications, governance and initial core packages; an installable application is not available yet. Contributions use the Developer Certificate of Origin (DCO). Report vulnerabilities through the [private security process](SECURITY.md).
 
 ## Contribution certification
 
@@ -33,9 +33,9 @@ Use Conventional Commit subjects such as `docs: explain snapshot provenance`, `f
 
 ## Verification today
 
-There is no package manifest or application test suite yet. For documentation changes, review internal links, preserve historical documents, and run `git diff --check`. Verify that examples describe actual behavior or are explicitly labeled proposals.
+Run `pnpm install --frozen-lockfile --ignore-scripts` and `pnpm check` with Node 26 and pnpm 10.34.9. The current gate checks tooling/package formatting, builds, types and core tests. For documentation changes, also review links, preserve historical documents and run `git diff --check`.
 
-The foundation phase will introduce a pinned toolchain and `pnpm check`. That command is planned and cannot currently be run. Its prerequisites and clean-clone instructions must be documented when the tooling is delivered.
+See the [development guide](docs/development/testing.md) for focused tests. Linting and automatic architectural boundary checks remain scheduled foundation work.
 
 ## Fixtures and privacy
 

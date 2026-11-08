@@ -79,6 +79,8 @@ Make legal, contribution, compatibility, and architectural expectations explicit
 
 ## Phase 1 — Monorepo and quality foundation
 
+Status: in progress. A pinned pnpm/Turborepo workspace, strict TypeScript, runtime schema validation, three initial core packages, eight tests, and a cross-platform CI definition are implemented. CLI/server/web, fixtures, linting, boundary enforcement, Changesets and extended security checks remain open. This is not phase completion.
+
 ### Goal
 
 Create the smallest buildable TypeScript workspace with enforceable package boundaries and a CI pipeline that future contributors can trust.
