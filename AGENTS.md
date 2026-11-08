@@ -7,7 +7,8 @@ These instructions apply to human-assisted agents and subagents working anywhere
 1. Read `README.md` and the documents relevant to the task.
 2. Inspect the current tree, tests, package manifests, and recent commits before proposing changes.
 3. Treat `docs/product-specification.md` and accepted ADRs as the product contract.
-4. Distinguish clearly between specified, implemented, and verified behavior.
+4. Use `docs/implementation-roadmap.md` for phase ordering and create/review the phase-level implementation plan before writing feature code.
+5. Distinguish clearly between specified, implemented, and verified behavior.
 
 ## Non-negotiable invariants
 
