@@ -79,7 +79,7 @@ Make legal, contribution, compatibility, and architectural expectations explicit
 
 ## Phase 1 — Monorepo and quality foundation
 
-Status: in progress. A pinned pnpm/Turborepo workspace, strict TypeScript, runtime schema validation, three initial core packages, eight tests, and a cross-platform CI definition are implemented. CLI/server/web, fixtures, linting, boundary enforcement, Changesets and extended security checks remain open. This is not phase completion.
+Status: in progress, implementation available in PR #4. Seven private packages now include CLI/server/web shells and safe fixtures, with strict TypeScript, lint, tested import boundaries, Changesets, component/process tests, and cross-platform CI. Dependency auditing and redacted secret scanning are configured. CodeQL/dependency-review eligibility, required branch checks, governance prerequisites and final release review remain open. No application release has been published.
 
 ### Goal
 

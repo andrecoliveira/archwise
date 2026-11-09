@@ -33,9 +33,9 @@ Use Conventional Commit subjects such as `docs: explain snapshot provenance`, `f
 
 ## Verification today
 
-Run `pnpm install --frozen-lockfile --ignore-scripts` and `pnpm check` with Node 26 and pnpm 10.34.9. The current gate checks tooling/package formatting, builds, types and core tests. For documentation changes, also review links, preserve historical documents and run `git diff --check`.
+Run `pnpm install --frozen-lockfile --ignore-scripts` and `pnpm check` with Node 26 and pnpm 10.34.9. The gate checks tooling/package formatting, builds, lint, types, architecture boundaries and tests. For documentation changes, also review links, preserve historical documents and run `git diff --check`.
 
-See the [development guide](docs/development/testing.md) for focused tests. Linting and automatic architectural boundary checks remain scheduled foundation work.
+See the [development guide](docs/development/testing.md) for focused tests and the [architecture boundary guide](docs/development/architecture-boundaries.md) for enforced module rules. Add a changeset for user-visible changes; packages remain private until release readiness is reviewed.
 
 ## Fixtures and privacy
 
