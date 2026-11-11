@@ -1,6 +1,6 @@
 # ADR 0001: Local-first open-source core
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-11-08
 
 ## Context
@@ -13,7 +13,7 @@ Build the core as a local Node.js/TypeScript application with a React browser UI
 
 Use a loopback application service instead of placing filesystem authority in the browser. Treat the discovered graph as immutable evidence and represent experiments as sandbox overlays. Keep cloud services and commercial team capabilities optional and interoperable with open formats.
 
-This ADR remains `Proposed` until the repository owner selects an OSI-approved license and accepts the architecture as the implementation baseline.
+The owner approved the implementation baseline and selected Apache-2.0. The license and contribution decision is recorded in ADR 0002.
 
 ## Consequences
 

@@ -12,7 +12,7 @@
 
 ## Required owner decision
 
-This plan recommends Apache-2.0 because it is OSI-approved and includes an explicit patent grant. The owner must explicitly select the license before Task 1 creates `LICENSE`; an agent must never infer a legal choice. The same gate applies to the private security contact and DCO versus CLA policy.
+The owner approved Apache-2.0, DCO, and GitHub Private Vulnerability Reporting. Reporting was enabled and verified through the GitHub API. Community conduct enforcement and repository protection still require completion before Phase 0 closes. Independent foundation tooling may proceed while those governance items are resolved.
 
 ## Target structure
 
@@ -37,10 +37,10 @@ vitest.workspace.ts
 - Create: `LICENSE`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`
 - Create: `.github/CODEOWNERS`, `.github/pull_request_template.md`
 - Create: `.github/ISSUE_TEMPLATE/bug.yml`, `.github/ISSUE_TEMPLATE/feature.yml`, `.github/ISSUE_TEMPLATE/config.yml`
-- Create: `docs/decisions/0002-toolchain-and-compatibility.md`
+- Create: `docs/decisions/0003-toolchain-and-compatibility.md`
 - Modify: `README.md`, `docs/decisions/0001-local-first-open-source.md`
 
-- [ ] **Step 1: Record explicit decisions**
+- [x] **Step 1: Record explicit decisions**
 
 Obtain the license SPDX identifier, private security contact, and DCO/CLA choice from the owner. Expected: three explicit values in the tracking issue or PR. Stop if any value is absent.
 

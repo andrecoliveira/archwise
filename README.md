@@ -44,8 +44,10 @@ The product starts from code already on a developer's machine. From a selected w
 
 ## Contributing
 
+Start with the [contribution guide](CONTRIBUTING.md) for the current workflow and verification instructions.
+
 The specification is the current source of truth. Before implementing a feature, read [AGENTS.md](AGENTS.md), identify the relevant document, and propose an ADR when changing an invariant or major boundary. Keep local-only workflows functional and do not make a cloud account a prerequisite for core features.
 
 ## License
 
-No license has been selected yet. Until a license file is added, copyright remains with the repository owner and the code is not legally open source despite the intended direction. Choosing an OSI-approved license is an explicit MVP prerequisite.
+Licensed under [Apache-2.0](LICENSE). Contributions use the [DCO process](CONTRIBUTING.md#contribution-certification). The repository remains private while the foundation is developed; adopting the license does not change repository visibility.

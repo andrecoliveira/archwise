@@ -53,6 +53,8 @@ Finalization does not mean development stops. It establishes a reliable open-sou
 
 ## Phase 0 — Governance and irreversible decisions
 
+Status: in progress. Contribution guidelines, issue forms, a PR template, initial code ownership, Apache-2.0, DCO, and the security policy are prepared. GitHub Private Vulnerability Reporting was enabled with owner authorization and verified. Community conduct enforcement and repository protection remain open; the phase exit gate is not yet satisfied. Independent foundation tooling can proceed while those items are resolved.
+
 ### Goal
 
 Make legal, contribution, compatibility, and architectural expectations explicit before code attracts dependencies and contributors.
