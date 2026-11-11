@@ -35,6 +35,7 @@ The product starts from code already on a developer's machine. From a selected w
 - [AI interviewer and coach](docs/ai-coach.md)
 - [Security and privacy](docs/security.md)
 - [MVP scope and delivery phases](docs/mvp.md)
+- [End-to-end implementation roadmap](docs/implementation-roadmap.md)
 - [Proposed code organization](docs/code-organization.md)
 - [CI/CD and release strategy](docs/ci-cd.md)
 - [Optional open-core business strategies](docs/business.md)
