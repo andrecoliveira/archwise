@@ -16,6 +16,8 @@ The owner approved Apache-2.0, DCO, and GitHub Private Vulnerability Reporting. 
 
 ## Target structure
 
+Execution update: ADRs 0003 and 0004 supersede historical tool versions below. `vitest.config.ts` with projects replaces workspace configuration. Root tooling, core contracts, fixture helpers, CLI/server/web shells, lint, dependency boundaries and Changesets are implemented in PR #4. CI includes platform checks, audit and secret scanning. Task 1 governance prerequisites, CodeQL/dependency-review availability, branch protection and final phase closure remain open. Use current manifests and development guides for runnable commands.
+
 ```text
 apps/{cli,server,web}
 packages/{domain,schemas,application,test-fixtures}

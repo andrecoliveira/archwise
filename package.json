@@ -1,0 +1,36 @@
+{
+  "name": "archwise",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "packageManager": "pnpm@10.34.9",
+  "engines": {
+    "node": ">=24 <25 || >=26 <27"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "vitest run && node --test scripts/tests/*.test.mjs",
+    "lint": "eslint . --max-warnings=0",
+    "boundaries": "node scripts/check-boundaries.mjs",
+    "changeset": "changeset",
+    "dev": "pnpm --filter @archwise/web dev",
+    "test:integration": "node --test scripts/tests/*.test.mjs",
+    "format": "prettier --write package.json pnpm-workspace.yaml turbo.json tsconfig*.json *.config.* .dependency-cruiser.mjs packages apps scripts .changeset .github/workflows",
+    "format:check": "prettier --check package.json pnpm-workspace.yaml turbo.json tsconfig*.json *.config.* .dependency-cruiser.mjs packages apps scripts .changeset .github/workflows",
+    "check": "pnpm format:check && pnpm build && pnpm lint && pnpm typecheck && pnpm boundaries && pnpm test"
+  },
+  "devDependencies": {
+    "@changesets/cli": "3.0.3",
+    "@eslint/js": "10.0.1",
+    "@types/node": "24.19.2",
+    "dependency-cruiser": "18.7.2",
+    "eslint": "10.14.0",
+    "globals": "17.14.0",
+    "prettier": "3.9.10",
+    "turbo": "2.11.10",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.72.1",
+    "vitest": "5.1.0"
+  }
+}

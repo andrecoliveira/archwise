@@ -2,7 +2,13 @@
 
 Archwise is a proposed local-first, open-source workspace for discovering, understanding, explaining, and safely experimenting with software architecture.
 
-> **Project status:** specification and planning. The repository does not yet contain a working product. Documents use normative language to define intended behavior, not to claim implemented features.
+> **Project status:** early foundation. Seven private packages provide initial core contracts, safe test fixtures and CLI/server/web shells. The browser shows a foundation page; discovery, graph editing, simulation and coaching are not implemented. Product specifications describe intended behavior.
+
+## Development
+
+Use Node 26 and pnpm 10.34.9. Run `pnpm install --frozen-lockfile --ignore-scripts`, then `pnpm check`. See the [development guide](docs/development/testing.md) for package tests and current verification limits.
+
+After building, run `node apps/cli/dist/bin.js --help` for the CLI shell or `pnpm dev` for the local foundation page. The server package does not start an HTTP listener yet.
 
 The product starts from code already on a developer's machine. From a selected working directory, Archwise discovers one or more repositories, builds an evidence-backed architecture graph, opens it in a browser, and lets the user explore a separate sandbox without changing source code. An optional AI interviewer acts like a system-design recruiter: it asks focused questions, challenges assumptions, and turns answers into reviewable suggestions.
 

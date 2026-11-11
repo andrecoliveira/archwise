@@ -79,6 +79,8 @@ Make legal, contribution, compatibility, and architectural expectations explicit
 
 ## Phase 1 — Monorepo and quality foundation
 
+Status: in progress, implementation available in PR #4. Seven private packages now include CLI/server/web shells and safe fixtures, with strict TypeScript, lint, tested import boundaries, Changesets, component/process tests, and cross-platform CI. Dependency auditing and redacted secret scanning are configured. CodeQL/dependency-review eligibility, required branch checks, governance prerequisites and final release review remain open. No application release has been published.
+
 ### Goal
 
 Create the smallest buildable TypeScript workspace with enforceable package boundaries and a CI pipeline that future contributors can trust.
