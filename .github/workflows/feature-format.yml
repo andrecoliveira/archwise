@@ -1,0 +1,29 @@
+name: One-time format of Archwise feature slice
+on:
+  push:
+    branches: [feat/svelte-flow-migration]
+    paths:
+      - '.github/workflows/feature-format.yml'
+permissions:
+  contents: write
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: true
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm exec prettier --write apps/cli/src apps/cli/tests
+      - name: Remove one-time workflow and commit formatted changes
+        run: |
+          git rm .github/workflows/feature-format.yml
+          git add apps/cli/src apps/cli/tests
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -s -m 'style(cli): apply Prettier to discovery and local server'
+          git push origin HEAD:feat/svelte-flow-migration
