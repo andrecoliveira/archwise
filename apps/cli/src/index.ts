@@ -6,7 +6,7 @@ export interface CliResult {
 
 export type CliCommand =
   | { readonly kind: 'output'; readonly result: CliResult }
-  | { readonly kind: 'inspect'; readonly path: string; readonly json: boolean; readonly graph: boolean };
+  | { readonly kind: 'inspect'; readonly path: string; readonly json: boolean; readonly graph: boolean; readonly serve: boolean; readonly open: boolean };
 
 /** Parse arguments without touching the filesystem or executing project code. */
 export function parseCli(args: readonly string[], version = 'development'): CliCommand {
@@ -19,7 +19,7 @@ export function parseCli(args: readonly string[], version = 'development'): CliC
       result: {
         exitCode: 0,
         stdout:
-          'Usage: archwise [--path DIRECTORY] [--json | --graph] [--help | --version]\n' +
+          'Usage: archwise [--path DIRECTORY] [--json | --graph | --serve] [--no-open] [--help | --version]\n' +
           'Read-only inventory of local Node.js package manifests. --graph emits a deterministic evidence-backed graph.\n',
         stderr: '',
       },
@@ -28,6 +28,8 @@ export function parseCli(args: readonly string[], version = 'development'): CliC
   let path = '.';
   let json = false;
   let graph = false;
+  let serve = false;
+  let open = true;
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--path' && args[i + 1] && !args[i + 1]!.startsWith('--')) {
       path = args[++i]!;
@@ -35,6 +37,10 @@ export function parseCli(args: readonly string[], version = 'development'): CliC
       json = true;
     } else if (args[i] === '--graph') {
       graph = true;
+    } else if (args[i] === '--serve') {
+      serve = true;
+    } else if (args[i] === '--no-open') {
+      open = false;
     } else {
       return {
         kind: 'output',
@@ -42,13 +48,16 @@ export function parseCli(args: readonly string[], version = 'development'): CliC
       };
     }
   }
-  if (json && graph) {
+  if (Number(json) + Number(graph) + Number(serve) > 1) {
     return {
       kind: 'output',
-      result: { exitCode: 2, stdout: '', stderr: '--json and --graph are mutually exclusive.\n' },
+      result: { exitCode: 2, stdout: '', stderr: '--json, --graph and --serve are mutually exclusive.\n' },
     };
   }
-  return { kind: 'inspect', path, json, graph };
+  if (!serve && !open) {
+    return { kind: 'output', result: { exitCode: 2, stdout: '', stderr: '--no-open requires --serve.\n' } };
+  }
+  return { kind: 'inspect', path, json, graph, serve, open };
 }
 
 /** Kept as a pure CLI helper for compatibility with the existing CLI tests. */
