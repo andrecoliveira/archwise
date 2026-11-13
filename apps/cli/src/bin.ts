@@ -8,7 +8,9 @@ import { buildArchitectureGraph } from './graph.js';
 import { parseCli } from './index.js';
 import { startLocalGraphServer } from './local-server.js';
 
-const metadata: unknown = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+const metadata: unknown = JSON.parse(
+  readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+);
 if (
   typeof metadata !== 'object' ||
   metadata === null ||
@@ -21,7 +23,11 @@ if (
 /** Best-effort browser launch without interpreting URLs via a shell. */
 function openBrowser(url: string): void {
   const executable =
-    process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'explorer.exe' : 'xdg-open';
+    process.platform === 'darwin'
+      ? 'open'
+      : process.platform === 'win32'
+        ? 'explorer.exe'
+        : 'xdg-open';
   const child = spawn(executable, [url], { detached: true, stdio: 'ignore', shell: false });
   child.once('error', () => {
     process.stderr.write('Browser launch failed; open the local session URL manually.\n');
@@ -47,7 +53,9 @@ if (command.kind === 'output') {
       } catch {
         process.stderr.write('Browser assets are not built; serving JSON API only.\n');
       }
-      const server = await startLocalGraphServer(buildArchitectureGraph(result), { webDistPath: assets });
+      const server = await startLocalGraphServer(buildArchitectureGraph(result), {
+        webDistPath: assets,
+      });
       process.stdout.write(`Archwise API listening at ${server.address}\n`);
       process.stdout.write(`Local session URL: ${server.bootstrapUrl}\n`);
       process.stdout.write('Press Ctrl+C to stop.\n');
@@ -64,7 +72,9 @@ if (command.kind === 'output') {
         );
       }
       for (const warning of result.diagnostics) process.stderr.write(`Warning: ${warning}\n`);
-      process.stdout.write('Run with --graph for graph JSON. Browser Studio is not yet integrated.\n');
+      process.stdout.write(
+        'Run with --graph for graph JSON. Browser Studio is not yet integrated.\n',
+      );
     }
   } catch (error) {
     process.stderr.write(

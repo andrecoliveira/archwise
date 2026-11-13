@@ -4,14 +4,16 @@ import type { ArchitectureGraph } from '../src/graph.js';
 
 const graph: ArchitectureGraph = {
   version: 1,
-  nodes: [{
-    id: 'package:package.json',
-    type: 'package',
-    label: 'example',
-    framework: null,
-    origin: 'discovered',
-    evidence: [{ path: 'package.json', kind: 'package-manifest' }],
-  }],
+  nodes: [
+    {
+      id: 'package:package.json',
+      type: 'package',
+      label: 'example',
+      framework: null,
+      origin: 'discovered',
+      evidence: [{ path: 'package.json', kind: 'package-manifest' }],
+    },
+  ],
   edges: [],
   inspectedEntries: 1,
   diagnostics: [],
@@ -45,24 +47,41 @@ test('requires a one-time session bootstrap before exposing graph data', async (
 test('rejects cross-origin, cross-site, invalid-host and mutating requests', async () => {
   const server = await startLocalGraphServer(graph);
   try {
-    expect((await fetch(`${server.address}/api/v1/graph`, {
-      headers: { origin: 'https://example.com' },
-    })).status).toBe(403);
-    expect((await fetch(`${server.address}/api/v1/graph`, {
-      headers: { 'sec-fetch-site': 'cross-site' },
-    })).status).toBe(403);
-    expect((await fetch(`${server.address}/api/v1/graph`, {
-      headers: { host: 'localhost:4321' },
-    })).status).toBe(403);
-    expect((await fetch(`${server.address}/api/v1/graph`, {
-      method: 'POST',
-    })).status).toBe(405);
+    expect(
+      (
+        await fetch(`${server.address}/api/v1/graph`, {
+          headers: { origin: 'https://example.com' },
+        })
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await fetch(`${server.address}/api/v1/graph`, {
+          headers: { 'sec-fetch-site': 'cross-site' },
+        })
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await fetch(`${server.address}/api/v1/graph`, {
+          headers: { host: 'localhost:4321' },
+        })
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await fetch(`${server.address}/api/v1/graph`, {
+          method: 'POST',
+        })
+      ).status,
+    ).toBe(405);
   } finally {
     await server.close();
   }
 });
 
 test('rejects missing compiled browser assets with actionable error', async () => {
-  await expect(startLocalGraphServer(graph, { webDistPath: '/archwise/not-built' }))
-    .rejects.toThrow('Build @archwise/web');
+  await expect(
+    startLocalGraphServer(graph, { webDistPath: '/archwise/not-built' }),
+  ).rejects.toThrow('Build @archwise/web');
 });

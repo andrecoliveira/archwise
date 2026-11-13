@@ -60,13 +60,25 @@ function authorized(req: IncomingMessage, secret: string): boolean {
   if (auth?.startsWith('Bearer ') && equalSecret(auth.slice(7), secret)) return true;
   const raw = req.headers.cookie;
   if (!raw || raw.length > MAX_COOKIE_LENGTH) return false;
-  const cookie = raw.split(';').map((part) => part.trim()).find((part) => part.startsWith('archwise_session='));
+  const cookie = raw
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith('archwise_session='));
   return equalSecret(cookie?.slice('archwise_session='.length), secret);
 }
 
-async function asset(res: ServerResponse, rootInput: string, pathname: string, head: boolean): Promise<void> {
+async function asset(
+  res: ServerResponse,
+  rootInput: string,
+  pathname: string,
+  head: boolean,
+): Promise<void> {
   const file = pathname === '/' ? 'index.html' : pathname.slice(1);
-  if (!file || file.includes('\\') || file.split('/').some((part) => !part || part === '.' || part === '..' || part.startsWith('.'))) {
+  if (
+    !file ||
+    file.includes('\\') ||
+    file.split('/').some((part) => !part || part === '.' || part === '..' || part.startsWith('.'))
+  ) {
     json(res, 404, { error: 'Not found' }, head);
     return;
   }
@@ -97,12 +109,18 @@ async function asset(res: ServerResponse, rootInput: string, pathname: string, h
 }
 
 /** Bind a read-only API on loopback; never expose workspace filesystem paths as routes. */
-export async function startLocalGraphServer(graph: ArchitectureGraph, options: ServerOptions = {}): Promise<LocalServer> {
+export async function startLocalGraphServer(
+  graph: ArchitectureGraph,
+  options: ServerOptions = {},
+): Promise<LocalServer> {
   if (options.webDistPath) {
     try {
-      if (!(await stat(resolve(options.webDistPath, 'index.html'))).isFile()) throw new Error('Invalid assets');
+      if (!(await stat(resolve(options.webDistPath, 'index.html'))).isFile())
+        throw new Error('Invalid assets');
     } catch {
-      throw new Error('Browser assets unavailable. Build @archwise/web before starting the Studio.');
+      throw new Error(
+        'Browser assets unavailable. Build @archwise/web before starting the Studio.',
+      );
     }
   }
   const session = randomBytes(32).toString('hex');
@@ -143,13 +161,21 @@ export async function startLocalGraphServer(graph: ArchitectureGraph, options: S
       }
       if (url.pathname.startsWith('/session/')) {
         const submitted = url.pathname.slice('/session/'.length);
-        if (req.method !== 'GET' || bootstrapUsed || url.search || !equalSecret(submitted, bootstrap)) {
+        if (
+          req.method !== 'GET' ||
+          bootstrapUsed ||
+          url.search ||
+          !equalSecret(submitted, bootstrap)
+        ) {
           json(res, 403, { error: 'Invalid or used bootstrap token' });
           return;
         }
         bootstrapUsed = true;
         res.statusCode = 303;
-        res.setHeader('Set-Cookie', `archwise_session=${session}; HttpOnly; SameSite=Strict; Path=/`);
+        res.setHeader(
+          'Set-Cookie',
+          `archwise_session=${session}; HttpOnly; SameSite=Strict; Path=/`,
+        );
         res.setHeader('Location', '/');
         res.end();
         return;
@@ -198,9 +224,10 @@ export async function startLocalGraphServer(graph: ArchitectureGraph, options: S
       address: `http://${address}`,
       bootstrapUrl: `http://${address}/session/${bootstrap}`,
       port,
-      close: () => new Promise<void>((accept, reject) =>
-        server.close((error) => error ? reject(error) : accept()),
-      ),
+      close: () =>
+        new Promise<void>((accept, reject) =>
+          server.close((error) => (error ? reject(error) : accept())),
+        ),
     });
   } catch (error) {
     server.close();

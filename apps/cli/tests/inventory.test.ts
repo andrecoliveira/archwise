@@ -10,10 +10,13 @@ test('inspects package manifests without following ignored directories or symlin
   try {
     await mkdir(join(root, 'apps', 'api'), { recursive: true });
     await mkdir(join(root, 'node_modules', 'hidden'), { recursive: true });
-    await writeFile(join(root, 'apps', 'api', 'package.json'), JSON.stringify({
-      name: '@demo/api',
-      dependencies: { fastify: 'latest' },
-    }));
+    await writeFile(
+      join(root, 'apps', 'api', 'package.json'),
+      JSON.stringify({
+        name: '@demo/api',
+        dependencies: { fastify: 'latest' },
+      }),
+    );
     await writeFile(join(root, 'node_modules', 'hidden', 'package.json'), '{"name":"hidden"}');
     await writeFile(join(external, 'package.json'), '{"name":"external"}');
     await symlink(external, join(root, 'linked'), 'dir');

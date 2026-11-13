@@ -1,7 +1,17 @@
 import { lstat, readdir, readFile, realpath } from 'node:fs/promises';
 import { resolve, relative, join, sep } from 'node:path';
 
-const IGNORED = new Set(['.git', '.next', '.turbo', 'node_modules', 'dist', 'build', 'coverage', '.venv', 'vendor']);
+const IGNORED = new Set([
+  '.git',
+  '.next',
+  '.turbo',
+  'node_modules',
+  'dist',
+  'build',
+  'coverage',
+  '.venv',
+  'vendor',
+]);
 const MAX_DEPTH = 8;
 const MAX_ENTRIES = 3000;
 const MAX_MANIFEST_BYTES = 256 * 1024;
@@ -66,12 +76,21 @@ export async function inspectWorkspace(rootInput: string): Promise<InventoryResu
           continue;
         }
         const parsed: unknown = JSON.parse(await readFile(absolute, 'utf8'));
-        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Invalid manifest');
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+          throw new Error('Invalid manifest');
         const data = parsed as Record<string, unknown>;
         const deps = [data.dependencies, data.devDependencies].flatMap((value) =>
           value && typeof value === 'object' && !Array.isArray(value) ? Object.keys(value) : [],
         );
-        const frameworks = ['next', 'expo', 'react-native', 'vite', 'fastify', 'express', '@nestjs/core'];
+        const frameworks = [
+          'next',
+          'expo',
+          'react-native',
+          'vite',
+          'fastify',
+          'express',
+          '@nestjs/core',
+        ];
         const framework = frameworks.find((item) => deps.includes(item)) ?? null;
         manifests.push({
           path: relativePath,

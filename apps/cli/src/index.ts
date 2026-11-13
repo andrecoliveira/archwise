@@ -6,7 +6,14 @@ export interface CliResult {
 
 export type CliCommand =
   | { readonly kind: 'output'; readonly result: CliResult }
-  | { readonly kind: 'inspect'; readonly path: string; readonly json: boolean; readonly graph: boolean; readonly serve: boolean; readonly open: boolean };
+  | {
+      readonly kind: 'inspect';
+      readonly path: string;
+      readonly json: boolean;
+      readonly graph: boolean;
+      readonly serve: boolean;
+      readonly open: boolean;
+    };
 
 /** Parse arguments without touching the filesystem or executing project code. */
 export function parseCli(args: readonly string[], version = 'development'): CliCommand {
@@ -44,18 +51,29 @@ export function parseCli(args: readonly string[], version = 'development'): CliC
     } else {
       return {
         kind: 'output',
-        result: { exitCode: 2, stdout: '', stderr: `Unsupported argument: ${args[i]}. Run archwise --help.\n` },
+        result: {
+          exitCode: 2,
+          stdout: '',
+          stderr: `Unsupported argument: ${args[i]}. Run archwise --help.\n`,
+        },
       };
     }
   }
   if (Number(json) + Number(graph) + Number(serve) > 1) {
     return {
       kind: 'output',
-      result: { exitCode: 2, stdout: '', stderr: '--json, --graph and --serve are mutually exclusive.\n' },
+      result: {
+        exitCode: 2,
+        stdout: '',
+        stderr: '--json, --graph and --serve are mutually exclusive.\n',
+      },
     };
   }
   if (!serve && !open) {
-    return { kind: 'output', result: { exitCode: 2, stdout: '', stderr: '--no-open requires --serve.\n' } };
+    return {
+      kind: 'output',
+      result: { exitCode: 2, stdout: '', stderr: '--no-open requires --serve.\n' },
+    };
   }
   return { kind: 'inspect', path, json, graph, serve, open };
 }

@@ -8,8 +8,18 @@ const sample: InventoryResult = {
   inspectedEntries: 10,
   diagnostics: [],
   manifests: [
-    { path: 'apps/web/package.json', name: '@demo/web', framework: 'next', dependencies: ['next', '@demo/api', 'axios'] },
-    { path: 'apps/api/package.json', name: '@demo/api', framework: 'fastify', dependencies: ['fastify', 'pg'] },
+    {
+      path: 'apps/web/package.json',
+      name: '@demo/web',
+      framework: 'next',
+      dependencies: ['next', '@demo/api', 'axios'],
+    },
+    {
+      path: 'apps/api/package.json',
+      name: '@demo/api',
+      framework: 'fastify',
+      dependencies: ['fastify', 'pg'],
+    },
   ],
 };
 

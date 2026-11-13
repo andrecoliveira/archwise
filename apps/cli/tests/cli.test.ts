@@ -2,12 +2,24 @@ import { expect, test } from 'vitest';
 import { parseCli, runCli } from '../src/index.js';
 
 test('defaults to read-only inspection of current directory', () => {
-  expect(parseCli([])).toEqual({ kind: 'inspect', path: '.', json: false, graph: false, serve: false, open: true });
+  expect(parseCli([])).toEqual({
+    kind: 'inspect',
+    path: '.',
+    json: false,
+    graph: false,
+    serve: false,
+    open: true,
+  });
 });
 
 test('accepts a workspace path and graph output', () => {
   expect(parseCli(['--path', './fixtures', '--graph'])).toEqual({
-    kind: 'inspect', path: './fixtures', json: false, graph: true, serve: false, open: true,
+    kind: 'inspect',
+    path: './fixtures',
+    json: false,
+    graph: true,
+    serve: false,
+    open: true,
   });
 });
 
@@ -23,6 +35,11 @@ test('prints help and rejects unsupported or contradictory options', () => {
   expect(runCli(['--no-open']).exitCode).toBe(2);
   expect(runCli(['--serve', '--graph']).exitCode).toBe(2);
   expect(parseCli(['--serve', '--no-open'])).toEqual({
-    kind: 'inspect', path: '.', json: false, graph: false, serve: true, open: false,
+    kind: 'inspect',
+    path: '.',
+    json: false,
+    graph: false,
+    serve: true,
+    open: false,
   });
 });

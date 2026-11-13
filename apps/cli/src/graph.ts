@@ -44,7 +44,9 @@ export function buildArchitectureGraph(inventory: InventoryResult): Architecture
   for (const [name, candidates] of names) {
     if (candidates.length > 1) {
       ambiguous.add(name);
-      diagnostics.push(`Ambiguous package name: ${name} (${candidates.map((item) => item.path).join(', ')})`);
+      diagnostics.push(
+        `Ambiguous package name: ${name} (${candidates.map((item) => item.path).join(', ')})`,
+      );
     }
   }
   const nodes: ArchitectureNode[] = sorted.map((item) => ({
@@ -59,7 +61,9 @@ export function buildArchitectureGraph(inventory: InventoryResult): Architecture
   for (const manifest of sorted) {
     for (const dependency of [...new Set(manifest.dependencies)].sort()) {
       if (ambiguous.has(dependency)) {
-        diagnostics.push(`Unresolved dependency ${dependency} in ${manifest.path}: multiple workspace matches`);
+        diagnostics.push(
+          `Unresolved dependency ${dependency} in ${manifest.path}: multiple workspace matches`,
+        );
         continue;
       }
       const target = names.get(dependency)?.[0];
