@@ -19,9 +19,9 @@ export async function layoutNodes(nodes: Node[], edges: Edge[]): Promise<Node[]>
       targets: [edge.target],
     })),
   });
-  const positions = new Map(result.children?.map((child) => [
-    child.id, { x: child.x ?? 0, y: child.y ?? 0 },
-  ]));
+  const positions = new Map(
+    result.children?.map((child) => [child.id, { x: child.x ?? 0, y: child.y ?? 0 }]),
+  );
   return nodes.map((node) => ({
     ...node,
     position: positions.get(node.id) ?? node.position,

@@ -24,15 +24,23 @@ export interface Graph {
 export function isGraph(value: unknown): value is Graph {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const graph = value as Partial<Graph>;
-  return graph.version === 1 &&
+  return (
+    graph.version === 1 &&
     Array.isArray(graph.nodes) &&
     Array.isArray(graph.edges) &&
     Array.isArray(graph.diagnostics) &&
     typeof graph.inspectedEntries === 'number' &&
-    graph.nodes.every((node) => typeof node.id === 'string' &&
-      typeof node.label === 'string' && Array.isArray(node.evidence)) &&
-    graph.edges.every((edge) =>
-      typeof edge.id === 'string' &&
-      typeof edge.source === 'string' &&
-      typeof edge.target === 'string');
+    graph.nodes.every(
+      (node) =>
+        typeof node.id === 'string' &&
+        typeof node.label === 'string' &&
+        Array.isArray(node.evidence),
+    ) &&
+    graph.edges.every(
+      (edge) =>
+        typeof edge.id === 'string' &&
+        typeof edge.source === 'string' &&
+        typeof edge.target === 'string',
+    )
+  );
 }
