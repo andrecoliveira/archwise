@@ -1,0 +1,143 @@
+:root {
+  font-family: system-ui, sans-serif;
+  color: #e6edf7;
+  background: #0b1220;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+input {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+}
+.studio {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+header {
+  border-bottom: 1px solid #29344b;
+  padding: 14px 22px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+header strong {
+  font-size: 20px;
+}
+header small {
+  color: #7dd3fc;
+  font-size: 12px;
+}
+main {
+  display: grid;
+  grid-template-columns: 235px minmax(0, 1fr) 260px;
+  height: calc(100vh - 62px);
+}
+aside {
+  padding: 18px;
+  border-right: 1px solid #29344b;
+  overflow: auto;
+}
+aside:last-child {
+  border-right: 0;
+  border-left: 1px solid #29344b;
+}
+h1 {
+  font-size: 16px;
+  margin: 0 0 10px;
+}
+h2 {
+  font-size: 14px;
+}
+p {
+  color: #9ba9bf;
+  font-size: 13px;
+  line-height: 1.5;
+}
+input {
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid #475569;
+  background: #111a2c;
+  color: white;
+  padding: 9px;
+}
+.node-item {
+  display: block;
+  width: 100%;
+  padding: 9px;
+  border: 1px solid transparent;
+  text-align: left;
+  color: #dce7f7;
+  background: transparent;
+}
+.node-item.active {
+  border-color: #38bdf8;
+  border-radius: 6px;
+}
+.workspace {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.workspace-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+}
+.viewport {
+  flex: 1;
+  min-height: 0;
+  background: #0f172a;
+  position: relative;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 16px;
+  border-bottom: 1px solid #29344b;
+}
+button {
+  border: 1px solid #475569;
+  border-radius: 6px;
+  background: #1e293b;
+  color: #e6edf7;
+  padding: 7px 10px;
+}
+button[aria-pressed='true'] {
+  background: #075985;
+  border-color: #0ea5e9;
+}
+code {
+  overflow-wrap: anywhere;
+  color: #7dd3fc;
+  font-size: 12px;
+}
+ul {
+  padding-left: 18px;
+}
+li {
+  margin: 8px 0;
+}
+.alert {
+  padding: 20px;
+  color: #fca5a5;
+}
+@media (max-width: 850px) {
+  main {
+    grid-template-columns: 180px minmax(0, 1fr);
+  }
+  aside:last-child {
+    display: none;
+  }
+}
