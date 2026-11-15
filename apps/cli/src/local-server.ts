@@ -3,7 +3,10 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { readFile, realpath, stat } from 'node:fs/promises';
 import { extname, relative, resolve, sep } from 'node:path';
 import type { AddressInfo } from 'node:net';
+import type { SessionService } from '@archwise/application';
 import type { ArchitectureGraph } from './graph.js';
+import { json } from './http.js';
+import { handleSessionRoute, isSessionRoute } from './session-routes.js';
 
 const HOST = '127.0.0.1';
 const MAX_PATH_LENGTH = 2048;
@@ -28,6 +31,8 @@ export interface LocalServer {
 }
 export interface ServerOptions {
   readonly webDistPath?: string;
+  /** Local session store; null or absent runs without persistence. */
+  readonly sessions?: SessionService | null;
 }
 
 function equalSecret(value: string | undefined, secret: string): boolean {
@@ -47,12 +52,6 @@ function securityHeaders(res: ServerResponse): void {
     'Content-Security-Policy',
     "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'",
   );
-}
-
-function json(res: ServerResponse, status: number, payload: unknown, head = false): void {
-  res.statusCode = status;
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.end(head ? undefined : JSON.stringify(payload));
 }
 
 function authorized(req: IncomingMessage, secret: string): boolean {
@@ -148,15 +147,16 @@ export async function startLocalGraphServer(
         return;
       }
       const head = req.method === 'HEAD';
-      if (req.method !== 'GET' && !head) {
-        json(res, 405, { error: 'Method not allowed' });
-        return;
-      }
       let url: URL;
       try {
         url = new URL(req.url, `http://${address}`);
       } catch {
         json(res, 400, { error: 'Invalid URL' });
+        return;
+      }
+      const sessionRoute = isSessionRoute(url.pathname);
+      if (req.method !== 'GET' && !head && !sessionRoute) {
+        json(res, 405, { error: 'Method not allowed' });
         return;
       }
       if (url.pathname.startsWith('/session/')) {
@@ -186,6 +186,13 @@ export async function startLocalGraphServer(
       }
       if (url.search) {
         json(res, 400, { error: 'Query parameters not supported' }, head);
+        return;
+      }
+      if (sessionRoute) {
+        await handleSessionRoute(req, res, url.pathname, {
+          sessions: options.sessions ?? null,
+          origin: `http://${address}`,
+        });
         return;
       }
       if (url.pathname === '/api/v1/graph') {
