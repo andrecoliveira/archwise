@@ -79,7 +79,7 @@
     <strong>⬡ Archwise <small>Architecture Studio</small></strong>
     <small>● Local · Read-only project inspection</small>
   </header>
-  <main>
+  <main class:sandbox-workspace={studioMode === 'sandbox'}>
     <aside class="studio-sidebar" aria-label="Component library">
       <div class="sidebar-heading">
         <h1>{studioMode === 'sandbox' ? 'Components' : 'Discovered packages'}</h1>
@@ -153,7 +153,7 @@
         </details>
       {/if}
     </section>
-    <aside aria-label="Component inspector">
+    <aside aria-label="Component inspector" class="discovered-inspector">
       <h1>Inspector</h1>
       {#if selected}
         <h2>{selected.label}</h2>
