@@ -284,7 +284,18 @@
       };
     });
     const current = mode === 'sandbox' ? decoratedProposed : discoveredNodes;
-    const links = mode === 'sandbox' ? proposedEdges : discoveredEdges;
+    const links = mode === 'sandbox'
+      ? proposedEdges.map((edge) => ({
+          ...edge,
+          data: {
+            ...edge.data,
+            onSelect: (id: string) => {
+              selectedId = null;
+              selectedEdgeId = id;
+            },
+          },
+        }))
+      : discoveredEdges;
     const previous = new Map(untrack(() => nodes).map((item) => [item.id, item.position]));
     const positioned = current.map((item) => ({
       ...item,
