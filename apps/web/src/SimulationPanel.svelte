@@ -38,7 +38,7 @@
         kind,
         capacityRps: capacities[node.id] ?? 100,
         baseLatencyMs: latencies[node.id] ?? 20,
-        cacheHitRate: kind === 'cache' ? (hitRates[node.id] ?? 0.5) : undefined,
+        ...(kind === 'cache' ? { cacheHitRate: hitRates[node.id] ?? 0.5 } : {}),
         failed: failed[node.id] === true,
       };
     }),
