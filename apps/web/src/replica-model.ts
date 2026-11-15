@@ -7,9 +7,16 @@ export function canScaleComponent(kind: SimulatedKind, preset: string): boolean 
   return kind === 'service' && preset !== 'client' && preset !== 'load-balancer';
 }
 
-export function replicaCount(kind: SimulatedKind, preset: string, configured: number | undefined): number {
+export function replicaCount(
+  kind: SimulatedKind,
+  preset: string,
+  configured: number | undefined,
+): number {
   if (!canScaleComponent(kind, preset)) return 1;
-  return configured !== undefined && Number.isInteger(configured) && configured >= 1 && configured <= MAX_REPLICAS
+  return configured !== undefined &&
+    Number.isInteger(configured) &&
+    configured >= 1 &&
+    configured <= MAX_REPLICAS
     ? configured
     : 1;
 }

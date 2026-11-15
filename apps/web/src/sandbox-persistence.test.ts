@@ -207,9 +207,10 @@ test('rejects invalid or mismatched imported component presets', () => {
   }
 });
 
-
 test('version 1 workspaces without replica metadata restore with a single modeled instance', () => {
-  const legacy = JSON.parse(JSON.stringify(example())) as { draft: { replicas?: Record<string, number> } };
+  const legacy = JSON.parse(JSON.stringify(example())) as {
+    draft: { replicas?: Record<string, number> };
+  };
   delete legacy.draft.replicas;
   const result = parseSandboxDocument(JSON.stringify(legacy), projectSignature(graph));
   expect(result.draft.replicas).toEqual({});
@@ -219,14 +220,12 @@ test('replica counts are validated and persist only for service processors', () 
   const original = example();
   const valid = {
     ...original,
-    nodes: [
-      { ...original.nodes[0]!, preset: 'app-server' },
-      original.nodes[1]!,
-    ],
+    nodes: [{ ...original.nodes[0]!, preset: 'app-server' }, original.nodes[1]!],
     draft: { ...original.draft, replicas: { 'sandbox-1': 3 } },
   };
-  expect(parseSandboxDocument(serializeSandboxDocument(valid), projectSignature(graph)).draft.replicas)
-    .toEqual({ 'sandbox-1': 3 });
+  expect(
+    parseSandboxDocument(serializeSandboxDocument(valid), projectSignature(graph)).draft.replicas,
+  ).toEqual({ 'sandbox-1': 3 });
 
   for (const count of [0, 1.5, 17]) {
     const malformed = { ...valid, draft: { ...valid.draft, replicas: { 'sandbox-1': count } } };

@@ -1,5 +1,10 @@
 import { expect, test } from 'vitest';
-import { canScaleComponent, MAX_REPLICAS, modeledCapacityRps, replicaCount } from './replica-model.js';
+import {
+  canScaleComponent,
+  MAX_REPLICAS,
+  modeledCapacityRps,
+  replicaCount,
+} from './replica-model.js';
 
 test('services can model replicas but client, load balancer and data kinds stay at one', () => {
   expect(canScaleComponent('service', 'app-server')).toBe(true);

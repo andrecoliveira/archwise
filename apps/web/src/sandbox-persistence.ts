@@ -288,7 +288,12 @@ export function parseSandboxDocument(text: string, signature: string): SandboxDo
         id: node.id,
         label: node.label,
         kind: node.kind,
-        capacityRps: modeledCapacityRps(node.kind, node.preset ?? '', draft.capacities[node.id] ?? 100, draft.replicas[node.id]),
+        capacityRps: modeledCapacityRps(
+          node.kind,
+          node.preset ?? '',
+          draft.capacities[node.id] ?? 100,
+          draft.replicas[node.id],
+        ),
         baseLatencyMs: draft.latencies[node.id] ?? 20,
         ...(node.kind === 'cache' ? { cacheHitRate: draft.hitRates[node.id] ?? 0.5 } : {}),
         failed: draft.failed[node.id] === true,
