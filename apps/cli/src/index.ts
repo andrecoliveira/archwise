@@ -32,8 +32,8 @@ export function parseCli(args: readonly string[], version = 'development'): CliC
         stdout:
           'Usage: archwise [--path DIRECTORY] [--json | --graph | --sessions | --serve [--no-open] [--no-store]] [--help | --version]\n' +
           'Read-only inventory of local Node.js package manifests. --graph emits a deterministic evidence-backed graph.\n' +
-          '--sessions lists saved Sandbox sessions for this project. --serve opens the local Studio and saves\n' +
-          'Sandbox sessions in the local store (outside the project); --no-store runs without saving.\n',
+          '--sessions lists saved Sandbox sessions for this project. --serve opens the local Studio and records\n' +
+          'the discovered graph in the local store outside the project; --no-store disables the store.\n',
         stderr: '',
       },
     };

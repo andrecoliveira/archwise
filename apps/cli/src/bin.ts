@@ -86,8 +86,8 @@ if (command.kind === 'output') {
       process.stdout.write(`Local session URL: ${server.bootstrapUrl}\n`);
       process.stdout.write(
         runtime.kind === 'ready'
-          ? 'Sandbox sessions are saved locally. List them with --sessions.\n'
-          : 'Sessions are not saved in this run.\n',
+          ? 'Local session store ready (outside the project). List saved sessions with --sessions.\n'
+          : 'Local session store disabled for this run.\n',
       );
       process.stdout.write('Press Ctrl+C to stop.\n');
       if (command.open && assets) openBrowser(server.bootstrapUrl);

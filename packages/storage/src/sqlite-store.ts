@@ -47,17 +47,26 @@ export interface OpenStoreOptions {
 const DB_FILE = 'archwise.db';
 const KEPT_BACKUPS = 3;
 const CORRUPTION_CODES = new Set([11, 26]); // SQLITE_CORRUPT, SQLITE_NOTADB
+const READONLY_CODE = 8; // SQLITE_READONLY
+const BUSY_TIMEOUT_MS = 5000;
+const COMPANION_SUFFIXES = ['-wal', '-shm'] as const;
+const BACKUP_NAME = /^archwise\.db\.backup-v(\d+)-(.+)$/;
+
+/** Every connection waits for locks held by other Archwise processes before failing. */
+function connect(path: string): DatabaseSync {
+  const db = new DatabaseSync(path);
+  db.exec(`PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS}`);
+  return db;
+}
 
 const stampOf = (date: Date): string => date.toISOString().replace(/:/g, '-');
 
-function isCorruption(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'errcode' in error &&
-    CORRUPTION_CODES.has((error as { errcode: number }).errcode)
-  );
-}
+const errcodeOf = (error: unknown): number | null =>
+  typeof error === 'object' && error !== null && 'errcode' in error
+    ? (error as { errcode: number }).errcode
+    : null;
+
+const isCorruption = (error: unknown): boolean => CORRUPTION_CODES.has(errcodeOf(error) ?? -1);
 
 function ensureWritableDirectory(dataDir: string): void {
   try {
@@ -80,41 +89,60 @@ function schemaVersion(db: DatabaseSync): number {
   return row.version ?? 0;
 }
 
-/** Opens and checks an existing file. Returns null when it is corrupt. */
+/**
+ * Checks an existing file through a read-only connection, then opens it for writing. A
+ * read-write connection to a corrupt file would delete its WAL and shared-memory companions on
+ * close, losing committed frames before they could be quarantined. Returns null when corrupt.
+ */
 function openChecked(path: string): DatabaseSync | null {
-  let db: DatabaseSync | undefined;
+  let probe: DatabaseSync | undefined;
   try {
-    db = new DatabaseSync(path);
-    const rows = db.prepare('PRAGMA integrity_check').all() as { integrity_check: string }[];
-    if (rows.length === 1 && rows[0]!.integrity_check === 'ok') return db;
-    db.close();
-    return null;
+    probe = new DatabaseSync(path, { readOnly: true });
+    probe.exec(`PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS}`);
+    const rows = probe.prepare('PRAGMA integrity_check').all() as { integrity_check: string }[];
+    if (rows.length !== 1 || rows[0]!.integrity_check !== 'ok') return null;
   } catch (error) {
-    db?.close();
     if (isCorruption(error)) return null;
     throw error;
+  } finally {
+    probe?.close();
   }
+  return connect(path);
 }
 
-function pruneBackups(dataDir: string): void {
+/** Keeps the newest backups, ordered by schema version and then by timestamp. */
+export function pruneBackups(dataDir: string): void {
   const backups = readdirSync(dataDir)
-    .filter((name) => name.startsWith(`${DB_FILE}.backup-`))
-    .sort();
-  for (const name of backups.slice(0, Math.max(0, backups.length - KEPT_BACKUPS))) {
+    .map((name) => ({ name, match: BACKUP_NAME.exec(name) }))
+    .filter((entry): entry is { name: string; match: RegExpExecArray } => entry.match !== null)
+    .sort(
+      (a, b) =>
+        Number(a.match[1]) - Number(b.match[1]) ||
+        (a.match[2]! < b.match[2]! ? -1 : a.match[2]! > b.match[2]! ? 1 : 0),
+    );
+  for (const { name } of backups.slice(0, Math.max(0, backups.length - KEPT_BACKUPS))) {
     rmSync(join(dataDir, name), { force: true });
   }
 }
 
-function migrate(
-  db: DatabaseSync,
-  from: number,
-  migrations: readonly Migration[],
-  now: Date,
-): void {
-  const pending = migrations.filter((migration) => migration.version > from);
-  if (pending.length === 0) return;
+/** Moves a corrupt database and its WAL/shared-memory companions aside; nothing is deleted. */
+function quarantine(path: string, target: string): void {
+  renameSync(path, target);
+  for (const suffix of COMPANION_SUFFIXES) {
+    if (existsSync(`${path}${suffix}`)) renameSync(`${path}${suffix}`, `${target}${suffix}`);
+  }
+}
+
+/**
+ * Applies pending migrations under a write lock. The version is re-read after acquiring the
+ * lock so a process that lost a race skips migrations another process already applied.
+ */
+function migrate(db: DatabaseSync, migrations: readonly Migration[], now: Date): void {
+  const target = migrations[migrations.length - 1]?.version ?? 0;
+  if (schemaVersion(db) >= target) return;
   try {
     db.exec('BEGIN IMMEDIATE');
+    const pending = migrations.filter((migration) => migration.version > schemaVersion(db));
     db.exec(
       'CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)',
     );
@@ -126,7 +154,8 @@ function migrate(
       );
     }
     db.exec('COMMIT');
-  } catch {
+  } catch (error) {
+    if (errcodeOf(error) === READONLY_CODE) throw new StoreUnavailableError('unwritable');
     try {
       db.exec('ROLLBACK');
     } catch {
@@ -155,13 +184,18 @@ export async function openStore(
   let quarantinedPath: string | null = null;
   let db: DatabaseSync | null = null;
   if (existsSync(path)) {
+    try {
+      accessSync(path, constants.W_OK);
+    } catch {
+      throw new StoreUnavailableError('unwritable');
+    }
     db = openChecked(path);
     if (!db) {
       quarantinedPath = `${path}.corrupt-${stampOf(now())}`;
-      renameSync(path, quarantinedPath);
+      quarantine(path, quarantinedPath);
     }
   }
-  db ??= new DatabaseSync(path);
+  db ??= connect(path);
 
   let backupPath: string | null = null;
   try {
@@ -172,10 +206,11 @@ export async function openStore(
       await backup(db, backupPath);
       pruneBackups(dataDir);
     }
-    migrate(db, version, migrations, now());
-    db.exec('PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000; PRAGMA foreign_keys = ON');
+    migrate(db, migrations, now());
+    db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON');
   } catch (error) {
     db.close();
+    if (errcodeOf(error) === READONLY_CODE) throw new StoreUnavailableError('unwritable');
     throw error;
   }
   return createSqliteStore(db, path, quarantinedPath, backupPath);

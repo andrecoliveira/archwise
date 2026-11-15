@@ -59,3 +59,10 @@ test('lists saved sessions and controls the local store', () => {
   expect(runCli(['--help']).stdout).toContain('--sessions');
   expect(runCli(['--help']).stdout).toContain('--no-store');
 });
+
+test('help does not claim the Studio already saves sessions', () => {
+  const help = runCli(['--help']).stdout;
+  expect(help).not.toContain('saves\nSandbox sessions');
+  expect(help).not.toMatch(/saves Sandbox sessions/);
+  expect(help).toContain('local store');
+});

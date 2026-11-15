@@ -1,4 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
+import { existsSync, realpathSync } from 'node:fs';
+import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { RevisionInvalidError, SessionService, type SessionSummary } from '@archwise/application';
 import { openStore, type OpenedStore, type StoreUnavailableReason } from '@archwise/storage';
 import type { ArchitectureGraph } from './graph.js';
@@ -25,8 +27,33 @@ export interface PrepareStoreOptions {
  * Opens the local store and records this discovery run. Throws `StoreUnavailableError` for
  * newer-schema, failed-migration and unwritable stores; the caller exits with code 2.
  */
+/** Resolves symlinks through the nearest existing ancestor, for paths that may not exist yet. */
+function canonical(path: string): string {
+  let current = resolve(path);
+  const missing: string[] = [];
+  while (!existsSync(current) && dirname(current) !== current) {
+    missing.unshift(current.slice(dirname(current).length + 1));
+    current = dirname(current);
+  }
+  return resolve(realpathSync(current), ...missing);
+}
+
+/** True when `child` is `parent` or lies beneath it. */
+export function isWithin(child: string, parent: string): boolean {
+  const rel = relative(canonical(parent), canonical(child));
+  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
+}
+
 export async function prepareStore(options: PrepareStoreOptions): Promise<StoreRuntime> {
   if (!options.enabled) return { kind: 'disabled', notices: [] };
+  if (isWithin(options.dataDir, options.rootPath)) {
+    return {
+      kind: 'disabled',
+      notices: [
+        'The local store directory is inside the analyzed project; sessions are not saved in this run. Set ARCHWISE_DATA_DIR to a directory outside the project.',
+      ],
+    };
+  }
   const store = await openStore(options.dataDir);
   const notices: string[] = [];
   if (store.quarantinedPath) {
@@ -46,6 +73,7 @@ export async function prepareStore(options: PrepareStoreOptions): Promise<StoreR
       {
         rootPath: options.rootPath,
         view: JSON.stringify(options.graph),
+        viewIdentity: JSON.stringify({ ...options.graph, inspectedEntries: 0 }),
         build: (ids) => buildGraphRevision(options.graph, options.rootLabel, ids),
       },
     );

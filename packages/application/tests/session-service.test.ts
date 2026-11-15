@@ -18,6 +18,7 @@ const open = (d: ReturnType<typeof deps>, modules = 1, rootPath = '/fixture/root
   const result = SessionService.open(d, {
     rootPath,
     view: '{"version":1}',
+    viewIdentity: 'v1',
     build: buildRevision(modules),
   });
   if (!result.ok) throw new Error(result.error);
@@ -154,7 +155,30 @@ test('an invalid discovered revision throws RevisionInvalidError', () => {
     SessionService.open(d, {
       rootPath: '/fixture',
       view: '{}',
+      viewIdentity: '{}',
       build: (ids) => ({ ...buildRevision(1)(ids), createdAt: 'yesterday' }),
     }),
   ).toThrow(RevisionInvalidError);
+});
+
+test('a changed view with an unchanged revision records a new revision', () => {
+  const d = deps();
+  const openWith = (viewIdentity: string) => {
+    const result = SessionService.open(d, {
+      rootPath: '/fixture/root',
+      view: `{"framework":"${viewIdentity}"}`,
+      viewIdentity,
+      build: buildRevision(1),
+    });
+    if (!result.ok) throw new Error(result.error);
+    return result.value;
+  };
+  const before = openWith('none');
+  const same = openWith('none');
+  const after = openWith('react');
+  expect(same.currentRevisionId).toBe(before.currentRevisionId);
+  expect(after.currentRevisionId).not.toBe(before.currentRevisionId);
+  expect(d.store.revisions.get(after.workspaceId, after.currentRevisionId)?.view).toBe(
+    '{"framework":"react"}',
+  );
 });

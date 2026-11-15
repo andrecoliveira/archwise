@@ -29,6 +29,7 @@ function service(): SessionService {
     {
       rootPath: '/secret/absolute/root',
       view: JSON.stringify(graph),
+      viewIdentity: JSON.stringify(graph),
       build: (ids) => buildGraphRevision(graph, 'root', ids),
     },
   );

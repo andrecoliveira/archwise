@@ -9,7 +9,7 @@ import {
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { afterEach, expect, test } from 'vitest';
-import { openStore, SCHEMA_VERSION, StoreUnavailableError } from '../src/index.js';
+import { openStore, pruneBackups, SCHEMA_VERSION, StoreUnavailableError } from '../src/index.js';
 import { tempDir } from './helpers.js';
 
 const cleanups: (() => void)[] = [];
@@ -185,3 +185,86 @@ test('two handles on the same file can interleave writes', async () => {
     b.close();
   }
 });
+
+test('parallel first opens from separate threads all succeed', async () => {
+  const { Worker } = await import('node:worker_threads');
+  const { pathToFileURL } = await import('node:url');
+  const d = dir();
+  const entry = pathToFileURL(join(import.meta.dirname, '../dist/index.js')).href;
+  const code = `
+    const { workerData, parentPort } = require('node:worker_threads');
+    import(workerData.entry).then(async ({ openStore }) => {
+      try {
+        const store = await openStore(workerData.dir);
+        store.close();
+        parentPort.postMessage('ok');
+      } catch (error) {
+        parentPort.postMessage(String(error && (error.reason || error.message)));
+      }
+    });
+  `;
+  for (let trial = 0; trial < 3; trial++) {
+    const trialDir = join(d, `trial-${trial}`);
+    const results = await Promise.all(
+      Array.from(
+        { length: 4 },
+        () =>
+          new Promise<string>((accept) => {
+            const worker = new Worker(code, { eval: true, workerData: { entry, dir: trialDir } });
+            worker.once('message', (message: string) => {
+              accept(message);
+              void worker.terminate();
+            });
+          }),
+      ),
+    );
+    expect(results).toEqual(['ok', 'ok', 'ok', 'ok']);
+    expect(versionOf(join(trialDir, 'archwise.db'))).toBe(SCHEMA_VERSION);
+  }
+});
+
+test('quarantine moves WAL and shared-memory companions with the corrupt file', async () => {
+  const d = dir();
+  writeFileSync(dbPath(d), 'not a database '.repeat(300));
+  writeFileSync(`${dbPath(d)}-wal`, 'committed frames');
+  writeFileSync(`${dbPath(d)}-shm`, 'shared memory');
+  const store = await openStore(d);
+  store.close();
+  expect(readFileSync(`${store.quarantinedPath!}-wal`, 'utf8')).toBe('committed frames');
+  // -shm is a rebuildable shared-memory index (no durable data); it must move, not survive intact.
+  expect(existsSync(`${store.quarantinedPath!}-shm`)).toBe(true);
+  expect(existsSync(`${dbPath(d)}-wal`)).toBe(false);
+});
+
+test('backup pruning keeps the newest backups by schema version, then time', () => {
+  const d = dir();
+  const names = [
+    'archwise.db.backup-v9-2026-11-16T00-00-00.000Z',
+    'archwise.db.backup-v10-2026-11-15T00-00-00.000Z',
+    'archwise.db.backup-v10-2026-11-17T00-00-00.000Z',
+    'archwise.db.backup-v2-2026-12-01T00-00-00.000Z',
+    'archwise.db.backup-v11-2026-11-18T00-00-00.000Z',
+  ];
+  for (const name of names) writeFileSync(join(d, name), 'x');
+  pruneBackups(d);
+  expect(readdirSync(d).sort()).toEqual(
+    [
+      'archwise.db.backup-v10-2026-11-15T00-00-00.000Z',
+      'archwise.db.backup-v10-2026-11-17T00-00-00.000Z',
+      'archwise.db.backup-v11-2026-11-18T00-00-00.000Z',
+    ].sort(),
+  );
+});
+
+test.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
+  'a read-only store file is reported as unwritable',
+  async () => {
+    const d = dir();
+    (await openStore(d)).close();
+    for (const suffix of ['', '-wal', '-shm']) {
+      if (existsSync(`${dbPath(d)}${suffix}`)) chmodSync(`${dbPath(d)}${suffix}`, 0o400);
+    }
+    cleanups.push(() => chmodSync(dbPath(d), 0o600));
+    await expectUnavailable(openStore(d), 'unwritable');
+  },
+);

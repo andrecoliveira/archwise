@@ -38,6 +38,11 @@ export interface RevisionIds {
 export interface DiscoveryInput {
   readonly rootPath: string;
   readonly view: string;
+  /**
+   * The view content that must match for a revision to be reused (e.g. framework labels and
+   * diagnostic text the canonical revision does not carry), excluding volatile counters.
+   */
+  readonly viewIdentity: string;
   readonly build: (ids: RevisionIds) => GraphRevision;
 }
 
@@ -65,8 +70,11 @@ const fail = (error: ServiceError): { readonly ok: false; readonly error: Servic
 const defaultLabel = (count: number): string =>
   `Sandbox · ${count} component${count === 1 ? '' : 's'}`;
 
-/** Fingerprint of graph content, independent of revision identity, time and parent. */
-function fingerprint(revision: GraphRevision, digest: Digest): string {
+/**
+ * Fingerprint of the discovered content: the canonical revision (independent of identity,
+ * time and parent) plus the view identity, so a changed view never reuses a stale stored view.
+ */
+function fingerprint(revision: GraphRevision, viewIdentity: string, digest: Digest): string {
   const serialized = serializeGraphRevision({
     ...revision,
     id: 'rev-fingerprint',
@@ -74,7 +82,7 @@ function fingerprint(revision: GraphRevision, digest: Digest): string {
     parentRevisionId: null,
   });
   if (!serialized.ok) throw new RevisionInvalidError(serialized.issues);
-  return digest.sha256Hex(serialized.value);
+  return digest.sha256Hex(`${serialized.value}\n${viewIdentity}`);
 }
 
 /**
@@ -107,7 +115,7 @@ export class SessionService {
       }),
     );
     if (!created.ok) throw new RevisionInvalidError(created.issues);
-    const print = fingerprint(created.value, digest);
+    const print = fingerprint(created.value, discovery.viewIdentity, digest);
     let revisionId = created.value.id;
     if (latest && latest.fingerprint === print) {
       revisionId = latest.id;
