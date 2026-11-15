@@ -179,7 +179,9 @@ try {
   // Prove that manual dragging changes the persisted model position.
   const appId = before.nodes.find((node) => node.label === 'App Server')?.id;
   assert(appId, 'Expected an App Server in the saved Sandbox');
-  const dragTarget = page.locator('.svelte-flow__node').filter({ hasText: 'App Server' })
+  const dragTarget = page
+    .locator('.svelte-flow__node')
+    .filter({ hasText: 'App Server' })
     .locator('.archwise-node-head');
   const card = await dragTarget.boundingBox();
   assert(card, 'Expected a draggable custom node card');
@@ -189,15 +191,19 @@ try {
   await page.mouse.up();
   const previousApp = before.nodes.find((node) => node.id === appId);
   assert(previousApp, 'App Server needs an original saved position');
-  await page.waitForFunction(({ id, x, y }) => {
-    const key = Object.keys(globalThis.localStorage).find((item) =>
-      item.startsWith('archwise:sandbox:1:'),
-    );
-    if (!key) return false;
-    const doc = JSON.parse(globalThis.localStorage.getItem(key));
-    const node = doc.nodes.find((item) => item.id === id);
-    return node && (node.x !== x || node.y !== y);
-  }, { id: appId, x: previousApp.x, y: previousApp.y }, { timeout: 8000 });
+  await page.waitForFunction(
+    ({ id, x, y }) => {
+      const key = Object.keys(globalThis.localStorage).find((item) =>
+        item.startsWith('archwise:sandbox:1:'),
+      );
+      if (!key) return false;
+      const doc = JSON.parse(globalThis.localStorage.getItem(key));
+      const node = doc.nodes.find((item) => item.id === id);
+      return node && (node.x !== x || node.y !== y);
+    },
+    { id: appId, x: previousApp.x, y: previousApp.y },
+    { timeout: 8000 },
+  );
   const moved = await savedDocument();
   const movedApp = moved.nodes.find((node) => node.id === appId);
   assert(movedApp && previousApp, 'App Server must remain in the saved document');
@@ -217,14 +223,20 @@ try {
   assert.equal(exported.connections.length, 2);
 
   await page.getByRole('button', { name: 'Clear canvas' }).click();
-  await page.waitForFunction(() => globalThis.document.querySelectorAll('.svelte-flow__node').length === 0);
+  await page.waitForFunction(
+    () => globalThis.document.querySelectorAll('.svelte-flow__node').length === 0,
+  );
   await page.locator('#sandbox-import').setInputFiles({
     name: 'archwise-sandbox-v1.json',
     mimeType: 'application/json',
     buffer: Buffer.from(exportedText),
   });
-  await page.waitForFunction(() => globalThis.document.querySelectorAll('.svelte-flow__node').length === 3);
-  await page.waitForFunction(() => globalThis.document.querySelectorAll('.svelte-flow__edge').length === 2);
+  await page.waitForFunction(
+    () => globalThis.document.querySelectorAll('.svelte-flow__node').length === 3,
+  );
+  await page.waitForFunction(
+    () => globalThis.document.querySelectorAll('.svelte-flow__edge').length === 2,
+  );
   const imported = await savedDocument();
   assert.equal(imported.connections.length, 2);
   assert(imported.nodes.some((node) => node.label === 'SQL Primary'));
