@@ -121,7 +121,9 @@ try {
     'Two actual Svelte Flow connections must render',
   );
   if (dragFallbacks > 0) {
-    console.warn(`${dragFallbacks} connections required click-to-connect; drag remains unverified.`);
+    console.warn(
+      `${dragFallbacks} connections required click-to-connect; drag remains unverified.`,
+    );
   }
 
   await page.locator('.archwise-edge-pill').filter({ hasText: 'DB' }).click();
