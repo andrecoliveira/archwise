@@ -10,12 +10,12 @@
     | { status: 'error'; message: string }
     | { status: 'ready'; graph: Graph };
 
-  let state: LoadState = $state({ status: 'loading' });
+  let loadState: LoadState = $state({ status: 'loading' });
   let selectedId: string | null = $state(null);
   let filter = $state('');
   let controller: AbortController | null = null;
 
-  const graph = $derived(state.status === 'ready' ? state.graph : null);
+  const graph = $derived(loadState.status === 'ready' ? loadState.graph : null);
   const visible = $derived(
     graph?.nodes.filter((node) =>
       `${node.label} ${node.framework ?? ''} ${node.id}`.toLowerCase().includes(filter.toLowerCase()),
@@ -31,7 +31,7 @@
     controller?.abort();
     controller = new AbortController();
     const signal = controller.signal;
-    state = { status: 'loading' };
+    loadState = { status: 'loading' };
     try {
       const response = await fetch('/api/v1/graph', {
         credentials: 'same-origin',
@@ -46,10 +46,10 @@
       }
       const payload: unknown = await response.json();
       if (!isGraph(payload)) throw new Error('Unsupported graph format.');
-      if (!signal.aborted) state = { status: 'ready', graph: payload };
+      if (!signal.aborted) loadState = { status: 'ready', graph: payload };
     } catch (error) {
       if (!signal.aborted) {
-        state = { status: 'error', message: error instanceof Error ? error.message : 'Unable to load graph.' };
+        loadState = { status: 'error', message: error instanceof Error ? error.message : 'Unable to load graph.' };
       }
     }
   }
@@ -95,10 +95,10 @@
         </div>
         <button type="button" onclick={() => void loadGraph()}>Refresh graph</button>
       </div>
-      {#if state.status === 'loading'}
+      {#if loadState.status === 'loading'}
         <div class="alert" role="status">Discovering architecture…</div>
-      {:else if state.status === 'error'}
-        <div class="alert" role="alert">{state.message} <button type="button" onclick={() => void loadGraph()}>Retry</button></div>
+      {:else if loadState.status === 'error'}
+        <div class="alert" role="alert">{loadState.message} <button type="button" onclick={() => void loadGraph()}>Retry</button></div>
       {:else if graph && graph.nodes.length === 0}
         <div class="alert">No package manifests found in this workspace.</div>
       {:else if graph}
