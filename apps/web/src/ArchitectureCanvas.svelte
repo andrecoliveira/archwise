@@ -127,7 +127,6 @@
     nodesDraggable
     nodesConnectable={mode === 'sandbox'}
     elementsSelectable
-    deleteKeyCode={null}
     minZoom={0.15}
     maxZoom={2}
     onnodeclick={({ node }) => { selectedId = node.id; }}
