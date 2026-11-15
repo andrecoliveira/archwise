@@ -107,6 +107,8 @@ Detailed execution plan: [`superpowers/plans/2026-11-08-archwise-foundation.md`]
 
 ## Phase 2 — Domain contracts and local persistence
 
+Status: in progress. The graph-contracts slice is implemented in `@archwise/domain` and `@archwise/schemas`. It covers the validated, immutable and canonically serialized `archwise.graph` v1 revision, strict import, and sandbox base references; see the [spec](superpowers/specs/2026-11-11-graph-contracts-design.md). SQLite persistence, application ports, migrations, backup/recovery and redaction of absolute home paths in exports remain open. The phase exit gate is not yet satisfied.
+
 ### Goal
 
 Implement the stable vocabulary and revision model used by every later capability.
