@@ -40,14 +40,16 @@ Use `--json` for the inventory instead of the graph, or `--serve --no-open` to a
 4. Zoom, pan and automatic layout work on the Svelte Flow canvas.
 5. Switching to Sandbox permits proposed nodes and connections, visibly distinct from discovered items.
 6. Switching back to Explore shows the source-backed graph without the proposed items.
-7. The Architecture Coach panel shows offline contextual questions.
-8. Stop the local server with Ctrl+C. No project files should have been modified.
+7. In Sandbox, build a proposed topology, then set hypothetical load, capacity, cache-hit ratios and simulated failure in the Simulation panel. Check the displayed assumptions and results.
+8. Confirm that connections involving discovered packages are excluded from the simulation and a cyclic proposed topology reports a validation error.
+9. The Architecture Coach panel shows offline contextual questions.
+10. Stop the local server with Ctrl+C. No project files should have been modified.
 
 ## Current limits and safety
 
 - Discovery currently covers Node package manifests and explicitly declared dependencies between uniquely identified local packages. It does **not** infer a live runtime system, traffic flows, databases or deployed infrastructure.
 - Sandbox changes and interview progress currently live in memory; they are not persisted across restarts.
-- There is no production-traffic simulation integrated into this GitHub branch yet.
+- A deterministic Sandbox simulation is available, but it **does not measure production traffic**. It assumes a single entry node, evenly split routing across proposed links, a DAG topology, no retries and modeled capacity drops. See [Simulation assumptions](simulation.md).
 - There is no npm-published `npx archwise` package yet; use the compiled CLI.
 - The current build includes ELK and Svelte Flow and is not yet bundle-size optimized.
 - Default analysis reads project files; it never executes scripts from the inspected repository. No cloud account or remote AI is required.
@@ -55,7 +57,7 @@ Use `--json` for the inventory instead of the graph, or `--serve --no-open` to a
 
 ## Verified automated checks
 
-The feature branch passed the full `pnpm check` matrix on Linux, macOS and Windows using Node 24 and Node 26, including an authenticated HTTP smoke test of discovery → graph → server → compiled Studio assets. **Visual interaction in a real browser and OS-specific browser launch still require manual verification.**
+The feature branch passed the full `pnpm check` matrix on Linux, macOS and Windows using Node 24 and Node 26, including an authenticated HTTP smoke test of discovery → graph → server → compiled Studio assets. The new deterministic simulation increment has also passed `pnpm check` on Ubuntu/Node 26; its cross-platform matrix is being validated separately. **Visual interaction in a real browser and OS-specific browser launch still require manual verification.**
 
 See [PR #6](https://github.com/andrecoliveira/archwise/pull/6) for code review and [GitHub Actions](https://github.com/andrecoliveira/archwise/actions) for current CI status.
 
