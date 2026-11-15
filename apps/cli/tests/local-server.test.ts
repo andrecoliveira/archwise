@@ -63,12 +63,16 @@ test('rejects cross-origin, cross-site, invalid-host and mutating requests', asy
       ).status,
     ).toBe(403);
     const invalidHostStatus = await new Promise<number>((resolve, reject) => {
-      const req = request(`${server.address}/api/v1/graph`, {
-        headers: { host: 'localhost:4321' },
-      }, (response) => {
-        response.resume();
-        resolve(response.statusCode ?? 0);
-      });
+      const req = request(
+        `${server.address}/api/v1/graph`,
+        {
+          headers: { host: 'localhost:4321' },
+        },
+        (response) => {
+          response.resume();
+          resolve(response.statusCode ?? 0);
+        },
+      );
       req.on('error', reject);
       req.end();
     });
