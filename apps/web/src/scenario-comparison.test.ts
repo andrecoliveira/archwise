@@ -86,9 +86,7 @@ test('rejects invalid topologies, discovered nodes and reversed slots', () => {
   ).toThrow('Only explicitly proposed');
   const a = captureScenario('A', original);
   const b = captureScenario('B', original);
-  expect(() => compareScenarios(b, a)).toThrow(
-    'Expected version 1',
-  );
+  expect(() => compareScenarios(b, a)).toThrow('Expected version 1');
 });
 
 test('a saved snapshot compares repeatably even when the source arrays change', () => {
