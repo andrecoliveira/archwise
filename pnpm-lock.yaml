@@ -97,6 +97,18 @@ importers:
         specifier: 4.6.7
         version: 4.6.7
 
+  packages/storage:
+    dependencies:
+      '@archwise/application':
+        specifier: workspace:*
+        version: link:../application
+      '@archwise/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@archwise/schemas':
+        specifier: workspace:*
+        version: link:../schemas
+
   packages/test-fixtures: {}
 
 packages:

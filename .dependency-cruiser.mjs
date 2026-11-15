@@ -21,6 +21,15 @@ export default {
       to: { pathNot: '^packages/(application|domain|schemas)/' },
     },
     {
+      name: 'storage-inward-only',
+      severity: 'error',
+      from: { path: '^packages/storage/src/' },
+      to: {
+        pathNot: '^packages/(storage|application|domain|schemas)/',
+        dependencyTypesNot: ['core'],
+      },
+    },
+    {
       name: 'schemas-inward-only',
       severity: 'error',
       from: { path: '^packages/schemas/src/' },
