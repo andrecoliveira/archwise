@@ -22,7 +22,11 @@ const original: SimulationScenario = {
 };
 
 test('captures independent input snapshots and survives subsequent edits', () => {
-  const editable = structuredClone(original);
+  const editable = {
+    ...original,
+    components: original.components.map((node) => ({ ...node })),
+    connections: original.connections.map((edge) => ({ ...edge })),
+  };
   const a = captureScenario('A', editable);
   editable.components[0]!.capacityRps = 200;
   expect(a.scenario.components[0]?.capacityRps).toBe(60);
