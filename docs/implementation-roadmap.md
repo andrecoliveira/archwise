@@ -38,8 +38,8 @@ Snapshot as of 2026-11-15, after PRs #5, #6 and #7 merged into `main`. Issues an
 
 | Phase | State on `main` | What is missing for the exit gate |
 |---|---|---|
-| 0 | Partial | `CODE_OF_CONDUCT.md` with an enforcement contact; branch protection on `main` |
-| 1 | Partial | CodeQL and dependency review (now eligible because the repository is public); required branch checks |
+| 0 | Complete (2026-11-15) | — |
+| 1 | Complete (2026-11-15) | — |
 | 2 | Partial: graph contracts slice | SQLite storage, application ports, migrations, backup/recovery, export redaction of home paths |
 | 3 | Alpha only: manifest-only inventory in `apps/cli` | Budgets, ignore rules, symlink and nested-repository handling, `--repo` / `--workspace`, persisted scan metadata |
 | 4 | Alpha only: Node package manifests | Analyzer SDK, TS imports, HTTP/DB/queue detectors, Compose, golden graphs |
@@ -73,14 +73,14 @@ Alpha slices were delivered ahead of the phase order. Their placement in apps is
 
 ## Phase 0 — Governance and irreversible decisions
 
-Status: in progress. The following are in place:
+Status: complete. The following are in place:
 - contribution guidelines, issue forms, a PR template and initial code ownership;
 - Apache-2.0, DCO and the security policy, with GitHub Private Vulnerability Reporting enabled and verified;
 - accepted ADRs 0001–0005.
 
-The repository is public. Two items remain open, so the phase exit gate is not yet satisfied:
-- `CODE_OF_CONDUCT.md` with an enforcement contact;
-- branch protection on `main`.
+The repository is public. Completed 2026-11-15:
+- [Code of Conduct](../CODE_OF_CONDUCT.md) (Contributor Covenant 2.1) with a private enforcement contact;
+- `main` is protected by required PRs, required checks and resolved conversations.
 
 ### Goal
 
@@ -106,17 +106,12 @@ Make legal, contribution, compatibility, and architectural expectations explicit
 
 ## Phase 1 — Monorepo and quality foundation
 
-Status: in progress. The foundation from PR #4 is on `main`:
+Status: complete. The foundation from PR #4 is on `main`:
 - seven private packages with strict TypeScript, lint, tested import boundaries and Changesets;
 - component and process tests;
 - cross-platform CI, dependency auditing and redacted secret scanning.
 
-Still open:
-- CodeQL and dependency review, which are now eligible because the repository is public;
-- required branch checks;
-- the Phase 0 governance prerequisites.
-
-No application release has been published.
+Completed 2026-11-15: CodeQL and dependency review are running, and the required branch checks are enforced on `main` (see [CI/CD](ci-cd.md)). No application release has been published.
 
 ### Goal
 

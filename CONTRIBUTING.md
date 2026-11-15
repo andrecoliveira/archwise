@@ -1,6 +1,6 @@
 # Contributing to Archwise
 
-Archwise is preparing its open-source foundation under [Apache-2.0](LICENSE). The repository is public and contains specifications, governance, core graph contracts and a local Alpha Studio that runs from source (see the [Alpha testing guide](docs/alpha-testing.md)); no installable release is available yet. Contributions use the Developer Certificate of Origin (DCO). Report vulnerabilities through the [private security process](SECURITY.md).
+Archwise is preparing its open-source foundation under [Apache-2.0](LICENSE). The repository is public and contains specifications, governance, core graph contracts and a local Alpha Studio that runs from source (see the [Alpha testing guide](docs/alpha-testing.md)); no installable release is available yet. Contributions use the Developer Certificate of Origin (DCO). Report vulnerabilities through the [private security process](SECURITY.md). Everyone participating follows the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Contribution certification
 
@@ -27,7 +27,7 @@ Use an issue to describe the problem, acceptance criteria, affected phase, and a
 3. Add meaningful behavioral tests for code changes and reproduce relevant failure cases.
 4. Update user documentation and package responsibilities alongside the implementation.
 5. Describe the result, verification evidence, limitations, and compatibility impact in the PR template.
-6. Address review comments and wait for required checks and review before merging.
+6. Address review comments and wait for required checks and review before merging. `main` is protected: changes land only through pull requests with green required checks and resolved conversations.
 
 Use Conventional Commit subjects such as `docs: explain snapshot provenance`, `fix: reject paths outside workspace roots`, or `feat: inspect package manifests`. Avoid mixing refactoring and unrelated features in the same PR.
 

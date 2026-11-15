@@ -6,10 +6,18 @@
 
 The following workflows are configured today:
 - `ci.yml`: `pnpm check` (format, build, lint, typecheck, boundaries, tests) on Linux/macOS/Windows × Node 24/26, with lockfile install and lifecycle scripts disabled.
-- `security.yml`: `pnpm audit --audit-level moderate` and Gitleaks history scanning with redaction.
+- `security.yml`: `pnpm audit --audit-level moderate`, Gitleaks history scanning with redaction, and dependency review on pull requests (fails on moderate or higher).
+- `codeql.yml`: CodeQL static analysis of JavaScript/TypeScript and of the workflows themselves, in build-mode `none`; runs on PRs, `main` and weekly.
 - `browser-smoke.yml`: a real-Chromium Studio acceptance test on Ubuntu 24.04.
 
-Not yet configured: CodeQL, dependency review, coverage thresholds, the offline end-to-end immutability check, license policy, and required branch checks.
+`main` is protected. It requires pull requests, these required checks, and resolved conversations:
+- the six `check` matrix jobs;
+- `dependencies`, `secrets` and `dependency-review`;
+- CodeQL `analyze`.
+
+The path-filtered browser smoke is not required, because it does not run on every PR.
+
+Not yet configured: coverage thresholds, the offline end-to-end immutability check, and a license policy.
 
 ### Target
 
