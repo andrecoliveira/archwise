@@ -21,30 +21,54 @@ export interface Graph {
   readonly diagnostics: readonly string[];
   readonly inspectedEntries: number;
 }
-export function isGraph(value: unknown): value is Graph {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-  const graph = value as Partial<Graph>;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isEvidence(value: unknown): boolean {
+  return isRecord(value) && typeof value.path === 'string' && typeof value.kind === 'string';
+}
+
+function isNode(value: unknown): boolean {
   return (
-    graph.version === 1 &&
-    Array.isArray(graph.nodes) &&
-    Array.isArray(graph.edges) &&
-    Array.isArray(graph.diagnostics) &&
-    typeof graph.inspectedEntries === 'number' &&
-    graph.nodes.every(
-      (node) =>
-        !!node &&
-        typeof node === 'object' &&
-        typeof node.id === 'string' &&
-        typeof node.label === 'string' &&
-        Array.isArray(node.evidence),
-    ) &&
-    graph.edges.every(
-      (edge) =>
-        !!edge &&
-        typeof edge === 'object' &&
-        typeof edge.id === 'string' &&
-        typeof edge.source === 'string' &&
-        typeof edge.target === 'string',
-    )
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    typeof value.label === 'string' &&
+    typeof value.type === 'string' &&
+    (value.framework === null || typeof value.framework === 'string') &&
+    value.origin === 'discovered' &&
+    Array.isArray(value.evidence) &&
+    value.evidence.every((item: unknown) => isEvidence(item))
+  );
+}
+
+function isEdge(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    typeof value.source === 'string' &&
+    typeof value.target === 'string' &&
+    typeof value.type === 'string' &&
+    value.origin === 'discovered' &&
+    Array.isArray(value.evidence) &&
+    value.evidence.every((item: unknown) => isEvidence(item))
+  );
+}
+
+/** Validate external JSON as unknown before the browser consumes it. */
+export function isGraph(value: unknown): value is Graph {
+  return (
+    isRecord(value) &&
+    value.version === 1 &&
+    Array.isArray(value.nodes) &&
+    value.nodes.every((item: unknown) => isNode(item)) &&
+    Array.isArray(value.edges) &&
+    value.edges.every((item: unknown) => isEdge(item)) &&
+    Array.isArray(value.diagnostics) &&
+    value.diagnostics.every((item: unknown) => typeof item === 'string') &&
+    typeof value.inspectedEntries === 'number' &&
+    Number.isFinite(value.inspectedEntries) &&
+    value.inspectedEntries >= 0
   );
 }
