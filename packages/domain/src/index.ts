@@ -5,3 +5,4 @@ export * from './graph.js';
 export * from './primitives.js';
 export * from './validation.js';
 export * from './revision.js';
+export * from './sandbox.js';
