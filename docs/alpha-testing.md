@@ -1,6 +1,6 @@
 # Archwise Alpha — Local test guide
 
-> **Development preview:** this is a feature branch, not a published npm release. The core is local-first and works without a cloud login or external AI account. Please do not report this branch as a stable public release.
+> **Development preview:** this runs from the `main` branch source; it is not a published npm release. The core is local-first and works without a cloud login or external AI account. Please do not describe it as a stable public release.
 
 ## Prerequisites
 
@@ -12,7 +12,7 @@
 ## Test Architecture Studio
 
 ```bash
-git clone --branch feat/svelte-flow-migration https://github.com/andrecoliveira/archwise.git
+git clone https://github.com/andrecoliveira/archwise.git
 cd archwise
 corepack enable
 pnpm install --frozen-lockfile --ignore-scripts
@@ -60,9 +60,9 @@ Use `--json` for the inventory instead of the graph, or `--serve --no-open` to a
 
 ## Verified automated checks
 
-The feature branch passed the full `pnpm check` matrix on Linux, macOS and Windows using Node 24 and Node 26, including an authenticated HTTP smoke test of discovery → graph → server → compiled Studio assets. The new deterministic simulation increment has also passed `pnpm check` on Ubuntu/Node 26; its cross-platform matrix is being validated separately. **Visual interaction in a real browser and OS-specific browser launch still require manual verification.**
+The `main` branch passes the full `pnpm check` matrix on Linux, macOS and Windows using Node 24 and Node 26, including an authenticated HTTP smoke test of discovery → graph → server → compiled Studio assets. The `Browser Studio Smoke` workflow also exercises the Studio in headless Chromium on Ubuntu (see [Browser QA](browser-qa.md)). **Visual review, touch input, Safari/Firefox and OS-specific browser launch are still verified manually.**
 
-See [PR #6](https://github.com/andrecoliveira/archwise/pull/6) for code review and [GitHub Actions](https://github.com/andrecoliveira/archwise/actions) for current CI status.
+The Alpha was reviewed and merged in [PR #6](https://github.com/andrecoliveira/archwise/pull/6). See [GitHub Actions](https://github.com/andrecoliveira/archwise/actions) for current CI status.
 
 ## Feedback
 

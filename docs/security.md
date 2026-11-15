@@ -33,7 +33,7 @@ Remote transmission is deny-by-default. Enabling a provider does not enable sour
 
 ## Vulnerability response
 
-Before public release, add `SECURITY.md` with a private reporting channel, supported versions, disclosure expectations, and response targets. Security reports must not be filed as public issues when they contain exploit details or secrets.
+[`SECURITY.md`](../SECURITY.md) defines the private reporting channel (GitHub Private Vulnerability Reporting), supported versions, disclosure expectations and response targets. Security reports must not be filed as public issues when they contain exploit details or secrets.
 
 ## Out-of-scope guarantees
 

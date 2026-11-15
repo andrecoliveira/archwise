@@ -25,4 +25,4 @@ A and B are *independent copies*, not references to the live editor state. The c
 
 Pure comparison tests cover copy isolation, deterministic results, capacity improvements, bottleneck changes, added/removed components, incompatible inputs and invalid/discovered topology.
 
-Use `pnpm check` and then validate the editing experience in a real browser. This is a draft feature-branch implementation, not a public release.
+Use `pnpm check` and then validate the editing experience in a real browser. This is an unreleased Alpha feature on `main`. The A/B flow is covered by the automated [browser smoke test](browser-qa.md).

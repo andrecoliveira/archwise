@@ -32,6 +32,26 @@ Finalization does not mean development stops. It establishes a reliable open-sou
 7. Preserve the offline path. New networked capabilities must degrade cleanly when unavailable.
 8. Measure before optimizing; keep performance fixtures and budgets reproducible.
 
+## Current state
+
+Snapshot as of 2026-11-15, after PRs #5, #6 and #7 merged into `main`. Issues and milestones remain the live tracker.
+
+| Phase | State on `main` | What is missing for the exit gate |
+|---|---|---|
+| 0 | Partial | `CODE_OF_CONDUCT.md` with an enforcement contact; branch protection on `main` |
+| 1 | Partial | CodeQL and dependency review (now eligible because the repository is public); required branch checks |
+| 2 | Partial: graph contracts slice | SQLite storage, application ports, migrations, backup/recovery, export redaction of home paths |
+| 3 | Alpha only: manifest-only inventory in `apps/cli` | Budgets, ignore rules, symlink and nested-repository handling, `--repo` / `--workspace`, persisted scan metadata |
+| 4 | Alpha only: Node package manifests | Analyzer SDK, TS imports, HTTP/DB/queue detectors, Compose, golden graphs |
+| 5 | Alpha only: protected loopback server and Svelte Flow Studio | SSE progress, evidence navigation from domain revisions, accessibility, large-graph strategy |
+| 6 | Not started | — |
+| 7 | Alpha only: localStorage Sandbox and JSON v1 snapshot | Revision-based operation log, undo/redo, rebase, checksummed exports |
+| 8 | Alpha only: deterministic capacity simulation with replicas and A/B | Latency, availability, retries, queues, cost, seeds, scenario templates |
+| 9 | Alpha only: offline coach questions | Question packs and rubric, provider interface, consent flow |
+| 10–11 | Not started | — |
+
+Alpha slices were delivered ahead of the phase order. Their placement in apps is accepted debt ([ADR 0005](decisions/0005-svelte-flow-browser-workspace.md)). Each later phase must move that logic behind package contracts.
+
 ## Delivery map
 
 | Phase | Outcome | Depends on | Release marker |
@@ -53,7 +73,14 @@ Finalization does not mean development stops. It establishes a reliable open-sou
 
 ## Phase 0 — Governance and irreversible decisions
 
-Status: in progress. Contribution guidelines, issue forms, a PR template, initial code ownership, Apache-2.0, DCO, and the security policy are prepared. GitHub Private Vulnerability Reporting was enabled with owner authorization and verified. Community conduct enforcement and repository protection remain open; the phase exit gate is not yet satisfied. Independent foundation tooling can proceed while those items are resolved.
+Status: in progress. The following are in place:
+- contribution guidelines, issue forms, a PR template and initial code ownership;
+- Apache-2.0, DCO and the security policy, with GitHub Private Vulnerability Reporting enabled and verified;
+- accepted ADRs 0001–0005.
+
+The repository is public. Two items remain open, so the phase exit gate is not yet satisfied:
+- `CODE_OF_CONDUCT.md` with an enforcement contact;
+- branch protection on `main`.
 
 ### Goal
 
@@ -65,7 +92,7 @@ Make legal, contribution, compatibility, and architectural expectations explicit
 - Add `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, issue templates, pull-request template, and code-ownership rules.
 - Decide Node LTS support, package manager, monorepo tool, module format, minimum browser targets, and versioning policy in ADRs.
 - Define maintainer roles, review expectations, decision process, DCO or contributor agreement policy, and security response channel.
-- Convert the proposed local-first ADR to accepted after reviewing the selected license and boundaries.
+- Convert the proposed local-first ADR to accepted after reviewing the selected license and boundaries. Done: ADR 0001 is accepted.
 - Create a public roadmap label/milestone structure without presenting dates as commitments.
 
 ### Exit gate
@@ -79,7 +106,17 @@ Make legal, contribution, compatibility, and architectural expectations explicit
 
 ## Phase 1 — Monorepo and quality foundation
 
-Status: in progress, implementation available in PR #4. Seven private packages now include CLI/server/web shells and safe fixtures, with strict TypeScript, lint, tested import boundaries, Changesets, component/process tests, and cross-platform CI. Dependency auditing and redacted secret scanning are configured. CodeQL/dependency-review eligibility, required branch checks, governance prerequisites and final release review remain open. No application release has been published.
+Status: in progress. The foundation from PR #4 is on `main`:
+- seven private packages with strict TypeScript, lint, tested import boundaries and Changesets;
+- component and process tests;
+- cross-platform CI, dependency auditing and redacted secret scanning.
+
+Still open:
+- CodeQL and dependency review, which are now eligible because the repository is public;
+- required branch checks;
+- the Phase 0 governance prerequisites.
+
+No application release has been published.
 
 ### Goal
 

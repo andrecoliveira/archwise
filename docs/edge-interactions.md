@@ -33,4 +33,4 @@ This block improves the **Sandbox drawing interaction**. It does not claim to re
 
 `pnpm check` passed for this implementation on Linux, macOS and Windows using Node.js 24 and 26. **73 Vitest tests + 12 Node-native tests** passed; Svelte check reported zero errors and warnings.
 
-The browser interaction test remains necessary before marking draft PR #6 ready to merge.
+The [browser smoke test](browser-qa.md) now automates the connection, edge-intent and persistence steps above. Drag-to-connect and obstacle-avoiding routing remain known limitations.

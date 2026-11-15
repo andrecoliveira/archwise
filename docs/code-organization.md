@@ -1,4 +1,11 @@
-# Proposed code organization
+# Code organization
+
+The tree below is the **target** layout. Today, `main` contains the following:
+- **Packages:** `apps/{cli,server,web}` and `packages/{domain,schemas,application,test-fixtures}`.
+- **Graph contracts:** `archwise.graph` v1 lives in `domain` and `schemas`.
+- **Alpha logic placed in apps:** manifest discovery and the loopback server are in `apps/cli`; the simulator, Sandbox persistence and coach are in `apps/web`.
+
+[ADR 0005](decisions/0005-svelte-flow-browser-workspace.md) records the Alpha logic in apps as debt, to be moved into the target packages as the matching roadmap phases land.
 
 ```text
 archwise/

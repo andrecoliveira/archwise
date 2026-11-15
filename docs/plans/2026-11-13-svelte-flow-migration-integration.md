@@ -1,6 +1,6 @@
 # Svelte 5 + Svelte Flow migration — integration plan
 
-Status: **draft; implementation package prepared locally, not yet merged**.
+Status: **completed**. The migration merged into `main` through PR #6 on 2026-11-15 and is recorded in [ADR 0005](../decisions/0005-svelte-flow-browser-workspace.md). The sections below are kept as the historical plan.
 
 ## Scope
 - Replace the React-based `apps/web` UI with Svelte 5 and `@xyflow/svelte`.
@@ -41,3 +41,12 @@ A cumulative implementation ZIP was prepared in the development conversation, bu
 The feature branch now includes a read-only Node manifest inventory, evidence-backed declared-package graph, CLI `--graph`, a protected loopback HTTP graph endpoint (`--serve`), and an initial Svelte 5/Svelte Flow inspector with an isolated in-memory Sandbox. The pnpm lockfile was refreshed by CI. The browser bundle and full cross-platform pipeline are **not yet verified**; this remains a draft PR. The long-term repository analyzers, persisted graph revisions, simulation UI and coaching are not yet integrated into this branch. Static project inspection is deliberately limited to package manifests and declared internal dependencies.
 
 Next gates: green format, build, lint, typecheck and test; browser integration and session/origin regression tests; then simulator and deterministic coach as independent increments. Do not merge the draft until these are green.
+
+## Completion — 2026-11-15
+
+All the gates above passed before merge:
+- format, build, lint, typecheck and test, on Linux/macOS/Windows × Node 24/26;
+- session and origin regression tests for the loopback server;
+- the real-Chromium browser smoke test.
+
+The simulator, A/B comparison, local persistence and offline coach were integrated as independent increments (see the block documents linked from the [Alpha testing guide](../alpha-testing.md)). Remaining interaction limitations are tracked in [Browser QA](../browser-qa.md). The package-placement debt is recorded in ADR 0005.
