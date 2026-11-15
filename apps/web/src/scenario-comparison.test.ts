@@ -1,9 +1,5 @@
 import { expect, test } from 'vitest';
-import {
-  captureScenario,
-  compareScenarios,
-  type ScenarioSnapshot,
-} from './scenario-comparison.js';
+import { captureScenario, compareScenarios, type ScenarioSnapshot } from './scenario-comparison.js';
 import type { SimulationScenario } from './simulation.js';
 
 const original: SimulationScenario = {
@@ -53,14 +49,16 @@ test('identifies added and removed hypothetical nodes with deterministic order',
   const b = captureScenario('B', {
     ...original,
     entryNodeId: 'sandbox-cache',
-    components: [{
-      id: 'sandbox-cache',
-      label: 'Cache',
-      kind: 'cache',
-      capacityRps: 120,
-      baseLatencyMs: 2,
-      cacheHitRate: 1,
-    }],
+    components: [
+      {
+        id: 'sandbox-cache',
+        label: 'Cache',
+        kind: 'cache',
+        capacityRps: 120,
+        baseLatencyMs: 2,
+        cacheHitRate: 1,
+      },
+    ],
   });
   const result = compareScenarios(a, b);
   expect(result.nodeChanges.map((item) => [item.id, item.change])).toEqual([
@@ -80,9 +78,12 @@ test('warns when load differs so changes are not incorrectly attributed to desig
 });
 
 test('rejects invalid topologies, discovered nodes and reversed slots', () => {
-  expect(() => captureScenario('A', {
-    ...original, components: [{ ...original.components[0]!, id: 'package:api' }],
-  })).toThrow('Only explicitly proposed');
+  expect(() =>
+    captureScenario('A', {
+      ...original,
+      components: [{ ...original.components[0]!, id: 'package:api' }],
+    }),
+  ).toThrow('Only explicitly proposed');
   const a = captureScenario('A', original);
   const b = captureScenario('B', original);
   expect(() => compareScenarios(b as ScenarioSnapshot, a as ScenarioSnapshot)).toThrow(
@@ -93,7 +94,8 @@ test('rejects invalid topologies, discovered nodes and reversed slots', () => {
 test('a saved snapshot compares repeatably even when the source arrays change', () => {
   const a = captureScenario('A', original);
   const b = captureScenario('B', {
-    ...original, components: [{ ...original.components[0]!, capacityRps: 120 }],
+    ...original,
+    components: [{ ...original.components[0]!, capacityRps: 120 }],
   });
   expect(compareScenarios(a, b)).toEqual(compareScenarios(a, b));
 });

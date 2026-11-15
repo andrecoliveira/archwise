@@ -76,7 +76,9 @@ export function compareScenarios(
   const candidate = simulateSandbox(candidateSnapshot.scenario);
   const previousNodes = new Map(baseline.nodes.map((item) => [item.id, item]));
   const nextNodes = new Map(candidate.nodes.map((item) => [item.id, item]));
-  const previousConfig = new Map(baselineSnapshot.scenario.components.map((item) => [item.id, item]));
+  const previousConfig = new Map(
+    baselineSnapshot.scenario.components.map((item) => [item.id, item]),
+  );
   const nextConfig = new Map(candidateSnapshot.scenario.components.map((item) => [item.id, item]));
   const oldLinks = baselineSnapshot.scenario.connections;
   const newLinks = candidateSnapshot.scenario.connections;
@@ -119,7 +121,9 @@ export function compareScenarios(
     'Both scenarios are hypothetical; these deltas are not measurements or production forecasts.',
   ];
   if (baseline.inputRps !== candidate.inputRps) {
-    warnings.push('Incoming loads differ; throughput changes cannot be attributed only to architecture.');
+    warnings.push(
+      'Incoming loads differ; throughput changes cannot be attributed only to architecture.',
+    );
   }
   if (baseline.entryNodeId !== candidate.entryNodeId) {
     warnings.push('Entry components differ; request paths are not directly comparable.');
