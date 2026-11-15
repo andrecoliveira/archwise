@@ -53,13 +53,7 @@ try {
   await page.getByRole('button', { name: 'Add Client' }).click();
   await page.getByRole('button', { name: 'Add App Server' }).click();
   await page.getByRole('button', { name: 'Add SQL Database' }).click();
-  await page
-    .locator('.svelte-flow__node.architecture')
-    .first()
-    .waitFor()
-    .catch(async () => {
-      await page.locator('.svelte-flow__node').first().waitFor();
-    });
+  await page.locator('.svelte-flow__node').first().waitFor();
   await page.waitForFunction(
     () => globalThis.document.querySelectorAll('.svelte-flow__node').length >= 3,
   );
@@ -82,6 +76,7 @@ try {
   const app = nodes.filter({ hasText: 'App Server' });
   const database = nodes.filter({ hasText: 'SQL Primary' });
 
+  let dragFallbacks = 0;
   async function link(from, to) {
     const source = from.locator('.svelte-flow__handle.source');
     const target = to.locator('.svelte-flow__handle.target');
@@ -95,6 +90,7 @@ try {
     await page.mouse.up();
     await page.waitForTimeout(400);
     if ((await page.locator('.svelte-flow__edge').count()) <= previousCount) {
+      dragFallbacks += 1;
       console.log('Drag did not add an edge; testing click-to-connect fallback.');
       await source.click();
       await target.click();
@@ -124,6 +120,7 @@ try {
     2,
     'Two actual Svelte Flow connections must render',
   );
+  assert.equal(dragFallbacks, 0, 'Source and target handles should connect by drag, without a fallback.');
 
   await page.locator('.archwise-edge-pill').filter({ hasText: 'DB' }).click();
   const connectionPanel = page.getByRole('region', { name: 'Connection intent editor' });
