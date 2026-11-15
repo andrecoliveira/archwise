@@ -152,3 +152,27 @@ test('permits an empty Sandbox and preserves historical A/B snapshots', () => {
     workspace.draft.savedA,
   );
 });
+
+
+test('preserves semantic connections and accepts historical v1 JSON without intent', () => {
+  const current = example();
+  const typed = {
+    ...current,
+    connections: [{ source: 'sandbox-1', target: 'sandbox-2', intent: 'CACHE' as const }],
+  };
+  const parsed = parseSandboxDocument(serializeSandboxDocument(typed), projectSignature(graph));
+  expect(parsed.connections[0]?.intent).toBe('CACHE');
+  const legacy = parseSandboxDocument(JSON.stringify(current), projectSignature(graph));
+  expect(legacy.connections[0]).toEqual({ source: 'sandbox-1', target: 'sandbox-2' });
+});
+
+test('rejects unknown imported connection intents', () => {
+  const current = example();
+  const bad = {
+    ...current,
+    connections: [{ source: 'sandbox-1', target: 'sandbox-2', intent: 'DROP TABLE' }],
+  };
+  expect(() => parseSandboxDocument(JSON.stringify(bad), projectSignature(graph))).toThrow(
+    'Unsupported connection intent',
+  );
+});
