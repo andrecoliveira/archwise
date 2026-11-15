@@ -39,7 +39,9 @@ try {
   ]);
   browser = await chromium.launch({
     headless: true,
-    ...(process.env.ARCHWISE_BROWSER_CHANNEL ? { channel: process.env.ARCHWISE_BROWSER_CHANNEL } : {}),
+    ...(process.env.ARCHWISE_BROWSER_CHANNEL
+      ? { channel: process.env.ARCHWISE_BROWSER_CHANNEL }
+      : {}),
   });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors = [];
@@ -58,7 +60,9 @@ try {
     .catch(async () => {
       await page.locator('.svelte-flow__node').first().waitFor();
     });
-  await page.waitForFunction(() => globalThis.document.querySelectorAll('.svelte-flow__node').length >= 3);
+  await page.waitForFunction(
+    () => globalThis.document.querySelectorAll('.svelte-flow__node').length >= 3,
+  );
   assert.equal(
     await page.locator('.svelte-flow__node').count(),
     3,
@@ -90,9 +94,13 @@ try {
     await page.mouse.up();
   }
   await link(client, app);
-  await page.waitForFunction(() => globalThis.document.querySelectorAll('.svelte-flow__edge').length >= 1);
+  await page.waitForFunction(
+    () => globalThis.document.querySelectorAll('.svelte-flow__edge').length >= 1,
+  );
   await link(app, database);
-  await page.waitForFunction(() => globalThis.document.querySelectorAll('.svelte-flow__edge').length >= 2);
+  await page.waitForFunction(
+    () => globalThis.document.querySelectorAll('.svelte-flow__edge').length >= 2,
+  );
   assert.equal(
     await page.locator('.svelte-flow__edge').count(),
     2,
@@ -109,11 +117,15 @@ try {
   // This tests saved JSON as well as browser restoration, not just a screenshot.
   const savedDocument = async () =>
     page.evaluate(() => {
-      const key = Object.keys(globalThis.localStorage).find((item) => item.startsWith('archwise:sandbox:1:'));
+      const key = Object.keys(globalThis.localStorage).find((item) =>
+        item.startsWith('archwise:sandbox:1:'),
+      );
       return key ? JSON.parse(globalThis.localStorage.getItem(key)) : null;
     });
   await page.waitForFunction(() => {
-    const key = Object.keys(globalThis.localStorage).find((item) => item.startsWith('archwise:sandbox:1:'));
+    const key = Object.keys(globalThis.localStorage).find((item) =>
+      item.startsWith('archwise:sandbox:1:'),
+    );
     if (!key) return false;
     const doc = JSON.parse(globalThis.localStorage.getItem(key));
     return (
@@ -127,8 +139,12 @@ try {
   assert.equal(before.connections.find((e) => e.intent === 'DB')?.intent, 'DB');
 
   await page.reload({ waitUntil: 'networkidle' });
-  await page.waitForFunction(() => globalThis.document.querySelectorAll('.svelte-flow__node').length === 3);
-  await page.waitForFunction(() => globalThis.document.querySelectorAll('.svelte-flow__edge').length === 2);
+  await page.waitForFunction(
+    () => globalThis.document.querySelectorAll('.svelte-flow__node').length === 3,
+  );
+  await page.waitForFunction(
+    () => globalThis.document.querySelectorAll('.svelte-flow__edge').length === 2,
+  );
   const after = await savedDocument();
   assert.equal(after.nodes.length, 3);
   assert.equal(after.connections.length, 2);
@@ -137,7 +153,9 @@ try {
 
   await page.getByRole('button', { name: 'Explore · Inspect' }).click();
   await page.getByRole('button', { name: 'Sandbox · Build' }).click();
-  await page.waitForFunction(() => globalThis.document.querySelectorAll('.svelte-flow__edge').length === 2);
+  await page.waitForFunction(
+    () => globalThis.document.querySelectorAll('.svelte-flow__edge').length === 2,
+  );
   assert.deepEqual(errors, [], 'Browser runtime errors must not occur');
   console.log(
     'Browser smoke passed: quick-add, custom nodes, inspector, handles, semantic edges, persistence, reload and mode switching.',
