@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+import { request } from 'node:http';
 import { startLocalGraphServer } from '../src/local-server.js';
 import type { ArchitectureGraph } from '../src/graph.js';
 
@@ -61,13 +62,17 @@ test('rejects cross-origin, cross-site, invalid-host and mutating requests', asy
         })
       ).status,
     ).toBe(403);
-    expect(
-      (
-        await fetch(`${server.address}/api/v1/graph`, {
-          headers: { host: 'localhost:4321' },
-        })
-      ).status,
-    ).toBe(403);
+    const invalidHostStatus = await new Promise<number>((resolve, reject) => {
+      const req = request(`${server.address}/api/v1/graph`, {
+        headers: { host: 'localhost:4321' },
+      }, (response) => {
+        response.resume();
+        resolve(response.statusCode ?? 0);
+      });
+      req.on('error', reject);
+      req.end();
+    });
+    expect(invalidHostStatus).toBe(403);
     expect(
       (
         await fetch(`${server.address}/api/v1/graph`, {
