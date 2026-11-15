@@ -1,22 +1,24 @@
 <script lang="ts">
   import type { Edge, Node } from '@xyflow/svelte';
+  import type { SimulationDraft } from './sandbox-persistence.js';
   import { simulateSandbox, type SimulatedKind, type SimulationReport } from './simulation.js';
   import { captureScenario, compareScenarios, type ScenarioSnapshot } from './scenario-comparison.js';
 
-  let { proposedNodes, proposedEdges }: {
+  let { proposedNodes, proposedEdges, draft = $bindable() }: {
     proposedNodes: readonly Node[];
     proposedEdges: readonly Edge[];
+    draft: SimulationDraft;
   } = $props();
 
-  let inputRps = $state(100);
-  let preferredEntryId = $state('');
-  let capacities = $state<Record<string, number>>({});
-  let latencies = $state<Record<string, number>>({});
-  let hitRates = $state<Record<string, number>>({});
-  let failed = $state<Record<string, boolean>>({});
-  let savedA = $state.raw<ScenarioSnapshot | null>(null);
-  let savedB = $state.raw<ScenarioSnapshot | null>(null);
   let snapshotError = $state<string | null>(null);
+  const inputRps = $derived(draft.inputRps);
+  const preferredEntryId = $derived(draft.preferredEntryId);
+  const capacities = $derived(draft.capacities);
+  const latencies = $derived(draft.latencies);
+  const hitRates = $derived(draft.hitRates);
+  const failed = $derived(draft.failed);
+  const savedA = $derived(draft.savedA);
+  const savedB = $derived(draft.savedB);
 
   const entryId = $derived(
     proposedNodes.some((node) => node.id === preferredEntryId)
@@ -59,8 +61,7 @@
   function save(slot: 'A' | 'B'): void {
     try {
       const snapshot = captureScenario(slot, currentScenario);
-      if (slot === 'A') savedA = snapshot;
-      else savedB = snapshot;
+      draft = { ...draft, [slot === 'A' ? 'savedA' : 'savedB']: snapshot };
       snapshotError = null;
     } catch (error) {
       snapshotError = error instanceof Error ? error.message : 'Unable to save scenario.';
@@ -91,14 +92,14 @@
       <button type="button" disabled={!!outcome.error || !outcome.report} onclick={() => save('B')}>
         {savedB ? 'Replace B with current' : 'Save current as B'}
       </button>
-      <button type="button" disabled={!savedA && !savedB} onclick={() => { savedA = null; savedB = null; snapshotError = null; }}>
+      <button type="button" disabled={!savedA && !savedB} onclick={() => { draft = { ...draft, savedA: null, savedB: null }; snapshotError = null; }}>
         Clear snapshots
       </button>
     </div>
     <p>
       Scenario A: {savedA ? `${savedA.scenario.components.length} nodes saved` : 'Not saved'} ·
       Scenario B: {savedB ? `${savedB.scenario.components.length} nodes saved` : 'Not saved'}.
-      Snapshots stay in this browser session only.
+      Snapshots are saved locally with the Sandbox and can be exported as JSON.
     </p>
     {#if snapshotError}
       <p class="simulation-error" role="alert">{snapshotError}</p>
@@ -137,11 +138,11 @@
     <div class="scenario-fields">
       <label>
         Incoming load (requests/second)
-        <input type="number" min="0" max="1000000" step="1" bind:value={inputRps} />
+        <input type="number" min="0" max="1000000" step="1" value={inputRps} oninput={(event) => (draft = { ...draft, inputRps: event.currentTarget.valueAsNumber })} />
       </label>
       <label>
         Entry component
-        <select bind:value={preferredEntryId}>
+        <select value={preferredEntryId} onchange={(event) => (draft = { ...draft, preferredEntryId: event.currentTarget.value })}>
           <option value="">First proposed component</option>
           {#each proposedNodes as node (node.id)}
             <option value={node.id}>{typeof node.data.label === 'string' ? node.data.label : node.id}</option>
@@ -162,7 +163,7 @@
               max="1000000"
               value={capacities[node.id] ?? 100}
               oninput={(event) =>
-                (capacities = { ...capacities, [node.id]: event.currentTarget.valueAsNumber })}
+                (draft = { ...draft, capacities: { ...capacities, [node.id]: event.currentTarget.valueAsNumber } })}
             />
           </label>
           <label>
@@ -173,7 +174,7 @@
               max="120000"
               value={latencies[node.id] ?? 20}
               oninput={(event) =>
-                (latencies = { ...latencies, [node.id]: event.currentTarget.valueAsNumber })}
+                (draft = { ...draft, latencies: { ...latencies, [node.id]: event.currentTarget.valueAsNumber } })}
             />
           </label>
           {#if node.data.kind === 'cache'}
@@ -186,7 +187,7 @@
                 step="0.05"
                 value={hitRates[node.id] ?? 0.5}
                 oninput={(event) =>
-                  (hitRates = { ...hitRates, [node.id]: event.currentTarget.valueAsNumber })}
+                  (draft = { ...draft, hitRates: { ...hitRates, [node.id]: event.currentTarget.valueAsNumber } })}
               />
             </label>
           {/if}
@@ -195,7 +196,7 @@
               type="checkbox"
               checked={failed[node.id] ?? false}
               onchange={(event) =>
-                (failed = { ...failed, [node.id]: event.currentTarget.checked })}
+                (draft = { ...draft, failed: { ...failed, [node.id]: event.currentTarget.checked } })}
             />
             Simulate failure
           </label>
