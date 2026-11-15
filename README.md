@@ -2,13 +2,13 @@
 
 Archwise is a proposed local-first, open-source workspace for discovering, understanding, explaining, and safely experimenting with software architecture.
 
-> **Project status (feature branch):** local Alpha preview. Node package-manifest discovery, an evidence-backed package dependency graph, a protected loopback API, a Svelte 5/Svelte Flow Architecture Studio, a transient Sandbox, and deterministic offline coaching questions are implemented. Production traffic simulation, deep infrastructure discovery, persistent revisions, and AI interviewing remain future work. The stable npm CLI has not been published.
+> **Project status (feature branch):** local Alpha preview. Node package-manifest discovery, an evidence-backed package dependency graph, a protected loopback API, a Svelte 5/Svelte Flow Architecture Studio, a transient Sandbox, and deterministic offline coaching questions are implemented. A deterministic **hypothetical Sandbox capacity simulation** is now available with visible assumptions; production-traffic observation, deep infrastructure discovery, persistent revisions, and AI interviewing remain future work. The stable npm CLI has not been published.
 
 ## Development
 
 Use Node 26 and pnpm 10.34.9. Run `pnpm install --frozen-lockfile --ignore-scripts`, then `pnpm check`. See the [development guide](docs/development/testing.md) for package tests and current verification limits.
 
-After building, run `node apps/cli/dist/bin.js --serve --path /absolute/path/to/project` to start the protected local Studio, or use `--graph` to inspect the discovered package graph as JSON. See the [Alpha testing guide](docs/alpha-testing.md) for step-by-step instructions and current limitations. Standalone `pnpm dev` does not provide the authenticated local graph API.
+After building, run `node apps/cli/dist/bin.js --serve --path /absolute/path/to/project` to start the protected local Studio, or use `--graph` to inspect the discovered package graph as JSON. See the [Alpha testing guide](docs/alpha-testing.md) and [simulation model](docs/simulation.md) for step-by-step instructions and current limitations. Standalone `pnpm dev` does not provide the authenticated local graph API.
 
 The product starts from code already on a developer's machine. From a selected working directory, Archwise discovers one or more repositories, builds an evidence-backed architecture graph, opens it in a browser, and lets the user explore a separate sandbox without changing source code. An optional AI interviewer acts like a system-design recruiter: it asks focused questions, challenges assumptions, and turns answers into reviewable suggestions.
 
