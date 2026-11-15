@@ -5,17 +5,14 @@
   import { isGraph, type Graph } from './graph-types.js';
   import './studio.css';
 
-  type LoadState =
-    | { status: 'loading' }
-    | { status: 'error'; message: string }
-    | { status: 'ready'; graph: Graph };
-
-  let loadState: LoadState = $state({ status: 'loading' });
+  let graphData = $state<Graph | null>(null);
+  let loading = $state(true);
+  let loadError = $state<string | null>(null);
   let selectedId: string | null = $state(null);
   let filter = $state('');
   let controller: AbortController | null = null;
 
-  const graph = $derived(loadState.status === 'ready' ? loadState.graph : null);
+  const graph = $derived(graphData);
   const visible = $derived(
     graph?.nodes.filter((node) =>
       `${node.label} ${node.framework ?? ''} ${node.id}`.toLowerCase().includes(filter.toLowerCase()),
@@ -31,7 +28,8 @@
     controller?.abort();
     controller = new AbortController();
     const signal = controller.signal;
-    loadState = { status: 'loading' };
+    loading = true;
+    loadError = null;
     try {
       const response = await fetch('/api/v1/graph', {
         credentials: 'same-origin',
@@ -46,10 +44,14 @@
       }
       const payload: unknown = await response.json();
       if (!isGraph(payload)) throw new Error('Unsupported graph format.');
-      if (!signal.aborted) loadState = { status: 'ready', graph: payload };
+      if (!signal.aborted) {
+        graphData = payload;
+        loading = false;
+      }
     } catch (error) {
       if (!signal.aborted) {
-        loadState = { status: 'error', message: error instanceof Error ? error.message : 'Unable to load graph.' };
+        loadError = error instanceof Error ? error.message : 'Unable to load graph.';
+        loading = false;
       }
     }
   }
@@ -95,10 +97,10 @@
         </div>
         <button type="button" onclick={() => void loadGraph()}>Refresh graph</button>
       </div>
-      {#if loadState.status === 'loading'}
+      {#if loading}
         <div class="alert" role="status">Discovering architecture…</div>
-      {:else if loadState.status === 'error'}
-        <div class="alert" role="alert">{loadState.message} <button type="button" onclick={() => void loadGraph()}>Retry</button></div>
+      {:else if loadError}
+        <div class="alert" role="alert">{loadError} <button type="button" onclick={() => void loadGraph()}>Retry</button></div>
       {:else if graph && graph.nodes.length === 0}
         <div class="alert">No package manifests found in this workspace.</div>
       {:else if graph}
