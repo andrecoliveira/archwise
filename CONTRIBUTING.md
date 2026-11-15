@@ -1,6 +1,6 @@
 # Contributing to Archwise
 
-Archwise is preparing its open-source foundation under [Apache-2.0](LICENSE). The repository contains specifications, governance and initial core packages; an installable application is not available yet. Contributions use the Developer Certificate of Origin (DCO). Report vulnerabilities through the [private security process](SECURITY.md).
+Archwise is preparing its open-source foundation under [Apache-2.0](LICENSE). The repository is public and contains specifications, governance, core graph contracts and a local Alpha Studio that runs from source (see the [Alpha testing guide](docs/alpha-testing.md)); no installable release is available yet. Contributions use the Developer Certificate of Origin (DCO). Report vulnerabilities through the [private security process](SECURITY.md).
 
 ## Contribution certification
 
@@ -33,7 +33,7 @@ Use Conventional Commit subjects such as `docs: explain snapshot provenance`, `f
 
 ## Verification today
 
-Run `pnpm install --frozen-lockfile --ignore-scripts` and `pnpm check` with Node 26 and pnpm 10.34.9. The gate checks tooling/package formatting, builds, lint, types, architecture boundaries and tests. For documentation changes, also review links, preserve historical documents and run `git diff --check`.
+Run `pnpm install --frozen-lockfile --ignore-scripts` and `pnpm check` with Node 26 and pnpm 10.34.9. Use exactly this pnpm version, for example `npx --yes pnpm@10.34.9 check`: other major versions rewrite `pnpm-lock.yaml` and can drop the security overrides in `pnpm-workspace.yaml`. The gate checks tooling/package formatting, builds, lint, types, architecture boundaries and tests. For documentation changes, also review links, preserve historical documents and run `git diff --check`.
 
 See the [development guide](docs/development/testing.md) for focused tests and the [architecture boundary guide](docs/development/architecture-boundaries.md) for enforced module rules. Add a changeset for user-visible changes; packages remain private until release readiness is reviewed.
 

@@ -30,7 +30,7 @@ This first increment draws on the user-supplied visual reference of a URL-shorte
 - The connection-intent tests cover suggestions, five supported values, and incompatible pairings.
 - Persistence tests cover typed JSON round-trips, legacy v1 imports, and invalid intent rejection.
 - Canvas-feedback tests cover bottlenecks, dropped RPS, simulated failures, near-capacity warning and idle state.
-- Run `pnpm check` and manually test edge selection/editing and node feedback in a browser. Do not merge the draft PR without manual browser verification.
+- Run `pnpm check` and manually test edge selection/editing and node feedback in a browser. Edge selection and editing are also covered by the automated [browser smoke test](browser-qa.md).
 
 ## Next increment
 

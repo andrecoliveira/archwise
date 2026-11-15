@@ -2,7 +2,18 @@
 
 ## Pull-request checks
 
-The initial GitHub Actions pipeline should run on Linux, with platform smoke tests added as packaging begins:
+### Current state
+
+The following workflows are configured today:
+- `ci.yml`: `pnpm check` (format, build, lint, typecheck, boundaries, tests) on Linux/macOS/Windows × Node 24/26, with lockfile install and lifecycle scripts disabled.
+- `security.yml`: `pnpm audit --audit-level moderate` and Gitleaks history scanning with redaction.
+- `browser-smoke.yml`: a real-Chromium Studio acceptance test on Ubuntu 24.04.
+
+Not yet configured: CodeQL, dependency review, coverage thresholds, the offline end-to-end immutability check, license policy, and required branch checks.
+
+### Target
+
+The complete pull-request pipeline covers:
 
 1. dependency install from the lockfile without lifecycle scripts where feasible;
 2. formatting and lint checks;

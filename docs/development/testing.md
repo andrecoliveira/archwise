@@ -19,6 +19,6 @@ Formatting covers tooling, packages, apps, scripts and CI; historical specificat
 
 Run `node apps/cli/dist/bin.js --help` after building. Run `node apps/cli/dist/bin.js --serve --path <project>` for the authenticated local Studio. `pnpm dev` serves only the Svelte frontend on loopback without the authenticated graph API and performs no repository scanning.
 
-`pnpm audit --audit-level moderate` checks registry advisories and requires network access. Security CI also scans Git history with Gitleaks, with redaction enabled and comments/uploads disabled. CodeQL and GitHub dependency-review are not active; see ADR 0004 for the private-repository constraint.
+`pnpm audit --audit-level moderate` checks registry advisories and requires network access. Security CI also scans Git history with Gitleaks, with redaction enabled and comments/uploads disabled. CodeQL and GitHub dependency-review are not configured yet. The repository is now public, so both are eligible; enabling them is an open Phase 1 item.
 
 CI defines Linux, macOS and Windows checks on Node 24/26. Local success alone is not evidence that all matrix jobs pass.

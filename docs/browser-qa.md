@@ -35,4 +35,4 @@ The workflow requires `pnpm build` and a functional local CLI + HTTP browser ser
 
 Launch the [Alpha Studio](alpha-testing.md), add the three example components, **click the green output port and then the blue input port**, edit the DB edge's meaning, rename a node, adjust capacity, export, clear, import and reload.
 
-Keep draft PR #6 unmerged until the desired visual polish and remaining interaction limitations are reviewed.
+The Alpha was merged in PR #6. The limitations above stay open as known issues: drag-to-connect reliability, edge routing around nodes, and Safari/Firefox/touch coverage.

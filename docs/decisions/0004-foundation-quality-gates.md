@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-11-09
+- Note: the React foundation page was later replaced by Svelte 5 and Svelte Flow ([ADR 0005](0005-svelte-flow-browser-workspace.md)). The repository is now public, so the private-repository constraint on CodeQL and dependency-review below no longer applies.
 
 ## Decision
 

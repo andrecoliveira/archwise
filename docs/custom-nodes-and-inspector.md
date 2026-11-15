@@ -26,4 +26,4 @@ This increment replaces the default proposed Svelte Flow nodes with purpose-buil
 
 The full `pnpm check` passed on Linux, macOS and Windows with Node.js 24 and 26, including 70 Vitest tests and 12 Node-native tests. New tests verify that preset identity survives JSON export/import and malformed preset mappings are rejected.
 
-**Real browser verification remains necessary** to confirm handle hit targets, drag-to-connect, node selection, inspector editing and responsive layout behavior before merging the draft PR.
+The automated [browser smoke test](browser-qa.md) covers node creation, inspector editing, click-to-connect and persistence in Chromium. Drag-to-connect reliability, touch input and responsive layout are still open known limitations.

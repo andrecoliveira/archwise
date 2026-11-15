@@ -54,7 +54,7 @@ apps/web ───────┘             │
                               └──> packages/ai
 ```
 
-Adapters may depend on domain contracts. The domain must not import React, Node filesystem APIs, databases, or provider SDKs. The web UI consumes versioned application APIs and shared schemas; it does not inspect the filesystem directly.
+Adapters may depend on domain contracts. The domain must not import UI frameworks (Svelte, React), Node filesystem APIs, databases, or provider SDKs. The web UI consumes versioned application APIs and shared schemas; it does not inspect the filesystem directly.
 
 ## Definition of done
 

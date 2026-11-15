@@ -1,8 +1,8 @@
 # Archwise
 
-Archwise is a proposed local-first, open-source workspace for discovering, understanding, explaining, and safely experimenting with software architecture.
+Archwise is a local-first, open-source workspace for discovering, understanding, explaining, and safely experimenting with software architecture.
 
-> **Project status (feature branch):** local Alpha preview. Node package-manifest discovery, an evidence-backed package dependency graph, a protected loopback API, a Svelte 5/Svelte Flow Architecture Studio, a locally persisted Sandbox with versioned JSON import/export, and deterministic offline coaching questions are implemented. A deterministic **hypothetical Sandbox capacity simulation** is now available with visible assumptions; production-traffic observation, deep infrastructure discovery, multi-revision history, and AI interviewing remain future work. The stable npm CLI has not been published.
+> **Project status (`main`, pre-release):** local Alpha preview. Node package-manifest discovery, an evidence-backed package dependency graph, a protected loopback API, a Svelte 5/Svelte Flow Architecture Studio, a locally persisted Sandbox with versioned JSON import/export, and deterministic offline coaching questions are implemented. A deterministic **hypothetical Sandbox capacity simulation** is now available with visible assumptions; production-traffic observation, deep infrastructure discovery, multi-revision history, and AI interviewing remain future work. Versioned graph revision contracts (`archwise.graph` v1) exist in the core packages but are not yet wired into discovery. No package or npm CLI has been published. See the [roadmap status](docs/implementation-roadmap.md#current-state) for what is delivered, what is partial, and what comes next.
 
 ## Development
 
@@ -42,7 +42,7 @@ The product starts from code already on a developer's machine. From a selected w
 - [Security and privacy](docs/security.md)
 - [MVP scope and delivery phases](docs/mvp.md)
 - [End-to-end implementation roadmap](docs/implementation-roadmap.md)
-- [Proposed code organization](docs/code-organization.md)
+- [Code organization: current and target](docs/code-organization.md)
 - [CI/CD and release strategy](docs/ci-cd.md)
 - [Optional open-core business strategies](docs/business.md)
 - [Architecture decision](docs/decisions/0001-local-first-open-source.md)
@@ -58,4 +58,4 @@ The specification is the current source of truth. Before implementing a feature,
 
 ## License
 
-Licensed under [Apache-2.0](LICENSE). Contributions use the [DCO process](CONTRIBUTING.md#contribution-certification). The repository remains private while the foundation is developed; adopting the license does not change repository visibility.
+Licensed under [Apache-2.0](LICENSE). Contributions use the [DCO process](CONTRIBUTING.md#contribution-certification). The repository is public. No release has been published yet.
