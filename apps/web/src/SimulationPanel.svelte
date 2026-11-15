@@ -81,8 +81,8 @@
   });
 </script>
 
-<details class="simulation-panel" open>
-  <summary>Simulation — hypothetical estimates</summary>
+<details class="simulation-panel">
+  <summary>Simulation & A/B comparison <span class="simulation-summary-hint">· Expand to configure hypothetical traffic</span></summary>
   <p>No production metrics are collected. Only proposed components and links participate.</p>
   <section class="scenario-comparison" aria-label="Compare saved A and B scenarios">
     <div class="comparison-actions">
