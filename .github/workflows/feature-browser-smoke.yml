@@ -1,0 +1,49 @@
+name: One-time real Chromium Studio smoke
+on:
+  push:
+    branches: [feat/svelte-flow-migration]
+    paths: ['.github/workflows/feature-browser-smoke.yml']
+permissions:
+  contents: write
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TURBO_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: true
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Format test driver
+        run: pnpm exec prettier --write scripts/browser-smoke.mjs
+      - name: Verify existing quality gate
+        id: checks
+        continue-on-error: true
+        run: pnpm check
+      - name: Install standalone Chromium driver without touching the repo lockfile
+        run: |
+          npm install --prefix "$RUNNER_TEMP/archwise-playwright" --no-save --no-package-lock playwright@1.56.1
+          "$RUNNER_TEMP/archwise-playwright/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Exercise real browser workflow
+        id: smoke
+        continue-on-error: true
+        env:
+          ARCHWISE_PLAYWRIGHT_ENTRY: ${{ runner.temp }}/archwise-playwright/node_modules/playwright/index.mjs
+        run: node scripts/browser-smoke.mjs
+      - name: Remove temporary workflow and publish formatting
+        if: always()
+        run: |
+          git rm .github/workflows/feature-browser-smoke.yml
+          git add scripts/browser-smoke.mjs
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -s -m 'style(browser): format Chromium interaction smoke and remove temporary workflow'
+          git push origin HEAD:feat/svelte-flow-migration
+      - name: Enforce full quality and smoke
+        if: steps.checks.outcome != 'success' || steps.smoke.outcome != 'success'
+        run: exit 1
