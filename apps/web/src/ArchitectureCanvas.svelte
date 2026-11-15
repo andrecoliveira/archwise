@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Background, Controls, MiniMap, SvelteFlow, type Connection, type Edge, type Node } from '@xyflow/svelte';
+  import { Background, Controls, MiniMap, SvelteFlow, MarkerType, type Connection, type Edge, type Node } from '@xyflow/svelte';
   import '@xyflow/svelte/dist/style.css';
   import { onMount, untrack } from 'svelte';
   import { layoutNodes } from './graph-layout.js';
@@ -7,6 +7,8 @@
   import { findCatalogComponent } from './component-catalog.js';
   import SimulationPanel from './SimulationPanel.svelte';
   import ArchitectureNode from './ArchitectureNode.svelte';
+  import ArchitectureEdge from './ArchitectureEdge.svelte';
+  import { validateProposedConnection, CONNECTION_HELP_TEXT } from './connection-validation.js';
   import {
     defaultSimulationDraft,
     parseSandboxDocument,
@@ -57,6 +59,7 @@
   let persistenceStatus = $state('');
   const signature = $derived(projectSignature(graph));
   const nodeTypes = { architecture: ArchitectureNode };
+  const edgeTypes = { semantic: ArchitectureEdge };
   const selectedProposed = $derived(proposedNodes.find((node) => node.id === selectedId));
   const selectedPreset = $derived(findCatalogComponent(String(selectedProposed?.data.preset ?? '')));
 
@@ -130,7 +133,9 @@
       id: `proposed-edge-${index + 1}`,
       source: edge.source,
       target: edge.target,
-      type: 'smoothstep',
+      type: 'semantic',
+      markerEnd: { type: MarkerType.ArrowClosed, color: CONNECTION_STYLES[edge.intent ?? 'REQ'].color },
+      interactionWidth: 28,
       data: { origin: 'proposed', intent: edge.intent ?? 'REQ' },
       label: edge.intent ?? 'REQ',
       labelStyle: 'fill:#e2e8f0;font-weight:700;',
@@ -295,6 +300,10 @@
       .then((placed) => {
         if (!cancelled && nonce === layoutNonce) {
           nodes = placed;
+          if (mode === 'sandbox') {
+            const positions = new Map(placed.map((item) => [item.id, item.position]));
+            proposedNodes = proposedNodes.map((item) => ({ ...item, position: positions.get(item.id) ?? item.position }));
+          }
           layoutError = null;
         }
       })
@@ -335,22 +344,26 @@
     addNode(request.preset);
   });
 
-  function connect(connection: Connection) {
+  function rememberDragPosition(node: Node): void {
+    if (mode !== 'sandbox' || !node.id.startsWith('sandbox-')) return;
+    proposedNodes = proposedNodes.map((item) =>
+      item.id === node.id ? { ...item, position: { ...node.position } } : item,
+    );
+  }
+
+  function connect(connection: Connection): void {
     if (mode !== 'sandbox' || !connection.source || !connection.target) return;
-    if (connection.source === connection.target) {
-      connectionNotice = 'A component cannot connect to itself.';
+    const validation = validateProposedConnection(
+      connection.source, connection.target,
+      new Set(proposedNodes.map((item) => item.id)),
+      proposedEdges,
+    );
+    if (!validation.valid) {
+      connectionNotice = validation.reason;
       return;
     }
-    const source = proposedNodes.find((node) => node.id === connection.source);
-    const target = proposedNodes.find((node) => node.id === connection.target);
-    if (!source || !target) {
-      connectionNotice = 'Only proposed-to-proposed connections can be simulated and saved.';
-      return;
-    }
-    if (proposedEdges.some((edge) => edge.source === connection.source && edge.target === connection.target)) {
-      connectionNotice = 'This connection already exists.';
-      return;
-    }
+    const source = proposedNodes.find((node) => node.id === connection.source)!;
+    const target = proposedNodes.find((node) => node.id === connection.target)!;
     const intent = suggestedIntent(source.data.kind as SimulatedKind, target.data.kind as SimulatedKind);
     const id = `proposed-edge-${counter++}`;
     proposedEdges = [
@@ -359,15 +372,19 @@
         id,
         source: connection.source,
         target: connection.target,
-        type: 'smoothstep',
+        type: 'semantic',
+        markerEnd: { type: MarkerType.ArrowClosed, color: CONNECTION_STYLES[intent].color },
+        interactionWidth: 28,
         data: { origin: 'proposed', intent },
         label: intent,
         labelStyle: 'fill:#e2e8f0;font-weight:700;',
-          style: `stroke:${CONNECTION_STYLES[intent].color};stroke-width:2;`,
+        style: `stroke:${CONNECTION_STYLES[intent].color};stroke-width:2;`,
+        ariaLabel: `${source.data.label} to ${target.data.label}: ${intent}`,
       },
     ];
+    selectedId = null;
     selectedEdgeId = id;
-    connectionNotice = '';
+    connectionNotice = `Connected ${source.data.label} → ${target.data.label} as ${intent}. Select the label to change it.`;
   }
 
   const selectedEdge = $derived(proposedEdges.find((edge) => edge.id === selectedEdgeId));
@@ -393,6 +410,7 @@
             data: { ...edge.data, intent },
             label: intent,
             style: `stroke:${CONNECTION_STYLES[intent].color};stroke-width:2;`,
+            markerEnd: { type: MarkerType.ArrowClosed, color: CONNECTION_STYLES[intent].color },
           }
         : edge,
     );
@@ -449,7 +467,7 @@
     <button type="button" onclick={removeSelectedEdge}>Remove connection</button>
     <button type="button" onclick={() => (selectedEdgeId = null)}>Close</button>
     {#if selectedWarning}<p role="alert">{selectedWarning}</p>{/if}
-    <small>Visual meaning only. Traffic is still split equally by the simplified simulation.</small>
+    <small>{CONNECTION_HELP_TEXT[selectedIntent]} Connection types are descriptive only; modeled traffic still follows simplified equal splitting.</small>
   </section>
 {/if}
 {#if connectionNotice}<div class="persistence-status" role="status">{connectionNotice}</div>{/if}
@@ -467,6 +485,7 @@
   {/if}
   <SvelteFlow
     {nodeTypes}
+    {edgeTypes}
     bind:nodes
     bind:edges
     fitView
@@ -474,11 +493,15 @@
     nodesDraggable
     nodesConnectable={mode === 'sandbox'}
     elementsSelectable
+    connectionMode="strict"
+    clickConnect
     deleteKey={null}
     minZoom={0.15}
     maxZoom={2}
     onnodeclick={({ node }) => { selectedId = node.id; selectedEdgeId = null; }}
-    onedgeclick={({ edge }) => { selectedEdgeId = edge.data?.origin === "proposed" ? edge.id : null; }}
+    onnodedragstop={({ node }) => rememberDragPosition(node)}
+    onpaneclick={() => { selectedId = null; selectedEdgeId = null; connectionNotice = ''; }}
+    onedgeclick={({ edge }) => { selectedId = null; selectedEdgeId = edge.data?.origin === "proposed" ? edge.id : null; }}
     onconnect={connect}
   >
     <Background />
