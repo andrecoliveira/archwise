@@ -726,3 +726,10 @@ li {
 @media (max-width: 850px) {
   .floating-inspector { width: min(250px, 55%); padding: 10px; }
 }
+
+/* The proposed-component editor lives in the canvas; package evidence stays in Explore. */
+.studio > main.sandbox-workspace { grid-template-columns: 258px minmax(0, 1fr); }
+.studio > main.sandbox-workspace > .discovered-inspector { display: none; }
+@media (max-width: 670px) {
+  .studio > main.sandbox-workspace { grid-template-columns: 168px minmax(0, 1fr); }
+}
