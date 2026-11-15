@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Edge, Node } from '@xyflow/svelte';
   import type { SimulationDraft } from './sandbox-persistence.js';
+  import { canScaleComponent, modeledCapacityRps } from './replica-model.js';
   import { simulateSandbox, type SimulatedKind, type SimulationReport } from './simulation.js';
   import { captureScenario, compareScenarios, type ScenarioSnapshot } from './scenario-comparison.js';
 
@@ -14,6 +15,7 @@
   const inputRps = $derived(draft.inputRps);
   const preferredEntryId = $derived(draft.preferredEntryId);
   const capacities = $derived(draft.capacities);
+  const replicas = $derived(draft.replicas);
   const latencies = $derived(draft.latencies);
   const hitRates = $derived(draft.hitRates);
   const failed = $derived(draft.failed);
@@ -42,7 +44,7 @@
         id: node.id,
         label: typeof node.data.label === 'string' ? node.data.label : node.id,
         kind,
-        capacityRps: capacities[node.id] ?? 100,
+        capacityRps: modeledCapacityRps(kind, String(node.data.preset ?? ''), capacities[node.id] ?? 100, replicas[node.id]),
         baseLatencyMs: latencies[node.id] ?? 20,
         ...(kind === 'cache' ? { cacheHitRate: hitRates[node.id] ?? 0.5 } : {}),
         failed: failed[node.id] === true,
@@ -156,7 +158,7 @@
           <strong>{typeof node.data.label === 'string' ? node.data.label : node.id}</strong>
           <small>{typeof node.data.kind === 'string' ? node.data.kind : 'service'}</small>
           <label>
-            Capacity (requests/second)
+            {canScaleComponent(node.data.kind as SimulatedKind, String(node.data.preset ?? '')) ? 'Capacity per replica (RPS)' : 'Capacity (requests/second)'}
             <input
               type="number"
               min="0"
@@ -166,6 +168,23 @@
                 (draft = { ...draft, capacities: { ...capacities, [node.id]: event.currentTarget.valueAsNumber } })}
             />
           </label>
+          {#if canScaleComponent(node.data.kind as SimulatedKind, String(node.data.preset ?? ''))}
+            <label>
+              Replicas (1–16)
+              <input type="number" min="1" max="16" step="1"
+                value={replicas[node.id] ?? 1}
+                onchange={(event) => {
+                  const value = event.currentTarget.valueAsNumber;
+                  if (Number.isInteger(value) && value >= 1 && value <= 16) {
+                    draft = { ...draft, replicas: { ...replicas, [node.id]: value } };
+                  }
+                }} />
+            </label>
+            <small>Modeled total capacity: {modeledCapacityRps(
+                node.data.kind as SimulatedKind, String(node.data.preset ?? ''),
+                capacities[node.id] ?? 100, replicas[node.id]
+              ).toFixed(0)} RPS · linear scaling assumption</small>
+          {/if}
           <label>
             Baseline latency (ms)
             <input
