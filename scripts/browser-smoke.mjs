@@ -120,7 +120,11 @@ try {
     2,
     'Two actual Svelte Flow connections must render',
   );
-  assert.equal(dragFallbacks, 0, 'Source and target handles should connect by drag, without a fallback.');
+  assert.equal(
+    dragFallbacks,
+    0,
+    'Source and target handles should connect by drag, without a fallback.',
+  );
 
   await page.locator('.archwise-edge-pill').filter({ hasText: 'DB' }).click();
   const connectionPanel = page.getByRole('region', { name: 'Connection intent editor' });
