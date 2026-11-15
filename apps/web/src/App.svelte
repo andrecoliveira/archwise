@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import ArchitectureCanvas from './ArchitectureCanvas.svelte';
-  import { CATALOG_GROUPS, COMPONENT_CATALOG, searchCatalog } from './component-catalog.js';
+  import { CATALOG_GROUPS, searchCatalog } from './component-catalog.js';
   import { getCoachQuestions } from './architecture-coach.js';
   import { isGraph, type Graph } from './graph-types.js';
   import './studio.css';
