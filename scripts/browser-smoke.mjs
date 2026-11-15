@@ -94,13 +94,13 @@ try {
     await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 18 });
     await page.mouse.up();
     await page.waitForTimeout(400);
-    if (await page.locator('.svelte-flow__edge').count() <= previousCount) {
+    if ((await page.locator('.svelte-flow__edge').count()) <= previousCount) {
       console.log('Drag did not add an edge; testing click-to-connect fallback.');
       await source.click();
       await target.click();
       await page.waitForTimeout(400);
     }
-    if (await page.locator('.svelte-flow__edge').count() <= previousCount) {
+    if ((await page.locator('.svelte-flow__edge').count()) <= previousCount) {
       const notices = await page.locator('.persistence-status').allTextContents();
       const handles = await page.locator('.svelte-flow__handle').evaluateAll((items) =>
         items.map((item) => ({
@@ -109,7 +109,10 @@ try {
           ariaLabel: item.getAttribute('aria-label'),
         })),
       );
-      console.error('Connection diagnostics:', JSON.stringify({ notices, handles, pageErrors: errors }));
+      console.error(
+        'Connection diagnostics:',
+        JSON.stringify({ notices, handles, pageErrors: errors }),
+      );
       await page.screenshot({ path: '/tmp/archwise-browser-connection.png', fullPage: true });
       throw new Error('Neither drag nor click connected the selected handles.');
     }
