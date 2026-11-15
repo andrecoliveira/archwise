@@ -15,6 +15,7 @@
   const active = $derived(status === 'bottleneck' || status === 'failed');
   const percent = $derived(typeof data.utilization === 'number' ? Math.round(data.utilization * 100) : null);
   const dropped = $derived(typeof data.droppedRps === 'number' ? data.droppedRps : 0);
+  const replicas = $derived(typeof data.replicas === 'number' ? data.replicas : 1);
 </script>
 
 <div class:chosen={selected} class:critical={active} class:warning={status === 'near-capacity'} class="archwise-node">
@@ -37,7 +38,7 @@
     {:else}
       <span class="archwise-node-state">Ready to configure</span>
     {/if}
-    <span class="archwise-node-kind">{kind}</span>
+    <span class="archwise-node-kind">{replicas > 1 ? `×${replicas} replicas` : kind}</span>
   </div>
   <Handle type="source" position={Position.Right} class="archwise-handle archwise-handle-out"
     aria-label="Output port — click to start a connection" title="Output: click then click an input" />
