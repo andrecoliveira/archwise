@@ -4,6 +4,7 @@
   import { onMount, untrack } from 'svelte';
   import { layoutNodes } from './graph-layout.js';
   import { getCanvasFeedback } from './canvas-feedback.js';
+  import { findCatalogComponent } from './component-catalog.js';
   import SimulationPanel from './SimulationPanel.svelte';
   import {
     defaultSimulationDraft,
@@ -24,17 +25,23 @@
     type ConnectionIntent,
   } from './connection-intents.js';
 
-  let { graph, visibleIds, selectedId = $bindable(null) }: {
+  type Mode = 'explore' | 'sandbox';
+  let {
+    graph,
+    visibleIds,
+    selectedId = $bindable(null),
+    mode = $bindable<Mode>('sandbox'),
+    addRequest = null,
+  }: {
     graph: Graph;
     visibleIds: Set<string>;
     selectedId: string | null;
+    mode: Mode;
+    addRequest: { id: number; preset: string } | null;
   } = $props();
-
-  type Mode = 'explore' | 'sandbox';
-  let mode: Mode = $state('explore');
   let counter = $state(0);
-  let newKind: SimulatedKind = $state('service');
-  let newLabel = $state('');
+  let lastHandledRequest = 0;
+  let hasRequestedLayout = 0;
   let selectedEdgeId = $state<string | null>(null);
   let connectionNotice = $state('');
   let selectedNodeInsight = $state('');
@@ -113,7 +120,6 @@
     draft = parsed.draft;
     selectedId = null;
     selectedEdgeId = null;
-    layoutNonce += 1;
   }
 
   function exportDocument(): void {
@@ -244,8 +250,8 @@
         style: `border:2px dashed ${color};background:#0e3233;color:white;border-radius:8px;max-width:260px;`,
       };
     });
-    const current = mode === 'sandbox' ? [...discoveredNodes, ...decoratedProposed] : discoveredNodes;
-    const links = mode === 'sandbox' ? [...discoveredEdges, ...proposedEdges] : discoveredEdges;
+    const current = mode === 'sandbox' ? decoratedProposed : discoveredNodes;
+    const links = mode === 'sandbox' ? proposedEdges : discoveredEdges;
     const previous = new Map(untrack(() => nodes).map((item) => [item.id, item.position]));
     const positioned = current.map((item) => ({
       ...item,
@@ -253,6 +259,10 @@
     }));
     nodes = positioned;
     edges = links;
+    if (mode === 'sandbox') {
+      if (nonce === hasRequestedLayout) return;
+      hasRequestedLayout = nonce;
+    }
     let cancelled = false;
     void layoutNodes(positioned, links)
       .then((placed) => {
@@ -267,22 +277,37 @@
     return () => { cancelled = true; };
   });
 
-  function addNode() {
+  function addNode(preset: string): void {
+    const item = findCatalogComponent(preset);
+    if (!item) return;
     counter += 1;
-    const label = newLabel.trim().slice(0, 80) || `Proposed ${newKind}`;
+    mode = 'sandbox';
+    const id = `sandbox-${counter}`;
+    const position = {
+      x: 180 + ((counter - 1) % 4) * 190,
+      y: 130 + Math.floor((counter - 1) / 4) * 135,
+    };
     proposedNodes = [
       ...proposedNodes,
       {
-        id: `sandbox-${counter}`,
+        id,
         type: 'default',
-        position: { x: 300, y: counter * 90 },
-        data: { label, kind: newKind, origin: 'proposed' },
+        position,
+        data: { label: item.name, kind: item.kind, origin: 'proposed', preset: item.id },
         style: 'border:2px dashed #0d9488;background:#0e3233;color:white;border-radius:8px;',
       },
     ];
-    selectedId = `sandbox-${counter}`;
-    newLabel = '';
+    selectedId = id;
+    selectedEdgeId = null;
+    connectionNotice = `${item.name} added. Add another component and drag between their handles to connect them.`;
   }
+
+  $effect(() => {
+    const request = addRequest;
+    if (!request || request.id === lastHandledRequest) return;
+    lastHandledRequest = request.id;
+    addNode(request.preset);
+  });
 
   function connect(connection: Connection) {
     if (mode !== 'sandbox' || !connection.source || !connection.target) return;
@@ -363,25 +388,26 @@
   }
 </script>
 
-<div class="toolbar">
-  <button type="button" aria-pressed={mode === 'explore'} onclick={() => { mode = 'explore'; selectedId = null; }}>Explore</button>
-  <button type="button" aria-pressed={mode === 'sandbox'} onclick={() => { mode = 'sandbox'; selectedId = null; }}>Sandbox</button>
+<div class="toolbar" aria-label="Studio controls">
+  <div class="studio-mode-switch" role="group" aria-label="Studio mode">
+    <button type="button" aria-pressed={mode === 'sandbox'}
+      onclick={() => { mode = 'sandbox'; selectedId = null; selectedEdgeId = null; }}>Sandbox · Build</button>
+    <button type="button" aria-pressed={mode === 'explore'}
+      onclick={() => { mode = 'explore'; selectedId = null; selectedEdgeId = null; }}>Explore · Inspect</button>
+  </div>
+  <span class="toolbar-separator" aria-hidden="true"></span>
   <button type="button" onclick={() => (layoutNonce += 1)}>Auto layout</button>
   {#if mode === 'sandbox'}
-    <label for="proposed-type">Component type</label>
-    <select id="proposed-type" bind:value={newKind}>
-      <option value="service">Service</option>
-      <option value="cache">Cache</option>
-      <option value="database">Database</option>
-      <option value="queue">Queue (capacity-only)</option>
-    </select>
-    <input aria-label="Proposed component name" placeholder="Name (optional)" bind:value={newLabel} maxlength="80" />
-    <button type="button" onclick={addNode}>Add proposed component</button>
-    <button type="button" disabled={!selectedId?.startsWith('sandbox-')} onclick={removeSelected}>Remove selected</button>
-    <button type="button" onclick={() => { proposedNodes = []; proposedEdges = []; draft = { ...defaultSimulationDraft(), savedA: draft.savedA, savedB: draft.savedB }; selectedId = null; }}>Reset sandbox</button>
-    <button type="button" onclick={exportDocument}>Export JSON</button>
-    <label for="sandbox-import">Import JSON</label>
-    <input id="sandbox-import" type="file" accept=".json,application/json" onchange={importDocument} />
+    <span class="toolbar-count">{proposedNodes.length} components · {proposedEdges.length} connections</span>
+    <div class="toolbar-actions">
+      <button type="button" disabled={!selectedId?.startsWith('sandbox-')}
+        onclick={removeSelected}>Remove selected</button>
+      <button type="button" disabled={proposedNodes.length === 0}
+        onclick={() => { proposedNodes = []; proposedEdges = []; draft = { ...defaultSimulationDraft(), savedA: draft.savedA, savedB: draft.savedB }; selectedId = null; selectedEdgeId = null; }}>Clear canvas</button>
+      <button type="button" onclick={exportDocument}>Export JSON</button>
+      <label class="import-label" for="sandbox-import">Import JSON</label>
+      <input id="sandbox-import" class="visually-hidden" type="file" accept=".json,application/json" onchange={importDocument} />
+    </div>
   {/if}
 </div>
 {#if mode === 'sandbox' && selectedEdge}
@@ -406,15 +432,18 @@
     <strong>Modeled component insight:</strong> {selectedNodeInsight}
   </div>
 {/if}
-<!-- Keep the panel mounted while Explore is active so A/B snapshots are retained in memory. -->
-<div hidden={mode !== 'sandbox'}>
-  <SimulationPanel {proposedNodes} {proposedEdges} bind:draft />
-</div>
 {#if persistenceStatus}
   <div class="persistence-status" role="status">{persistenceStatus}</div>
 {/if}
 {#if layoutError}<div role="alert" class="alert">{layoutError}</div>{/if}
 <div class="viewport" role="region" aria-label="Interactive architecture graph">
+  {#if mode === 'sandbox' && proposedNodes.length === 0}
+    <div class="canvas-empty-state" role="status">
+      <strong>Your canvas is ready</strong>
+      <p>Choose a component from the left sidebar to start designing.</p>
+      <p>Next, add another and drag between the connection handles to link them.</p>
+    </div>
+  {/if}
   <SvelteFlow
     bind:nodes
     bind:edges
@@ -434,4 +463,8 @@
     <MiniMap />
     <Controls />
   </SvelteFlow>
+</div>
+<!-- Keep the simulation mounted when exploring, preserving A/B snapshots. -->
+<div hidden={mode !== 'sandbox'} class="simulation-drawer">
+  <SimulationPanel {proposedNodes} {proposedEdges} bind:draft />
 </div>
