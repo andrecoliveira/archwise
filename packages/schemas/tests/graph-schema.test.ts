@@ -22,6 +22,31 @@ test('schema output stays compatible with the domain type', () => {
   expectTypeOf<z.output<typeof graphRevisionSchema>>().toExtend<GraphRevision>();
 });
 
+test('schema and domain declare the same fields at every level', () => {
+  type Out = z.output<typeof graphRevisionSchema>;
+  expectTypeOf<keyof Out>().toEqualTypeOf<keyof GraphRevision>();
+  expectTypeOf<keyof Out['repositories'][number]>().toEqualTypeOf<
+    keyof GraphRevision['repositories'][number]
+  >();
+  expectTypeOf<keyof Out['coverage'][number]>().toEqualTypeOf<
+    keyof GraphRevision['coverage'][number]
+  >();
+  expectTypeOf<keyof Out['evidence'][number]>().toEqualTypeOf<
+    keyof GraphRevision['evidence'][number]
+  >();
+  expectTypeOf<keyof Out['nodes'][number]>().toEqualTypeOf<keyof GraphRevision['nodes'][number]>();
+  expectTypeOf<keyof Out['nodes'][number]['confidence']>().toEqualTypeOf<
+    keyof GraphRevision['nodes'][number]['confidence']
+  >();
+  expectTypeOf<keyof Out['edges'][number]>().toEqualTypeOf<keyof GraphRevision['edges'][number]>();
+  expectTypeOf<keyof Out['diagnostics'][number]>().toEqualTypeOf<
+    keyof GraphRevision['diagnostics'][number]
+  >();
+  expectTypeOf<keyof Out['diagnostics'][number]['references'][number]>().toEqualTypeOf<
+    keyof GraphRevision['diagnostics'][number]['references'][number]
+  >();
+});
+
 describe('format and version dispatch', () => {
   test.each([null, 'text', [], { ...validEnvelope(), format: 'other' }])(
     'rejects a non-graph format: %j',

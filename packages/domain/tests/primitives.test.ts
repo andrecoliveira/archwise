@@ -94,3 +94,19 @@ test('compareCodeUnits sorts by UTF-16 code unit, not locale', () => {
   expect(['b', 'B', 'a', '_'].sort(compareCodeUnits)).toEqual(['B', '_', 'a', 'b']);
   expect(compareCodeUnits('a', 'a')).toBe(0);
 });
+
+describe('length and well-formedness are measured consistently', () => {
+  test('path length counts code points like labels do', () => {
+    expect(checkRelativePath('\u{1F680}'.repeat(600))).toBeNull();
+    expect(checkRelativePath('\u{1F680}'.repeat(LIMITS.path + 1))).toBe('too-long');
+  });
+  test.each(['a\ud800', '\udc00b', 'x\ud800\ud800'])(
+    'rejects lone surrogates in labels: %j',
+    (label) => {
+      expect(isValidLabel(label)).toBe(false);
+    },
+  );
+  test('rejects lone surrogates in paths', () => {
+    expect(checkRelativePath('src/a\ud800.ts')).toBe('ill-formed-unicode');
+  });
+});

@@ -44,3 +44,18 @@ test('rejects an invalid sandbox ID', () => {
     issues: [{ code: 'invalid-id', path: ['sandboxId'] }],
   });
 });
+
+test('rejects a secret-shaped sandbox ID', () => {
+  const secretLike = 'AKIA' + 'ABCDEFGHIJKLMNOP';
+  expect(bindSandbox({ ...reference, sandboxId: secretLike }, revision)).toEqual({
+    ok: false,
+    issues: [{ code: 'secret-pattern', path: ['sandboxId'] }],
+  });
+});
+
+test('rejects an unsupported schema version from untyped callers', () => {
+  expect(bindSandbox({ ...reference, schemaVersion: 2 as never }, revision)).toEqual({
+    ok: false,
+    issues: [{ code: 'invalid-value', path: ['schemaVersion'] }],
+  });
+});

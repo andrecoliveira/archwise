@@ -11,7 +11,11 @@ import { parseGraphEnvelope } from './parse-graph.js';
 
 /** Imports `archwise.graph` JSON text, enforcing the byte limit before parsing. */
 export function importGraphJson(text: string): ValidationResult<GraphRevision> {
-  if (new TextEncoder().encode(text).byteLength > LIMITS.importBytes) {
+  // Each UTF-16 unit encodes to at least one byte, so long strings are rejected without encoding.
+  if (
+    text.length > LIMITS.importBytes ||
+    new TextEncoder().encode(text).byteLength > LIMITS.importBytes
+  ) {
     return { ok: false, issues: [{ code: 'input-too-large', path: [] }] };
   }
   let parsed: unknown;

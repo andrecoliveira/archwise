@@ -125,3 +125,51 @@ test.each([
   envelope.revision.nodes[0].label = '\u{1F680}'.repeat(count);
   expect(importGraphJson(JSON.stringify(envelope)).ok).toBe(ok);
 });
+
+describe('import edge cases', () => {
+  test('accepts exactly 16 MiB and rejects one byte more', () => {
+    const base = serialized(revisionOf(validEnvelope()));
+    const pad = (n: number) => base.slice(0, -1) + ' '.repeat(n) + '}';
+    const exact = pad(16_777_216 - new TextEncoder().encode(base).byteLength);
+    expect(new TextEncoder().encode(exact).byteLength).toBe(16_777_216);
+    expect(importGraphJson(exact).ok).toBe(true);
+    expect(importGraphJson(exact + ' ')).toEqual({
+      ok: false,
+      issues: [{ code: 'input-too-large', path: [] }],
+    });
+  });
+
+  test('treats a constructor key as an unknown field', () => {
+    const text = serialized(revisionOf(validEnvelope())).replace(
+      '"revision":{',
+      '"revision":{"constructor":{"prototype":{"polluted":1}},',
+    );
+    expect(importGraphJson(text)).toEqual({
+      ok: false,
+      issues: [{ code: 'unknown-field', path: ['revision'] }],
+    });
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
+
+  test('over-limit collections report limit-exceeded, as the domain does', () => {
+    const envelope = validEnvelope();
+    envelope.revision.diagnostics = Array.from({ length: 10_001 }, (_, i) => ({
+      id: `d-${i}`,
+      severity: 'info',
+      code: 'note',
+      references: [],
+    }));
+    expect(importGraphJson(JSON.stringify(envelope))).toEqual({
+      ok: false,
+      issues: [{ code: 'limit-exceeded', path: ['revision', 'diagnostics'] }],
+    });
+  });
+
+  test('a secret inside an invalid path is not echoed', () => {
+    const envelope = validEnvelope();
+    envelope.revision.evidence[0].path = `/abs/${syntheticAwsKey}/package.json`;
+    const result = importGraphJson(JSON.stringify(envelope));
+    expect(result.ok).toBe(false);
+    expect(JSON.stringify(result)).not.toContain(syntheticAwsKey);
+  });
+});

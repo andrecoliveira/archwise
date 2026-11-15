@@ -6,6 +6,11 @@ const TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 // eslint-disable-next-line no-control-regex
 const CONTROL_CHARACTER = /[\u0000-\u001f\u007f-\u009f]/;
 const DRIVE_PREFIX = /^[A-Za-z]:/;
+const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+
+/** Counts Unicode code points, so length limits treat labels and paths the same way. */
+const exceedsCodePoints = (value: string, max: number): boolean =>
+  value.length > max && Array.from(value).length > max;
 
 const SECRET_PATTERNS: readonly RegExp[] = [
   /AKIA[0-9A-Z]{16}/,
@@ -26,12 +31,12 @@ export function isValidCode(value: string): boolean {
   return CODE_PATTERN.test(value);
 }
 
-/** 1–256 Unicode code points without C0/C1 control characters. Spelling is preserved, never normalized. */
+/** 1–256 well-formed Unicode code points without C0/C1 control characters. Spelling is preserved, never normalized. */
 export function isValidLabel(value: string): boolean {
-  if (value.length === 0 || CONTROL_CHARACTER.test(value)) return false;
-  // Every UTF-16 unit is at most one code point, so short strings skip the iteration.
-  if (value.length <= LIMITS.label) return true;
-  return Array.from(value).length <= LIMITS.label;
+  if (value.length === 0 || CONTROL_CHARACTER.test(value) || LONE_SURROGATE.test(value)) {
+    return false;
+  }
+  return !exceedsCodePoints(value, LIMITS.label);
 }
 
 /** Canonical UTC timestamp with millisecond precision that names a real calendar instant. */
@@ -49,13 +54,15 @@ export type PathIssue =
   | 'drive-prefix'
   | 'empty-segment'
   | 'dot-segment'
-  | 'control-character';
+  | 'control-character'
+  | 'ill-formed-unicode';
 
 /** Rejects (never repairs) paths that are not normalized, repository-relative and `/`-separated. */
 export function checkRelativePath(value: string): PathIssue | null {
   if (value.length === 0) return 'empty';
-  if (value.length > LIMITS.path) return 'too-long';
   if (CONTROL_CHARACTER.test(value)) return 'control-character';
+  if (LONE_SURROGATE.test(value)) return 'ill-formed-unicode';
+  if (exceedsCodePoints(value, LIMITS.path)) return 'too-long';
   if (value.includes('\\')) return 'backslash';
   if (value.startsWith('/')) return 'absolute';
   if (DRIVE_PREFIX.test(value)) return 'drive-prefix';

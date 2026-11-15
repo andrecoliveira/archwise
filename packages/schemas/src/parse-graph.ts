@@ -7,6 +7,7 @@ import {
   type ValidationIssue,
   type ValidationResult,
 } from '@archwise/domain';
+import type { z } from 'zod';
 import { graphEnvelopeSchema } from './graph-schema.js';
 
 export type GraphParseErrorCode =
@@ -15,7 +16,8 @@ export type GraphParseErrorCode =
   | 'unsupported-older-version'
   | 'unsupported-future-version'
   | 'invalid-structure'
-  | 'unknown-field';
+  | 'unknown-field'
+  | 'limit-exceeded';
 
 const fail = (code: GraphParseErrorCode, path: IssuePath): ValidationResult<never> => ({
   ok: false,
@@ -27,6 +29,13 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> =>
 
 const toPath = (path: readonly PropertyKey[]): IssuePath =>
   path.map((key) => (typeof key === 'number' ? key : String(key)));
+
+/** Over-limit arrays use the same code as domain validation, whichever entry point is used. */
+function structuralCode(issue: z.core.$ZodIssue): GraphParseErrorCode {
+  if (issue.code === 'unrecognized_keys') return 'unknown-field';
+  if (issue.code === 'too_big' && issue.origin === 'array') return 'limit-exceeded';
+  return 'invalid-structure';
+}
 
 /**
  * Parses untrusted input into a validated, frozen revision. Issues carry stable codes and
@@ -48,7 +57,7 @@ export function parseGraphEnvelope(input: unknown): ValidationResult<GraphRevisi
     return {
       ok: false,
       issues: parsed.error.issues.map((issue): ValidationIssue => ({
-        code: issue.code === 'unrecognized_keys' ? 'unknown-field' : 'invalid-structure',
+        code: structuralCode(issue),
         path: toPath(issue.path),
       })),
     };

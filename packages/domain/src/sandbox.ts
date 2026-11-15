@@ -1,5 +1,5 @@
 import type { GraphRevision } from './graph.js';
-import { isValidId } from './primitives.js';
+import { containsSecretPattern, isValidId } from './primitives.js';
 import type { ValidationIssue, ValidationResult } from './validation.js';
 
 /**
@@ -20,6 +20,12 @@ export function bindSandbox(
   const issues: ValidationIssue[] = [];
   for (const field of ['sandboxId', 'workspaceId', 'baseRevisionId'] as const) {
     if (!isValidId(reference[field])) issues.push({ code: 'invalid-id', path: [field] });
+    else if (containsSecretPattern(reference[field])) {
+      issues.push({ code: 'secret-pattern', path: [field] });
+    }
+  }
+  if ((reference.schemaVersion as number) !== 1) {
+    issues.push({ code: 'invalid-value', path: ['schemaVersion'] });
   }
   if (issues.length === 0) {
     if (reference.workspaceId !== revision.workspaceId) {
