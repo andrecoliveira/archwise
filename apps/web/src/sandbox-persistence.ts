@@ -1,4 +1,5 @@
 import type { Graph } from './graph-types.js';
+import { isConnectionIntent, type ConnectionIntent } from './connection-intents.js';
 import { captureScenario, type ScenarioSnapshot } from './scenario-comparison.js';
 import { simulateSandbox, type SimulatedKind } from './simulation.js';
 
@@ -13,6 +14,8 @@ export type SandboxNode = Readonly<{
 export type SandboxLink = Readonly<{
   source: string;
   target: string;
+  /** Optional in v1 for backwards compatibility; omitted values mean REQ. */
+  intent?: ConnectionIntent;
 }>;
 
 export interface SimulationDraft {
@@ -229,8 +232,15 @@ export function parseSandboxDocument(text: string, signature: string): SandboxDo
     }
     const key = JSON.stringify([item.source, item.target]);
     if (seenLinks.has(key)) throw new Error('Duplicate proposed connection.');
+    if (item.intent !== undefined && !isConnectionIntent(item.intent)) {
+      throw new Error('Unsupported connection intent.');
+    }
     seenLinks.add(key);
-    return { source: item.source, target: item.target };
+    return {
+      source: item.source,
+      target: item.target,
+      ...(item.intent === undefined ? {} : { intent: item.intent as ConnectionIntent }),
+    };
   });
   if (
     !record(input.draft) ||
