@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { captureScenario, compareScenarios, type ScenarioSnapshot } from './scenario-comparison.js';
+import { captureScenario, compareScenarios } from './scenario-comparison.js';
 import type { SimulationScenario } from './simulation.js';
 
 const original: SimulationScenario = {
