@@ -6,8 +6,7 @@ export interface DirectedLink {
 }
 
 export type ConnectionCheck =
-  | { readonly valid: true }
-  | { readonly valid: false; readonly reason: string };
+  { readonly valid: true } | { readonly valid: false; readonly reason: string };
 
 /**
  * Only a proposed DAG can be evaluated by the current Simulation Engine.
@@ -20,7 +19,10 @@ export function validateProposedConnection(
   existing: readonly DirectedLink[],
 ): ConnectionCheck {
   if (!proposedIds.has(source) || !proposedIds.has(target)) {
-    return { valid: false, reason: 'Connect two proposed components. Discovered packages cannot be linked in Sandbox.' };
+    return {
+      valid: false,
+      reason: 'Connect two proposed components. Discovered packages cannot be linked in Sandbox.',
+    };
   }
   if (source === target) {
     return { valid: false, reason: 'Connect the output of one component to the input of another.' };
@@ -37,7 +39,11 @@ export function validateProposedConnection(
   while (pending.length > 0) {
     const node = pending.pop()!;
     if (node === source) {
-      return { valid: false, reason: 'This connection creates a cycle. The current capacity simulator supports directed acyclic designs only.' };
+      return {
+        valid: false,
+        reason:
+          'This connection creates a cycle. The current capacity simulator supports directed acyclic designs only.',
+      };
     }
     if (visited.has(node)) continue;
     visited.add(node);

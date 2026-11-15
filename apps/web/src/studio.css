@@ -813,10 +813,16 @@ li {
 .archwise-edge-path {
   stroke-linecap: round;
   stroke-linejoin: round;
-  transition: stroke-width 120ms ease, opacity 120ms ease;
+  transition:
+    stroke-width 120ms ease,
+    opacity 120ms ease;
 }
-.archwise-edge-selected { filter: drop-shadow(0 0 3px #7dd3fcaa); }
-.archwise-edge-label { pointer-events: all; }
+.archwise-edge-selected {
+  filter: drop-shadow(0 0 3px #7dd3fcaa);
+}
+.archwise-edge-label {
+  pointer-events: all;
+}
 .archwise-edge-pill {
   display: inline-flex;
   align-items: center;
@@ -835,13 +841,20 @@ li {
   user-select: none;
   box-shadow: 0 2px 10px #0007;
 }
-.archwise-edge-pill:hover, .archwise-edge-pill.selected {
+.archwise-edge-pill:hover,
+.archwise-edge-pill.selected {
   background: #1e3a57;
   outline: 2px solid #e2e8f7;
   outline-offset: 1px;
 }
-.connection-inspector { z-index: 5; }
-.connection-inspector small { line-height: 1.5; }
+.connection-inspector {
+  z-index: 5;
+}
+.connection-inspector small {
+  line-height: 1.5;
+}
 @media (prefers-reduced-motion: reduce) {
-  .archwise-edge-path { transition: none; }
+  .archwise-edge-path {
+    transition: none;
+  }
 }
