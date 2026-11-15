@@ -24,9 +24,9 @@ test('accepts a supported evidence-backed architecture graph', () => {
 
 test('rejects incompatible and incomplete graph envelopes', () => {
   expect(isGraph(null)).toBe(false);
-  expect(
-    isGraph({ version: 2, nodes: [], edges: [], diagnostics: [], inspectedEntries: 1 }),
-  ).toBe(false);
+  expect(isGraph({ version: 2, nodes: [], edges: [], diagnostics: [], inspectedEntries: 1 })).toBe(
+    false,
+  );
   expect(
     isGraph({ version: 1, nodes: [null], edges: [], diagnostics: [], inspectedEntries: 1 }),
   ).toBe(false);
