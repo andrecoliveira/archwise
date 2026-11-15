@@ -239,7 +239,7 @@ export function parseSandboxDocument(text: string, signature: string): SandboxDo
     return {
       source: item.source,
       target: item.target,
-      ...(item.intent === undefined ? {} : { intent: item.intent as ConnectionIntent }),
+      ...(item.intent === undefined ? {} : { intent: item.intent }),
     };
   });
   if (
