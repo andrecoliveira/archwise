@@ -32,12 +32,16 @@ export function isGraph(value: unknown): value is Graph {
     typeof graph.inspectedEntries === 'number' &&
     graph.nodes.every(
       (node) =>
+        !!node &&
+        typeof node === 'object' &&
         typeof node.id === 'string' &&
         typeof node.label === 'string' &&
         Array.isArray(node.evidence),
     ) &&
     graph.edges.every(
       (edge) =>
+        !!edge &&
+        typeof edge === 'object' &&
         typeof edge.id === 'string' &&
         typeof edge.source === 'string' &&
         typeof edge.target === 'string',
