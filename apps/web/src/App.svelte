@@ -101,9 +101,12 @@
         <div class="alert" role="status">Discovering architecture…</div>
       {:else if loadError}
         <div class="alert" role="alert">{loadError} <button type="button" onclick={() => void loadGraph()}>Retry</button></div>
-      {:else if graph && graph.nodes.length === 0}
-        <div class="alert">No package manifests found in this workspace.</div>
       {:else if graph}
+        {#if graph.nodes.length === 0}
+          <div role="status" class="persistence-status">
+            No package manifests found. You can still experiment with hypothetical architecture in Sandbox.
+          </div>
+        {/if}
         <ArchitectureCanvas {graph} {visibleIds} bind:selectedId />
       {/if}
       {#if graph && graph.diagnostics.length > 0}
