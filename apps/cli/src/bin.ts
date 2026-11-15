@@ -2,11 +2,14 @@
 import { readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { resolve } from 'node:path';
+import { basename, resolve } from 'node:path';
+import { homedir } from 'node:os';
+import { resolveDataDir, StoreUnavailableError } from '@archwise/storage';
 import { inspectWorkspace } from './inventory.js';
 import { buildArchitectureGraph } from './graph.js';
 import { parseCli } from './index.js';
 import { startLocalGraphServer } from './local-server.js';
+import { formatSessionList, prepareStore, storeUnavailableMessage } from './store-runtime.js';
 
 const metadata: unknown = JSON.parse(
   readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
@@ -41,9 +44,31 @@ if (command.kind === 'output') {
   process.stderr.write(command.result.stderr);
   process.exitCode = command.result.exitCode;
 } else {
+  const dataDir = resolveDataDir(process.env, process.platform, homedir());
   try {
     const result = await inspectWorkspace(command.path);
-    if (command.serve) {
+    const graph = buildArchitectureGraph(result);
+    const prepareRuntime = async (enabled: boolean) => {
+      const runtime = await prepareStore({
+        enabled,
+        dataDir,
+        rootPath: result.root,
+        rootLabel: basename(result.root),
+        graph,
+      });
+      for (const notice of runtime.notices) process.stderr.write(`${notice}\n`);
+      return runtime;
+    };
+    if (command.sessions) {
+      const runtime = await prepareRuntime(true);
+      if (runtime.kind === 'ready') {
+        process.stdout.write(formatSessionList(runtime.service.list()));
+        runtime.store.close();
+      } else {
+        process.exitCode = 1;
+      }
+    } else if (command.serve) {
+      const runtime = await prepareRuntime(command.store);
       const webDistPath = resolve(fileURLToPath(new URL('../../web/dist/', import.meta.url)));
       // CLI/API mode works before the browser bundle is built; serve assets if available.
       let assets: string | undefined;
@@ -53,16 +78,21 @@ if (command.kind === 'output') {
       } catch {
         process.stderr.write('Browser assets are not built; serving JSON API only.\n');
       }
-      const server = await startLocalGraphServer(
-        buildArchitectureGraph(result),
-        assets ? { webDistPath: assets } : {},
-      );
+      const server = await startLocalGraphServer(graph, {
+        ...(assets ? { webDistPath: assets } : {}),
+        sessions: runtime.kind === 'ready' ? runtime.service : null,
+      });
       process.stdout.write(`Archwise API listening at ${server.address}\n`);
       process.stdout.write(`Local session URL: ${server.bootstrapUrl}\n`);
+      process.stdout.write(
+        runtime.kind === 'ready'
+          ? 'Local session store ready (outside the project). List saved sessions with --sessions.\n'
+          : 'Local session store disabled for this run.\n',
+      );
       process.stdout.write('Press Ctrl+C to stop.\n');
       if (command.open && assets) openBrowser(server.bootstrapUrl);
     } else if (command.graph) {
-      process.stdout.write(`${JSON.stringify(buildArchitectureGraph(result), null, 2)}\n`);
+      process.stdout.write(`${JSON.stringify(graph, null, 2)}\n`);
     } else if (command.json) {
       process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     } else {
@@ -74,13 +104,18 @@ if (command.kind === 'output') {
       }
       for (const warning of result.diagnostics) process.stderr.write(`Warning: ${warning}\n`);
       process.stdout.write(
-        'Run with --graph for graph JSON. Browser Studio is not yet integrated.\n',
+        'Run with --graph for graph JSON, --serve to open the local Studio, or --sessions to list saved sessions.\n',
       );
     }
   } catch (error) {
-    process.stderr.write(
-      `Unable to inspect workspace: ${error instanceof Error ? error.message : 'Unknown error'}\n`,
-    );
-    process.exitCode = 1;
+    if (error instanceof StoreUnavailableError) {
+      process.stderr.write(`${storeUnavailableMessage(error.reason, dataDir)}\n`);
+      process.exitCode = 2;
+    } else {
+      process.stderr.write(
+        `Unable to inspect workspace: ${error instanceof Error ? error.message : 'Unknown error'}\n`,
+      );
+      process.exitCode = 1;
+    }
   }
 }

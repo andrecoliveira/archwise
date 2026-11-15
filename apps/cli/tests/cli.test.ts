@@ -9,6 +9,8 @@ test('defaults to read-only inspection of current directory', () => {
     graph: false,
     serve: false,
     open: true,
+    sessions: false,
+    store: true,
   });
 });
 
@@ -20,6 +22,8 @@ test('accepts a workspace path and graph output', () => {
     graph: true,
     serve: false,
     open: true,
+    sessions: false,
+    store: true,
   });
 });
 
@@ -41,5 +45,24 @@ test('prints help and rejects unsupported or contradictory options', () => {
     graph: false,
     serve: true,
     open: false,
+    sessions: false,
+    store: true,
   });
+});
+
+test('lists saved sessions and controls the local store', () => {
+  expect(parseCli(['--sessions'])).toMatchObject({ kind: 'inspect', sessions: true, serve: false });
+  expect(parseCli(['--serve', '--no-store'])).toMatchObject({ serve: true, store: false });
+  expect(runCli(['--sessions', '--serve']).exitCode).toBe(2);
+  expect(runCli(['--sessions', '--graph']).exitCode).toBe(2);
+  expect(runCli(['--no-store']).exitCode).toBe(2);
+  expect(runCli(['--help']).stdout).toContain('--sessions');
+  expect(runCli(['--help']).stdout).toContain('--no-store');
+});
+
+test('help does not claim the Studio already saves sessions', () => {
+  const help = runCli(['--help']).stdout;
+  expect(help).not.toContain('saves\nSandbox sessions');
+  expect(help).not.toMatch(/saves Sandbox sessions/);
+  expect(help).toContain('local store');
 });

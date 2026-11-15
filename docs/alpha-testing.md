@@ -51,7 +51,7 @@ Use `--json` for the inventory instead of the graph, or `--serve --no-open` to a
 ## Current limits and safety
 
 - Discovery currently covers Node package manifests and explicitly declared dependencies between uniquely identified local packages. It does **not** infer a live runtime system, traffic flows, databases or deployed infrastructure.
-- Sandbox topology, simulation inputs and saved A/B snapshots are automatically persisted in browser localStorage, scoped to a deterministic discovered-graph signature. The offline Coach question index is not persisted. See [Sandbox persistence](sandbox-persistence.md) and [Scenario comparison](scenario-comparison.md).
+- The Studio still persists Sandbox topology, simulation inputs and saved A/B snapshots in browser localStorage, scoped to a deterministic discovered-graph signature. The CLI already records discovered revisions in the local store outside the project (`--sessions`, `--no-store`; see [Sessions](sessions.md)), and the Studio will switch to that store in the next increment. The offline Coach question index is not persisted. See [Sandbox persistence](sandbox-persistence.md) and [Scenario comparison](scenario-comparison.md).
 - A deterministic Sandbox simulation is available, but it **does not measure production traffic**. It assumes a single entry node, evenly split routing across proposed links, a DAG topology, no retries and modeled capacity drops. See [Simulation assumptions](simulation.md).
 - There is no npm-published `npx archwise` package yet; use the compiled CLI.
 - The current build includes ELK and Svelte Flow and is not yet bundle-size optimized.

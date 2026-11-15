@@ -15,6 +15,15 @@ Archwise analyzes untrusted repositories that may contain malicious files, overs
 - Redact common credential patterns and sensitive filenames before persistence, logs, exports, or provider context.
 - Disable telemetry by default. If introduced, make it opt-in, documented, inspectable, and free of file paths or graph content.
 
+## Local store
+
+The local SQLite store ([ADR 0006](decisions/0006-local-store-node-sqlite.md)) lives in the user's application-data directory, which is created with mode `0700` on POSIX. It holds:
+- absolute workspace root paths;
+- discovered package names and manifest-relative paths;
+- Sandbox documents.
+
+It never contains source file contents. It is not synchronized or exported, and the API never returns root paths. Session routes require the local session capability. Mutations also require a same-origin `Origin` header, a JSON content type and a body under 300,000 bytes. Users can delete the directory to remove all stored data.
+
 ## Secret handling
 
 Archwise inventories the existence of sensitive configuration only when useful; it does not read `.env` values, private keys, credential directories, or known secret files by default. Provider keys live in the OS credential store where supported. Diagnostic bundles require preview and explicit export, with a second redaction pass.

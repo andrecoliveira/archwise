@@ -13,6 +13,10 @@ export type CliCommand =
       readonly graph: boolean;
       readonly serve: boolean;
       readonly open: boolean;
+      /** List saved sessions for the workspace instead of inspecting. */
+      readonly sessions: boolean;
+      /** Use the local session store (disabled by --no-store). */
+      readonly store: boolean;
     };
 
 /** Parse arguments without touching the filesystem or executing project code. */
@@ -26,8 +30,10 @@ export function parseCli(args: readonly string[], version = 'development'): CliC
       result: {
         exitCode: 0,
         stdout:
-          'Usage: archwise [--path DIRECTORY] [--json | --graph | --serve] [--no-open] [--help | --version]\n' +
-          'Read-only inventory of local Node.js package manifests. --graph emits a deterministic evidence-backed graph.\n',
+          'Usage: archwise [--path DIRECTORY] [--json | --graph | --sessions | --serve [--no-open] [--no-store]] [--help | --version]\n' +
+          'Read-only inventory of local Node.js package manifests. --graph emits a deterministic evidence-backed graph.\n' +
+          '--sessions lists saved Sandbox sessions for this project. --serve opens the local Studio and records\n' +
+          'the discovered graph in the local store outside the project; --no-store disables the store.\n',
         stderr: '',
       },
     };
@@ -37,6 +43,8 @@ export function parseCli(args: readonly string[], version = 'development'): CliC
   let graph = false;
   let serve = false;
   let open = true;
+  let sessions = false;
+  let store = true;
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--path' && args[i + 1] && !args[i + 1]!.startsWith('--')) {
       path = args[++i]!;
@@ -48,6 +56,10 @@ export function parseCli(args: readonly string[], version = 'development'): CliC
       serve = true;
     } else if (args[i] === '--no-open') {
       open = false;
+    } else if (args[i] === '--sessions') {
+      sessions = true;
+    } else if (args[i] === '--no-store') {
+      store = false;
     } else {
       return {
         kind: 'output',
@@ -59,13 +71,13 @@ export function parseCli(args: readonly string[], version = 'development'): CliC
       };
     }
   }
-  if (Number(json) + Number(graph) + Number(serve) > 1) {
+  if (Number(json) + Number(graph) + Number(serve) + Number(sessions) > 1) {
     return {
       kind: 'output',
       result: {
         exitCode: 2,
         stdout: '',
-        stderr: '--json, --graph and --serve are mutually exclusive.\n',
+        stderr: '--json, --graph, --sessions and --serve are mutually exclusive.\n',
       },
     };
   }
@@ -75,7 +87,13 @@ export function parseCli(args: readonly string[], version = 'development'): CliC
       result: { exitCode: 2, stdout: '', stderr: '--no-open requires --serve.\n' },
     };
   }
-  return { kind: 'inspect', path, json, graph, serve, open };
+  if (!serve && !store) {
+    return {
+      kind: 'output',
+      result: { exitCode: 2, stdout: '', stderr: '--no-store requires --serve.\n' },
+    };
+  }
+  return { kind: 'inspect', path, json, graph, serve, open, sessions, store };
 }
 
 /** Kept as a pure CLI helper for compatibility with the existing CLI tests. */
