@@ -6,6 +6,7 @@
   import { getCanvasFeedback } from './canvas-feedback.js';
   import { findCatalogComponent } from './component-catalog.js';
   import SimulationPanel from './SimulationPanel.svelte';
+  import ArchitectureNode from './ArchitectureNode.svelte';
   import {
     defaultSimulationDraft,
     parseSandboxDocument,
@@ -55,6 +56,29 @@
   let storageReady = $state(false);
   let persistenceStatus = $state('');
   const signature = $derived(projectSignature(graph));
+  const nodeTypes = { architecture: ArchitectureNode };
+  const selectedProposed = $derived(proposedNodes.find((node) => node.id === selectedId));
+  const selectedPreset = $derived(findCatalogComponent(String(selectedProposed?.data.preset ?? '')));
+
+  function renameSelected(value: string): void {
+    if (!selectedProposed) return;
+    const label = value.slice(0, 80);
+    proposedNodes = proposedNodes.map((node) => node.id === selectedProposed.id
+      ? { ...node, data: { ...node.data, label } } : node);
+  }
+
+  function updateNumeric(setting: 'capacities' | 'latencies' | 'hitRates', value: number): void {
+    if (!selectedProposed || !Number.isFinite(value)) return;
+    const max = setting === 'hitRates' ? 1 : setting === 'latencies' ? 120000 : 1000000;
+    if (value < 0 || value > max) return;
+    draft = { ...draft, [setting]: { ...draft[setting], [selectedProposed.id]: value } };
+  }
+
+  function updateFailure(failed: boolean): void {
+    if (!selectedProposed) return;
+    draft = { ...draft, failed: { ...draft.failed, [selectedProposed.id]: failed } };
+  }
+
 
   function createDocument(): SandboxDocument {
     const ids = new Set(proposedNodes.map((node) => node.id));
@@ -70,6 +94,7 @@
           id: node.id,
           label: typeof node.data.label === 'string' ? node.data.label : node.id,
           kind: (node.data.kind ?? 'service') as SimulatedKind,
+          ...(typeof node.data.preset === 'string' ? { preset: node.data.preset } : {}),
           x: current?.position.x ?? node.position.x,
           y: current?.position.y ?? node.position.y,
         };
@@ -97,10 +122,9 @@
     const parsed = parseSandboxDocument(JSON.stringify(document), signature);
     proposedNodes = parsed.nodes.map((item) => ({
       id: item.id,
-      type: 'default',
+      type: 'architecture',
       position: { x: item.x, y: item.y },
-      data: { label: item.label, kind: item.kind, origin: 'proposed' },
-      style: 'border:2px dashed #0d9488;background:#0e3233;color:white;border-radius:8px;',
+      data: { label: item.label, kind: item.kind, origin: 'proposed', preset: item.preset ?? '' },
     }));
     proposedEdges = parsed.connections.map((edge, index) => ({
       id: `proposed-edge-${index + 1}`,
@@ -184,7 +208,7 @@
   });
 
   const visualFeedback = $derived.by(() => {
-    if (proposedNodes.length === 0) return new Map<string, { label: string; status: string; detail: string }>();
+    if (proposedNodes.length === 0) return new Map<string, { label: string; status: string; detail: string; utilization: number; droppedRps: number }>();
     const ids = new Set(proposedNodes.map((node) => node.id));
     const components = proposedNodes.map((node) => {
       const kind = (node.data.kind ?? 'service') as SimulatedKind;
@@ -208,7 +232,7 @@
     try {
       return new Map(getCanvasFeedback(components, connections, entryNodeId, draft.inputRps).map((item) => [item.id, item]));
     } catch {
-      return new Map<string, { label: string; status: string; detail: string }>();
+      return new Map<string, { label: string; status: string; detail: string; utilization: number; droppedRps: number }>();
     }
   });
 
@@ -241,13 +265,16 @@
       }));
     const decoratedProposed = proposedNodes.map((node) => {
       const feedback = visualFeedback.get(node.id);
-      const color = feedback?.status === 'bottleneck' || feedback?.status === 'failed'
-        ? '#fb923c'
-        : feedback?.status === 'near-capacity' ? '#facc15' : '#14b8a6';
       return {
         ...node,
-        data: { ...node.data, label: feedback?.label ?? node.data.label },
-        style: `border:2px dashed ${color};background:#0e3233;color:white;border-radius:8px;max-width:260px;`,
+        type: 'architecture',
+        data: {
+          ...node.data,
+          name: node.data.label,
+          status: feedback?.status ?? 'normal',
+          utilization: feedback?.utilization ?? 0,
+          droppedRps: feedback?.droppedRps ?? 0,
+        },
       };
     });
     const current = mode === 'sandbox' ? decoratedProposed : discoveredNodes;
@@ -291,10 +318,9 @@
       ...proposedNodes,
       {
         id,
-        type: 'default',
+        type: 'architecture',
         position,
         data: { label: item.name, kind: item.kind, origin: 'proposed', preset: item.id },
-        style: 'border:2px dashed #0d9488;background:#0e3233;color:white;border-radius:8px;',
       },
     ];
     selectedId = id;
@@ -427,11 +453,6 @@
   </section>
 {/if}
 {#if connectionNotice}<div class="persistence-status" role="status">{connectionNotice}</div>{/if}
-{#if mode === 'sandbox' && selectedNodeInsight}
-  <div class="persistence-status" role="status">
-    <strong>Modeled component insight:</strong> {selectedNodeInsight}
-  </div>
-{/if}
 {#if persistenceStatus}
   <div class="persistence-status" role="status">{persistenceStatus}</div>
 {/if}
@@ -445,6 +466,7 @@
     </div>
   {/if}
   <SvelteFlow
+    {nodeTypes}
     bind:nodes
     bind:edges
     fitView
@@ -463,6 +485,44 @@
     <MiniMap />
     <Controls />
   </SvelteFlow>
+  {#if mode === 'sandbox' && selectedProposed}
+    <section class="floating-inspector" aria-label="Selected component properties">
+      <div class="floating-inspector-heading">
+        <div>
+          <strong>{selectedPreset?.name ?? 'Component properties'}</strong>
+          <small>Hypothetical · {selectedProposed.data.kind}</small>
+        </div>
+        <button type="button" aria-label="Close component inspector" onclick={() => (selectedId = null)}>×</button>
+      </div>
+      <label for="inspector-name">Name</label>
+      <input id="inspector-name" maxlength="80" value={String(selectedProposed.data.label ?? '')}
+        oninput={(event) => renameSelected(event.currentTarget.value)} />
+      <label for="inspector-capacity">Capacity (requests/second)</label>
+      <input id="inspector-capacity" type="number" min="0" max="1000000"
+        value={draft.capacities[selectedProposed.id] ?? 100}
+        onchange={(event) => updateNumeric('capacities', event.currentTarget.valueAsNumber)} />
+      <label for="inspector-latency">Baseline latency (ms)</label>
+      <input id="inspector-latency" type="number" min="0" max="120000"
+        value={draft.latencies[selectedProposed.id] ?? 20}
+        onchange={(event) => updateNumeric('latencies', event.currentTarget.valueAsNumber)} />
+      {#if selectedProposed.data.kind === 'cache'}
+        <label for="inspector-hit-rate">Cache hit rate (0–1)</label>
+        <input id="inspector-hit-rate" type="number" min="0" max="1" step="0.05"
+          value={draft.hitRates[selectedProposed.id] ?? 0.5}
+          onchange={(event) => updateNumeric('hitRates', event.currentTarget.valueAsNumber)} />
+      {/if}
+      <label class="inspector-toggle">
+        <input type="checkbox" checked={draft.failed[selectedProposed.id] === true}
+          onchange={(event) => updateFailure(event.currentTarget.checked)} />
+        Simulate failure
+      </label>
+      {#if selectedNodeInsight}
+        <p class="inspector-model-note" role="status">{selectedNodeInsight}</p>
+      {/if}
+      <p class="inspector-model-note">Values are hypothetical. The simulation does not observe production traffic.</p>
+      <button class="inspector-remove" type="button" onclick={removeSelected}>Remove component</button>
+    </section>
+  {/if}
 </div>
 <!-- Keep the simulation mounted when exploring, preserving A/B snapshots. -->
 <div hidden={mode !== 'sandbox'} class="simulation-drawer">
