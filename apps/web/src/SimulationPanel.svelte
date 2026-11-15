@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Edge, Node } from '@xyflow/svelte';
   import { simulateSandbox, type SimulatedKind, type SimulationReport } from './simulation.js';
+  import { captureScenario, compareScenarios, type ScenarioSnapshot } from './scenario-comparison.js';
 
   let { proposedNodes, proposedEdges }: {
     proposedNodes: readonly Node[];
@@ -13,6 +14,9 @@
   let latencies = $state<Record<string, number>>({});
   let hitRates = $state<Record<string, number>>({});
   let failed = $state<Record<string, boolean>>({});
+  let savedA = $state.raw<ScenarioSnapshot | null>(null);
+  let savedB = $state.raw<ScenarioSnapshot | null>(null);
+  let snapshotError = $state<string | null>(null);
 
   const entryId = $derived(
     proposedNodes.some((node) => node.id === preferredEntryId)
@@ -43,16 +47,31 @@
       };
     }),
   );
+  const currentScenario = $derived({
+    entryNodeId: entryId,
+    incomingRps: inputRps,
+    components,
+    connections: connected,
+  });
+
+  const comparison = $derived(savedA && savedB ? compareScenarios(savedA, savedB) : null);
+
+  function save(slot: 'A' | 'B'): void {
+    try {
+      const snapshot = captureScenario(slot, currentScenario);
+      if (slot === 'A') savedA = snapshot;
+      else savedB = snapshot;
+      snapshotError = null;
+    } catch (error) {
+      snapshotError = error instanceof Error ? error.message : 'Unable to save scenario.';
+    }
+  }
+
   const outcome = $derived.by((): { report: SimulationReport | null; error: string | null } => {
     if (components.length === 0) return { report: null, error: null };
     try {
       return {
-        report: simulateSandbox({
-          entryNodeId: entryId,
-          incomingRps: inputRps,
-          components,
-          connections: connected,
-        }),
+        report: simulateSandbox(currentScenario),
         error: null,
       };
     } catch (error) {
@@ -64,6 +83,54 @@
 <details class="simulation-panel" open>
   <summary>Simulation — hypothetical estimates</summary>
   <p>No production metrics are collected. Only proposed components and links participate.</p>
+  <section class="scenario-comparison" aria-label="Compare saved A and B scenarios">
+    <div class="comparison-actions">
+      <button type="button" disabled={!!outcome.error || !outcome.report} onclick={() => save('A')}>
+        {savedA ? 'Replace A with current' : 'Save current as A'}
+      </button>
+      <button type="button" disabled={!!outcome.error || !outcome.report} onclick={() => save('B')}>
+        {savedB ? 'Replace B with current' : 'Save current as B'}
+      </button>
+      <button type="button" disabled={!savedA && !savedB} onclick={() => { savedA = null; savedB = null; snapshotError = null; }}>
+        Clear snapshots
+      </button>
+    </div>
+    <p>
+      Scenario A: {savedA ? `${savedA.scenario.components.length} nodes saved` : 'Not saved'} ·
+      Scenario B: {savedB ? `${savedB.scenario.components.length} nodes saved` : 'Not saved'}.
+      Snapshots stay in this browser session only.
+    </p>
+    {#if snapshotError}
+      <p class="simulation-error" role="alert">{snapshotError}</p>
+    {/if}
+    {#if comparison}
+      <div class="comparison-results">
+        <strong>A → B: {comparison.deliveredRpsDelta >= 0 ? '+' : ''}{comparison.deliveredRpsDelta.toFixed(1)} completed requests/second</strong>
+        <p>
+          Modeled output: A {comparison.baseline.exitRps.toFixed(1)} → B {comparison.candidate.exitRps.toFixed(1)} RPS.
+          Input change: {comparison.inputRpsDelta >= 0 ? '+' : ''}{comparison.inputRpsDelta.toFixed(1)} RPS.
+        </p>
+        <p>New bottlenecks: {comparison.bottlenecksAdded.join(', ') || 'none'} ·
+          Resolved bottlenecks: {comparison.bottlenecksRemoved.join(', ') || 'none'}</p>
+        <table>
+          <thead><tr><th>Component</th><th>Status</th><th>A served</th><th>B served</th><th>Δ served</th><th>Δ dropped</th></tr></thead>
+          <tbody>
+            {#each comparison.nodeChanges as item (item.id)}
+              <tr>
+                <td>{item.label}</td>
+                <td>{item.change}</td>
+                <td>{item.previousServedRps.toFixed(1)}</td>
+                <td>{item.nextServedRps.toFixed(1)}</td>
+                <td>{item.servedDeltaRps >= 0 ? '+' : ''}{item.servedDeltaRps.toFixed(1)}</td>
+                <td>{item.droppedDeltaRps >= 0 ? '+' : ''}{item.droppedDeltaRps.toFixed(1)}</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+        <ul>{#each comparison.warnings as warning (warning)}<li>{warning}</li>{/each}</ul>
+      </div>
+    {/if}
+  </section>
   {#if proposedNodes.length === 0}
     <p role="status">Add at least one proposed service to model a scenario.</p>
   {:else}
