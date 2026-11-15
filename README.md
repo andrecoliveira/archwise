@@ -2,7 +2,7 @@
 
 Archwise is a local-first, open-source workspace for discovering, understanding, explaining, and safely experimenting with software architecture.
 
-> **Project status (`main`, pre-release):** local Alpha preview. Node package-manifest discovery, an evidence-backed package dependency graph, a protected loopback API, a Svelte 5/Svelte Flow Architecture Studio, a locally persisted Sandbox with versioned JSON import/export, and deterministic offline coaching questions are implemented. A deterministic **hypothetical Sandbox capacity simulation** is now available with visible assumptions; production-traffic observation, deep infrastructure discovery, multi-revision history, and AI interviewing remain future work. Versioned graph revision contracts (`archwise.graph` v1) exist in the core packages but are not yet wired into discovery. No package or npm CLI has been published. See the [roadmap status](docs/implementation-roadmap.md#current-state) for what is delivered, what is partial, and what comes next.
+> **Project status (`main`, pre-release):** local Alpha preview. Node package-manifest discovery, an evidence-backed package dependency graph, a protected loopback API, a Svelte 5/Svelte Flow Architecture Studio, a locally persisted Sandbox with versioned JSON import/export, and deterministic offline coaching questions are implemented. A deterministic **hypothetical Sandbox capacity simulation** is now available with visible assumptions; production-traffic observation, deep infrastructure discovery, multi-revision history, and AI interviewing remain future work. Discovered graphs are recorded as versioned `archwise.graph` v1 revisions, and Sandbox sessions persist in a local SQLite store outside the project (`--sessions`; the Studio switches to it in the next increment). No package or npm CLI has been published. See the [roadmap status](docs/implementation-roadmap.md#current-state) for what is delivered, what is partial, and what comes next.
 
 ## Development
 
@@ -37,6 +37,7 @@ The product starts from code already on a developer's machine. From a selected w
 - [Architecture and local data flow](docs/architecture.md)
 - [Automatic discovery and multi-repository workspaces](docs/discovery.md)
 - [Real graph, sandbox, and provenance model](docs/graph-and-sandbox.md)
+- [Sessions and the local store](docs/sessions.md)
 - [Simulation model](docs/simulator.md)
 - [AI interviewer and coach](docs/ai-coach.md)
 - [Security and privacy](docs/security.md)
@@ -47,6 +48,7 @@ The product starts from code already on a developer's machine. From a selected w
 - [Optional open-core business strategies](docs/business.md)
 - [Architecture decision](docs/decisions/0001-local-first-open-source.md)
 - [Browser workspace decision: Svelte Flow](docs/decisions/0005-svelte-flow-browser-workspace.md)
+- [Local store decision: node:sqlite](docs/decisions/0006-local-store-node-sqlite.md)
 - [Alpha testing guide](docs/alpha-testing.md)
 - [Original README preserved as history](docs/history/README-saas-original.md)
 

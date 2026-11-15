@@ -102,7 +102,8 @@ test('rejects storage imports of app code', async () => {
 
 test('allows storage to use Node built-ins', async () => {
   const result = await inspect({
-    'packages/storage/src/index.ts': "import { join } from 'node:path'; export const p = join('a');",
+    'packages/storage/src/index.ts':
+      "import { join } from 'node:path'; export const p = join('a');",
   });
   assert.equal(result.status, 0, result.stdout + result.stderr);
 });

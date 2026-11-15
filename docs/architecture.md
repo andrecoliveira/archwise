@@ -37,7 +37,15 @@ The domain defines versioned graph, evidence, scenario, diagnostic, and coaching
 
 ### Local persistence
 
-SQLite is the proposed local index for workspaces, scan metadata, graph revisions, scenarios, and sessions. Content-addressed blobs may hold larger derived artifacts. Storage lives under an OS-appropriate application data directory, not inside analyzed repositories. Schema migrations are transactional and backup before destructive changes.
+SQLite is the local index ([ADR 0006](decisions/0006-local-store-node-sqlite.md)). `@archwise/storage` implements the application store ports on `node:sqlite`. It is implemented today for workspaces, graph revisions and Sandbox sessions; scan metadata and scenarios are future tables. Content-addressed blobs may later hold larger derived artifacts.
+
+Storage lives in an OS-appropriate application data directory, not inside analyzed repositories. On open the store does the following:
+- runs an integrity check and quarantines a corrupt file;
+- refuses a store written by a newer Archwise;
+- backs up the file before migrating;
+- applies migrations in one transaction.
+
+See [Sessions and the local store](sessions.md).
 
 ### Local API
 
