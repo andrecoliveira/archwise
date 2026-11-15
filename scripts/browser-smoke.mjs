@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { strict as assert } from 'node:assert';
+import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
 const modulePath = process.env.ARCHWISE_PLAYWRIGHT_ENTRY;
@@ -175,6 +176,58 @@ try {
   await page.waitForFunction(
     () => globalThis.document.querySelectorAll('.svelte-flow__edge').length === 2,
   );
+  // Prove that manual dragging changes the persisted model position.
+  const appId = before.nodes.find((node) => node.label === 'App Server')?.id;
+  assert(appId, 'Expected an App Server in the saved Sandbox');
+  const dragTarget = page.locator('.svelte-flow__node').filter({ hasText: 'App Server' })
+    .locator('.archwise-node-head');
+  const card = await dragTarget.boundingBox();
+  assert(card, 'Expected a draggable custom node card');
+  await page.mouse.move(card.x + card.width / 2, card.y + card.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(card.x + card.width / 2 + 62, card.y + card.height / 2 + 38, { steps: 16 });
+  await page.mouse.up();
+  await page.waitForFunction((id) => {
+    const key = Object.keys(globalThis.localStorage).find((item) =>
+      item.startsWith('archwise:sandbox:1:'),
+    );
+    if (!key) return false;
+    const doc = JSON.parse(globalThis.localStorage.getItem(key));
+    const node = doc.nodes.find((item) => item.id === id);
+    return Boolean(node);
+  }, appId).catch(() => {});
+  const moved = await savedDocument();
+  const previousApp = before.nodes.find((node) => node.id === appId);
+  const movedApp = moved.nodes.find((node) => node.id === appId);
+  assert(movedApp && previousApp, 'App Server must remain in the saved document');
+  assert(
+    movedApp.x !== previousApp.x || movedApp.y !== previousApp.y,
+    'Dragging a node should persist its new canvas position.',
+  );
+
+  // The actual browser download and file import must round-trip without a server.
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export JSON' }).click();
+  const download = await downloadPromise;
+  const exportedText = await readFile(await download.path(), 'utf8');
+  const exported = JSON.parse(exportedText);
+  assert.equal(exported.format, 'archwise-sandbox');
+  assert.equal(exported.nodes.length, 3);
+  assert.equal(exported.connections.length, 2);
+
+  await page.getByRole('button', { name: 'Clear canvas' }).click();
+  await page.waitForFunction(() => globalThis.document.querySelectorAll('.svelte-flow__node').length === 0);
+  await page.locator('#sandbox-import').setInputFiles({
+    name: 'archwise-sandbox-v1.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(exportedText),
+  });
+  await page.waitForFunction(() => globalThis.document.querySelectorAll('.svelte-flow__node').length === 3);
+  await page.waitForFunction(() => globalThis.document.querySelectorAll('.svelte-flow__edge').length === 2);
+  const imported = await savedDocument();
+  assert.equal(imported.connections.length, 2);
+  assert(imported.nodes.some((node) => node.label === 'SQL Primary'));
+
   assert.deepEqual(errors, [], 'Browser runtime errors must not occur');
   console.log(
     'Browser smoke passed: quick-add, custom nodes, inspector, handles, semantic edges, persistence, reload and mode switching.',
