@@ -1,9 +1,18 @@
 <script lang="ts">
   import { Background, Controls, MiniMap, SvelteFlow, type Connection, type Edge, type Node } from '@xyflow/svelte';
   import '@xyflow/svelte/dist/style.css';
-  import { untrack } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { layoutNodes } from './graph-layout.js';
   import SimulationPanel from './SimulationPanel.svelte';
+  import {
+    defaultSimulationDraft,
+    parseSandboxDocument,
+    projectSignature,
+    serializeSandboxDocument,
+    workspaceStorageKey,
+    type SimulationDraft,
+    type SandboxDocument,
+  } from './sandbox-persistence.js';
   import type { SimulatedKind } from './simulation.js';
   import type { Graph } from './graph-types.js';
 
@@ -24,6 +33,131 @@
   let edges: Edge[] = $state.raw([]);
   let layoutNonce = $state(0);
   let layoutError: string | null = $state(null);
+  let draft: SimulationDraft = $state.raw(defaultSimulationDraft());
+  let storageReady = $state(false);
+  let persistenceStatus = $state('');
+  const signature = $derived(projectSignature(graph));
+
+  function createDocument(): SandboxDocument {
+    const ids = new Set(proposedNodes.map((node) => node.id));
+    const validMap = <T,>(values: Readonly<Record<string, T>>): Record<string, T> =>
+      Object.fromEntries(Object.entries(values).filter(([key]) => ids.has(key)));
+    const document: SandboxDocument = {
+      format: 'archwise-sandbox',
+      version: 1,
+      projectSignature: signature,
+      nodes: proposedNodes.map((node) => {
+        const current = nodes.find((item) => item.id === node.id);
+        return {
+          id: node.id,
+          label: typeof node.data.label === 'string' ? node.data.label : node.id,
+          kind: (node.data.kind ?? 'service') as SimulatedKind,
+          x: current?.position.x ?? node.position.x,
+          y: current?.position.y ?? node.position.y,
+        };
+      }),
+      connections: proposedEdges
+        .filter((edge) => ids.has(edge.source) && ids.has(edge.target))
+        .map((edge) => ({ source: edge.source, target: edge.target })),
+      draft: {
+        ...draft,
+        capacities: validMap(draft.capacities),
+        latencies: validMap(draft.latencies),
+        hitRates: validMap(draft.hitRates),
+        failed: validMap(draft.failed),
+        preferredEntryId: ids.has(draft.preferredEntryId) ? draft.preferredEntryId : '',
+      },
+    };
+    return document;
+  }
+
+  function restoreDocument(document: SandboxDocument): void {
+    const parsed = parseSandboxDocument(JSON.stringify(document), signature);
+    proposedNodes = parsed.nodes.map((item) => ({
+      id: item.id,
+      type: 'default',
+      position: { x: item.x, y: item.y },
+      data: { label: item.label, kind: item.kind, origin: 'proposed' },
+      style: 'border:2px dashed #0d9488;background:#0e3233;color:white;border-radius:8px;',
+    }));
+    proposedEdges = parsed.connections.map((edge, index) => ({
+      id: `proposed-edge-${index + 1}`,
+      source: edge.source,
+      target: edge.target,
+      type: 'smoothstep',
+      data: { origin: 'proposed' },
+      style: 'stroke:#0d9488;stroke-dasharray:6 4;',
+    }));
+    counter = Math.max(
+      0,
+      parsed.connections.length,
+      ...parsed.nodes.map((node) => Number(node.id.slice('sandbox-'.length))),
+    );
+    draft = parsed.draft;
+    selectedId = null;
+    layoutNonce += 1;
+  }
+
+  function exportDocument(): void {
+    try {
+      const serialized = serializeSandboxDocument(createDocument());
+      const blob = new Blob([serialized], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = 'archwise-sandbox-v1.json';
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+      persistenceStatus = 'Sandbox exported as a local JSON file.';
+    } catch (error) {
+      persistenceStatus = error instanceof Error ? error.message : 'Unable to export Sandbox.';
+    }
+  }
+
+  async function importDocument(event: Event): Promise<void> {
+    const control = event.currentTarget as HTMLInputElement;
+    const file = control.files?.[0];
+    if (!file) return;
+    try {
+      if (file.size > 256 * 1024) throw new Error('Sandbox file exceeds the 256 KiB limit.');
+      const imported = parseSandboxDocument(await file.text(), signature);
+      restoreDocument(imported);
+      mode = 'sandbox';
+      persistenceStatus = 'Sandbox imported and restored locally.';
+    } catch (error) {
+      persistenceStatus = error instanceof Error ? error.message : 'Unable to import Sandbox.';
+    } finally {
+      control.value = '';
+    }
+  }
+
+  onMount(() => {
+    try {
+      const raw = window.localStorage.getItem(workspaceStorageKey(signature));
+      if (raw !== null) {
+        restoreDocument(parseSandboxDocument(raw, signature));
+        persistenceStatus = 'Previous Sandbox recovered from this browser.';
+      }
+    } catch (error) {
+      persistenceStatus = error instanceof Error ? error.message : 'Local persistence unavailable.';
+    } finally {
+      storageReady = true;
+    }
+  });
+
+  $effect(() => {
+    if (!storageReady) return;
+    try {
+      window.localStorage.setItem(
+        workspaceStorageKey(signature),
+        serializeSandboxDocument(createDocument()),
+      );
+    } catch (error) {
+      persistenceStatus = error instanceof Error ? error.message : 'Local persistence unavailable.';
+    }
+  });
 
   $effect(() => {
     const nonce = layoutNonce;
@@ -107,8 +241,9 @@
 
   function removeSelected() {
     if (!selectedId?.startsWith('sandbox-')) return;
-    proposedNodes = proposedNodes.filter((node) => node.id !== selectedId);
-    proposedEdges = proposedEdges.filter((edge) => edge.source !== selectedId && edge.target !== selectedId);
+    const removedId = selectedId;
+    proposedNodes = proposedNodes.filter((node) => node.id !== removedId);
+    proposedEdges = proposedEdges.filter((edge) => edge.source !== removedId && edge.target !== removedId);
     selectedId = null;
   }
 </script>
@@ -128,13 +263,19 @@
     <input aria-label="Proposed component name" placeholder="Name (optional)" bind:value={newLabel} maxlength="80" />
     <button type="button" onclick={addNode}>Add proposed component</button>
     <button type="button" disabled={!selectedId?.startsWith('sandbox-')} onclick={removeSelected}>Remove selected</button>
-    <button type="button" onclick={() => { proposedNodes = []; proposedEdges = []; selectedId = null; }}>Reset sandbox</button>
+    <button type="button" onclick={() => { proposedNodes = []; proposedEdges = []; draft = { ...defaultSimulationDraft(), savedA: draft.savedA, savedB: draft.savedB }; selectedId = null; }}>Reset sandbox</button>
+    <button type="button" onclick={exportDocument}>Export JSON</button>
+    <label for="sandbox-import">Import JSON</label>
+    <input id="sandbox-import" type="file" accept=".json,application/json" onchange={importDocument} />
   {/if}
 </div>
 <!-- Keep the panel mounted while Explore is active so A/B snapshots are retained in memory. -->
 <div hidden={mode !== 'sandbox'}>
-  <SimulationPanel {proposedNodes} {proposedEdges} />
+  <SimulationPanel {proposedNodes} {proposedEdges} bind:draft />
 </div>
+{#if persistenceStatus}
+  <div class="persistence-status" role="status">{persistenceStatus}</div>
+{/if}
 {#if layoutError}<div role="alert" class="alert">{layoutError}</div>{/if}
 <div class="viewport" role="region" aria-label="Interactive architecture graph">
   <SvelteFlow
