@@ -27,12 +27,9 @@ test('asks for business requirements before drawing conclusions from manifests',
 
 test('provides source-backed questions for a selected package', () => {
   const selected = getCoachQuestions(graph, graph.nodes[0]!.id);
-  expect(selected.find((item) => item.id === 'selected-responsibility')).toEqual(
-    expect.objectContaining({
-      nodeId: graph.nodes[0]!.id,
-      explanation: expect.stringContaining('apps/api/package.json'),
-    }),
-  );
+  const question = selected.find((item) => item.id === 'selected-responsibility');
+  expect(question?.nodeId).toBe(graph.nodes[0]!.id);
+  expect(question?.explanation).toContain('apps/api/package.json');
 });
 
 test('does not invent deployments when there is no evidence', () => {
