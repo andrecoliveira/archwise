@@ -15,6 +15,13 @@
   } from './sandbox-persistence.js';
   import type { SimulatedKind } from './simulation.js';
   import type { Graph } from './graph-types.js';
+  import {
+    CONNECTION_INTENTS,
+    CONNECTION_STYLES,
+    explainConnection,
+    suggestedIntent,
+    type ConnectionIntent,
+  } from './connection-intents.js';
 
   let { graph, visibleIds, selectedId = $bindable(null) }: {
     graph: Graph;
@@ -27,6 +34,8 @@
   let counter = $state(0);
   let newKind: SimulatedKind = $state('service');
   let newLabel = $state('');
+  let selectedEdgeId = $state<string | null>(null);
+  let connectionNotice = $state('');
   let proposedNodes: Node[] = $state.raw([]);
   let proposedEdges: Edge[] = $state.raw([]);
   let nodes: Node[] = $state.raw([]);
@@ -58,7 +67,11 @@
       }),
       connections: proposedEdges
         .filter((edge) => ids.has(edge.source) && ids.has(edge.target))
-        .map((edge) => ({ source: edge.source, target: edge.target })),
+        .map((edge) => ({
+          source: edge.source,
+          target: edge.target,
+          intent: edge.data?.intent as ConnectionIntent | undefined,
+        })),
       draft: {
         ...draft,
         capacities: validMap(draft.capacities),
@@ -85,8 +98,11 @@
       source: edge.source,
       target: edge.target,
       type: 'smoothstep',
-      data: { origin: 'proposed' },
-      style: 'stroke:#0d9488;stroke-dasharray:6 4;',
+      data: { origin: 'proposed', intent: edge.intent ?? 'REQ' },
+      label: edge.intent ?? 'REQ',
+      labelStyle: { fill: '#e2e8f0', fontWeight: 700 },
+      labelBgStyle: { fill: '#172238' },
+      style: { stroke: CONNECTION_STYLES[edge.intent ?? 'REQ'].color, strokeWidth: 2 },
     }));
     counter = Math.max(
       0,
@@ -95,6 +111,7 @@
     );
     draft = parsed.draft;
     selectedId = null;
+    selectedEdgeId = null;
     layoutNonce += 1;
   }
 
@@ -223,20 +240,72 @@
 
   function connect(connection: Connection) {
     if (mode !== 'sandbox' || !connection.source || !connection.target) return;
-    if (connection.source === connection.target) return;
-    if (!connection.source.startsWith('sandbox-') && !connection.target.startsWith('sandbox-')) return;
-    if (edges.some((edge) => edge.source === connection.source && edge.target === connection.target)) return;
+    if (connection.source === connection.target) {
+      connectionNotice = 'A component cannot connect to itself.';
+      return;
+    }
+    const source = proposedNodes.find((node) => node.id === connection.source);
+    const target = proposedNodes.find((node) => node.id === connection.target);
+    if (!source || !target) {
+      connectionNotice = 'Only proposed-to-proposed connections can be simulated and saved.';
+      return;
+    }
+    if (proposedEdges.some((edge) => edge.source === connection.source && edge.target === connection.target)) {
+      connectionNotice = 'This connection already exists.';
+      return;
+    }
+    const intent = suggestedIntent(source.data.kind as SimulatedKind, target.data.kind as SimulatedKind);
+    const id = `proposed-edge-${counter++}`;
     proposedEdges = [
       ...proposedEdges,
       {
-        id: `proposed-edge-${counter++}`,
+        id,
         source: connection.source,
         target: connection.target,
         type: 'smoothstep',
-        data: { origin: 'proposed' },
-        style: 'stroke:#0d9488;stroke-dasharray:6 4;',
+        data: { origin: 'proposed', intent },
+        label: intent,
+        labelStyle: { fill: '#e2e8f0', fontWeight: 700 },
+        labelBgStyle: { fill: '#172238' },
+        style: { stroke: CONNECTION_STYLES[intent].color, strokeWidth: 2 },
       },
     ];
+    selectedEdgeId = id;
+    connectionNotice = '';
+  }
+
+  const selectedEdge = $derived(proposedEdges.find((edge) => edge.id === selectedEdgeId));
+  const selectedSource = $derived(proposedNodes.find((node) => node.id === selectedEdge?.source));
+  const selectedTarget = $derived(proposedNodes.find((node) => node.id === selectedEdge?.target));
+  const selectedIntent = $derived((selectedEdge?.data?.intent ?? 'REQ') as ConnectionIntent);
+  const selectedWarning = $derived(
+    selectedSource && selectedTarget
+      ? explainConnection(
+          selectedSource.data.kind as SimulatedKind,
+          selectedTarget.data.kind as SimulatedKind,
+          selectedIntent,
+        )
+      : null,
+  );
+
+  function updateIntent(intent: ConnectionIntent): void {
+    if (!selectedEdgeId) return;
+    proposedEdges = proposedEdges.map((edge) =>
+      edge.id === selectedEdgeId
+        ? {
+            ...edge,
+            data: { ...edge.data, intent },
+            label: intent,
+            style: { stroke: CONNECTION_STYLES[intent].color, strokeWidth: 2 },
+          }
+        : edge,
+    );
+  }
+
+  function removeSelectedEdge(): void {
+    if (!selectedEdgeId) return;
+    proposedEdges = proposedEdges.filter((edge) => edge.id !== selectedEdgeId);
+    selectedEdgeId = null;
   }
 
   function removeSelected() {
@@ -245,6 +314,7 @@
     proposedNodes = proposedNodes.filter((node) => node.id !== removedId);
     proposedEdges = proposedEdges.filter((edge) => edge.source !== removedId && edge.target !== removedId);
     selectedId = null;
+    selectedEdgeId = null;
   }
 </script>
 
@@ -269,6 +339,23 @@
     <input id="sandbox-import" type="file" accept=".json,application/json" onchange={importDocument} />
   {/if}
 </div>
+{#if mode === 'sandbox' && selectedEdge}
+  <section class="connection-inspector" aria-label="Connection intent editor">
+    <strong>Connection intent</strong>
+    <span>{selectedSource?.data.label ?? selectedEdge.source} → {selectedTarget?.data.label ?? selectedEdge.target}</span>
+    <label for="edge-intent">Intent</label>
+    <select id="edge-intent" value={selectedIntent} onchange={(event) => updateIntent(event.currentTarget.value as ConnectionIntent)}>
+      {#each CONNECTION_INTENTS as intent (intent)}
+        <option value={intent}>{CONNECTION_STYLES[intent].label} · {CONNECTION_STYLES[intent].meaning}</option>
+      {/each}
+    </select>
+    <button type="button" onclick={removeSelectedEdge}>Remove connection</button>
+    <button type="button" onclick={() => (selectedEdgeId = null)}>Close</button>
+    {#if selectedWarning}<p role="alert">{selectedWarning}</p>{/if}
+    <small>Visual meaning only. Traffic is still split equally by the simplified simulation.</small>
+  </section>
+{/if}
+{#if connectionNotice}<div class="persistence-status" role="status">{connectionNotice}</div>{/if}
 <!-- Keep the panel mounted while Explore is active so A/B snapshots are retained in memory. -->
 <div hidden={mode !== 'sandbox'}>
   <SimulationPanel {proposedNodes} {proposedEdges} bind:draft />
@@ -289,7 +376,8 @@
     deleteKey={null}
     minZoom={0.15}
     maxZoom={2}
-    onnodeclick={({ node }) => { selectedId = node.id; }}
+    onnodeclick={({ node }) => { selectedId = node.id; selectedEdgeId = null; }}
+    onedgeclick={({ edge }) => { selectedEdgeId = edge.data?.origin === "proposed" ? edge.id : null; }}
     onconnect={connect}
   >
     <Background />
