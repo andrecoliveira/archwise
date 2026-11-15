@@ -1,7 +1,7 @@
 import type { Graph } from './graph-types.js';
 import { findCatalogComponent } from './component-catalog.js';
 import { isConnectionIntent, type ConnectionIntent } from './connection-intents.js';
-import { modeledCapacityRps } from './replica-model.js';
+import { canScaleComponent, modeledCapacityRps } from './replica-model.js';
 import { captureScenario, type ScenarioSnapshot } from './scenario-comparison.js';
 import { simulateSandbox, type SimulatedKind } from './simulation.js';
 
@@ -271,8 +271,14 @@ export function parseSandboxDocument(text: string, signature: string): SandboxDo
     savedA: snapshot(input.draft.savedA, 'A'),
     savedB: snapshot(input.draft.savedB, 'B'),
   };
-  if (Object.values(draft.replicas).some((value) => !Number.isInteger(value))) {
-    throw new Error('Replica counts must be whole numbers between 1 and 16.');
+  for (const [id, count] of Object.entries(draft.replicas)) {
+    if (!Number.isInteger(count)) {
+      throw new Error('Replica counts must be whole numbers between 1 and 16.');
+    }
+    const node = nodes.find((item) => item.id === id)!;
+    if (!canScaleComponent(node.kind, node.preset ?? '')) {
+      throw new Error('Replica settings are only supported for modeled service processors.');
+    }
   }
   if (nodes.length > 0) {
     const model = {
