@@ -1,6 +1,7 @@
 import type { Graph } from './graph-types.js';
 import { findCatalogComponent } from './component-catalog.js';
 import { isConnectionIntent, type ConnectionIntent } from './connection-intents.js';
+import { modeledCapacityRps } from './replica-model.js';
 import { captureScenario, type ScenarioSnapshot } from './scenario-comparison.js';
 import { simulateSandbox, type SimulatedKind } from './simulation.js';
 
@@ -25,6 +26,7 @@ export interface SimulationDraft {
   readonly inputRps: number;
   readonly preferredEntryId: string;
   readonly capacities: Readonly<Record<string, number>>;
+  readonly replicas: Readonly<Record<string, number>>;
   readonly latencies: Readonly<Record<string, number>>;
   readonly hitRates: Readonly<Record<string, number>>;
   readonly failed: Readonly<Record<string, boolean>>;
@@ -52,6 +54,7 @@ export function defaultSimulationDraft(): SimulationDraft {
     inputRps: 100,
     preferredEntryId: '',
     capacities: {},
+    replicas: {},
     latencies: {},
     hitRates: {},
     failed: {},
@@ -261,12 +264,16 @@ export function parseSandboxDocument(text: string, signature: string): SandboxDo
     inputRps: input.draft.inputRps,
     preferredEntryId: input.draft.preferredEntryId,
     capacities: numericMap(input.draft.capacities, ids, 0, MAX_RPS),
+    replicas: numericMap(input.draft.replicas ?? {}, ids, 1, 16),
     latencies: numericMap(input.draft.latencies, ids, 0, MAX_LATENCY),
     hitRates: numericMap(input.draft.hitRates, ids, 0, 1),
     failed: booleanMap(input.draft.failed, ids),
     savedA: snapshot(input.draft.savedA, 'A'),
     savedB: snapshot(input.draft.savedB, 'B'),
   };
+  if (Object.values(draft.replicas).some((value) => !Number.isInteger(value))) {
+    throw new Error('Replica counts must be whole numbers between 1 and 16.');
+  }
   if (nodes.length > 0) {
     const model = {
       entryNodeId: draft.preferredEntryId || nodes[0]!.id,
@@ -275,7 +282,7 @@ export function parseSandboxDocument(text: string, signature: string): SandboxDo
         id: node.id,
         label: node.label,
         kind: node.kind,
-        capacityRps: draft.capacities[node.id] ?? 100,
+        capacityRps: modeledCapacityRps(node.kind, node.preset ?? '', draft.capacities[node.id] ?? 100, draft.replicas[node.id]),
         baseLatencyMs: draft.latencies[node.id] ?? 20,
         ...(node.kind === 'cache' ? { cacheHitRate: draft.hitRates[node.id] ?? 0.5 } : {}),
         failed: draft.failed[node.id] === true,
