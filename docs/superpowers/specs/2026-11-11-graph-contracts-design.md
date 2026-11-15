@@ -1,6 +1,6 @@
 # Graph contracts: first Phase 2 slice
 
-Status: delivery split approved; detailed specification awaiting owner review.
+Status: approved by the owner on 2026-11-15. Implemented by [the graph contracts plan](../plans/2026-11-15-graph-contracts.md).
 
 ## Outcome and scope
 
