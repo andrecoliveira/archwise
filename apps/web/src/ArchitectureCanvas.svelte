@@ -4,6 +4,7 @@
   import { onMount, untrack } from 'svelte';
   import { layoutNodes } from './graph-layout.js';
   import { suggestedNodePosition } from './node-placement.js';
+  import { canScaleComponent, modeledCapacityRps, replicaCount } from './replica-model.js';
   import { getCanvasFeedback } from './canvas-feedback.js';
   import { findCatalogComponent } from './component-catalog.js';
   import SimulationPanel from './SimulationPanel.svelte';
@@ -78,6 +79,11 @@
     draft = { ...draft, [setting]: { ...draft[setting], [selectedProposed.id]: value } };
   }
 
+  function updateReplicas(value: number): void {
+    if (!selectedProposed || !Number.isInteger(value) || value < 1 || value > 16) return;
+    draft = { ...draft, replicas: { ...draft.replicas, [selectedProposed.id]: value } };
+  }
+
   function updateFailure(failed: boolean): void {
     if (!selectedProposed) return;
     draft = { ...draft, failed: { ...draft.failed, [selectedProposed.id]: failed } };
@@ -113,6 +119,7 @@
       draft: {
         ...draft,
         capacities: validMap(draft.capacities),
+        replicas: validMap(draft.replicas),
         latencies: validMap(draft.latencies),
         hitRates: validMap(draft.hitRates),
         failed: validMap(draft.failed),
@@ -222,7 +229,7 @@
         id: node.id,
         label: String(node.data.label ?? node.id),
         kind,
-        capacityRps: draft.capacities[node.id] ?? 100,
+        capacityRps: modeledCapacityRps(kind, String(node.data.preset ?? ''), draft.capacities[node.id] ?? 100, draft.replicas[node.id]),
         baseLatencyMs: draft.latencies[node.id] ?? 20,
         ...(kind === 'cache' ? { cacheHitRate: draft.hitRates[node.id] ?? 0.5 } : {}),
         failed: draft.failed[node.id] === true,
@@ -280,6 +287,7 @@
           status: feedback?.status ?? 'normal',
           utilization: feedback?.utilization ?? 0,
           droppedRps: feedback?.droppedRps ?? 0,
+          replicas: replicaCount(node.data.kind as SimulatedKind, String(node.data.preset ?? ''), draft.replicas[node.id]),
         },
       };
     });
@@ -528,10 +536,26 @@
       <label for="inspector-name">Name</label>
       <input id="inspector-name" maxlength="80" value={String(selectedProposed.data.label ?? '')}
         oninput={(event) => renameSelected(event.currentTarget.value)} />
-      <label for="inspector-capacity">Capacity (requests/second)</label>
+      <label for="inspector-capacity">
+        {canScaleComponent(selectedProposed.data.kind as SimulatedKind, String(selectedProposed.data.preset ?? ''))
+          ? 'Capacity per replica (RPS)'
+          : 'Capacity (requests/second)'}
+      </label>
       <input id="inspector-capacity" type="number" min="0" max="1000000"
         value={draft.capacities[selectedProposed.id] ?? 100}
         onchange={(event) => updateNumeric('capacities', event.currentTarget.valueAsNumber)} />
+      {#if canScaleComponent(selectedProposed.data.kind as SimulatedKind, String(selectedProposed.data.preset ?? ''))}
+        <label for="inspector-replicas">Replicas (1–16)</label>
+        <input id="inspector-replicas" type="number" min="1" max="16" step="1"
+          value={draft.replicas[selectedProposed.id] ?? 1}
+          onchange={(event) => updateReplicas(event.currentTarget.valueAsNumber)} />
+        <p class="inspector-model-note">Aggregate modeled capacity:
+          {modeledCapacityRps(selectedProposed.data.kind as SimulatedKind,
+            String(selectedProposed.data.preset ?? ''),
+            draft.capacities[selectedProposed.id] ?? 100,
+            draft.replicas[selectedProposed.id]).toFixed(0)} RPS.
+          Assumes linear scaling, not real-world balancing.</p>
+      {/if}
       <label for="inspector-latency">Baseline latency (ms)</label>
       <input id="inspector-latency" type="number" min="0" max="120000"
         value={draft.latencies[selectedProposed.id] ?? 20}
