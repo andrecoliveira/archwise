@@ -134,6 +134,22 @@ try {
   await page.locator('.archwise-edge-pill').filter({ hasText: 'REQ' }).first().waitFor();
   await connectionPanel.locator('#edge-intent').selectOption('DB');
 
+  // A/B must reflect the *effective* capacity of a horizontally scaled service.
+  const appNodeId = await app.getAttribute('data-id');
+  assert(appNodeId, 'App Server requires a stable Svelte Flow node ID');
+  await app.click();
+  const replicaInput = inspector.locator('#inspector-replicas');
+  await replicaInput.waitFor();
+  const simulation = page.locator('.simulation-panel');
+  await simulation.locator(':scope > summary').click();
+  await simulation.locator('.scenario-fields input[type="number"]').fill('200');
+  await simulation.locator('.scenario-fields select').selectOption(appNodeId);
+  await simulation.getByRole('button', { name: 'Save current as A' }).click();
+  await replicaInput.fill('3');
+  await replicaInput.press('Tab');
+  await simulation.getByRole('button', { name: 'Save current as B' }).click();
+  await simulation.getByText('A → B: +75.0 completed requests/second').waitFor();
+
   // This tests saved JSON as well as browser restoration, not just a screenshot.
   const savedDocument = async () =>
     page.evaluate(() => {
@@ -157,6 +173,8 @@ try {
   });
   const before = await savedDocument();
   assert.equal(before.connections.find((e) => e.intent === 'DB')?.intent, 'DB');
+  assert.equal(before.draft.replicas[appNodeId], 3);
+  assert(before.draft.savedA && before.draft.savedB, 'Saved A/B snapshots must be persisted');
 
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForFunction(
@@ -170,6 +188,7 @@ try {
   assert.equal(after.connections.length, 2);
   assert(after.nodes.some((n) => n.label === 'SQL Primary'));
   assert.deepEqual(after.draft.capacities, before.draft.capacities);
+  assert.deepEqual(after.draft.replicas, before.draft.replicas);
 
   await page.getByRole('button', { name: 'Explore · Inspect' }).click();
   await page.getByRole('button', { name: 'Sandbox · Build' }).click();
@@ -240,10 +259,12 @@ try {
   const imported = await savedDocument();
   assert.equal(imported.connections.length, 2);
   assert(imported.nodes.some((node) => node.label === 'SQL Primary'));
+  assert.equal(imported.draft.replicas[appNodeId], 3);
+  assert(imported.draft.savedA && imported.draft.savedB);
 
   assert.deepEqual(errors, [], 'Browser runtime errors must not occur');
   console.log(
-    'Browser smoke passed: quick-add, custom nodes, inspector, handles, semantic edges, persistence, reload and mode switching.',
+    'Browser smoke passed: components, handles, edge intent, replica scaling, A/B, drag positions, JSON export/import and reload.',
   );
 } finally {
   await browser?.close();
