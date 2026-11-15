@@ -285,3 +285,22 @@ li {
   padding-left: 16px;
   color: #fbbf24;
 }
+
+.persistence-status {
+  padding: 8px 16px;
+  color: #b9e6cc;
+  background: #15302a;
+  border-block: 1px solid #26665b;
+  font-size: 12px;
+}
+.toolbar input[type='file'] {
+  width: min(230px, 33vw);
+  font-size: 12px;
+}
+.toolbar input[type='file']::file-selector-button {
+  border: 1px solid #475569;
+  border-radius: 6px;
+  background: #1e293b;
+  color: #e6edf7;
+  padding: 6px;
+}
