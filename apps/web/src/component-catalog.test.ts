@@ -1,5 +1,10 @@
 import { expect, test } from 'vitest';
-import { CATALOG_GROUPS, COMPONENT_CATALOG, findCatalogComponent, searchCatalog } from './component-catalog.js';
+import {
+  CATALOG_GROUPS,
+  COMPONENT_CATALOG,
+  findCatalogComponent,
+  searchCatalog,
+} from './component-catalog.js';
 
 test('catalog has useful entry, compute and storage components', () => {
   expect(CATALOG_GROUPS).toEqual(['Entry & traffic', 'Compute', 'Data & messaging']);

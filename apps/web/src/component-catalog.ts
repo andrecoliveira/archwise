@@ -16,17 +16,68 @@ export interface CatalogComponent {
  * Client, LB and Worker deliberately do not imply real routing or worker semantics.
  */
 export const COMPONENT_CATALOG: readonly CatalogComponent[] = [
-  { id: 'client', name: 'Client', description: 'Request entry point', group: 'Entry & traffic', kind: 'service', symbol: '◉' },
-  { id: 'load-balancer', name: 'Load Balancer', description: 'Traffic distribution (visual)', group: 'Entry & traffic', kind: 'service', symbol: '⇄' },
-  { id: 'app-server', name: 'App Server', description: 'Application processing', group: 'Compute', kind: 'service', symbol: '▣' },
-  { id: 'worker', name: 'Worker', description: 'Background processor (visual)', group: 'Compute', kind: 'service', symbol: '⚙' },
-  { id: 'cache', name: 'Cache', description: 'Cache with hit-rate input', group: 'Data & messaging', kind: 'cache', symbol: '◇' },
-  { id: 'database', name: 'SQL Database', description: 'Storage capacity model', group: 'Data & messaging', kind: 'database', symbol: '▤' },
-  { id: 'queue', name: 'Message Queue', description: 'Capacity-only queue model', group: 'Data & messaging', kind: 'queue', symbol: '☷' },
+  {
+    id: 'client',
+    name: 'Client',
+    description: 'Request entry point',
+    group: 'Entry & traffic',
+    kind: 'service',
+    symbol: '◉',
+  },
+  {
+    id: 'load-balancer',
+    name: 'Load Balancer',
+    description: 'Traffic distribution (visual)',
+    group: 'Entry & traffic',
+    kind: 'service',
+    symbol: '⇄',
+  },
+  {
+    id: 'app-server',
+    name: 'App Server',
+    description: 'Application processing',
+    group: 'Compute',
+    kind: 'service',
+    symbol: '▣',
+  },
+  {
+    id: 'worker',
+    name: 'Worker',
+    description: 'Background processor (visual)',
+    group: 'Compute',
+    kind: 'service',
+    symbol: '⚙',
+  },
+  {
+    id: 'cache',
+    name: 'Cache',
+    description: 'Cache with hit-rate input',
+    group: 'Data & messaging',
+    kind: 'cache',
+    symbol: '◇',
+  },
+  {
+    id: 'database',
+    name: 'SQL Database',
+    description: 'Storage capacity model',
+    group: 'Data & messaging',
+    kind: 'database',
+    symbol: '▤',
+  },
+  {
+    id: 'queue',
+    name: 'Message Queue',
+    description: 'Capacity-only queue model',
+    group: 'Data & messaging',
+    kind: 'queue',
+    symbol: '☷',
+  },
 ];
 
 export const CATALOG_GROUPS: readonly CatalogGroup[] = [
-  'Entry & traffic', 'Compute', 'Data & messaging',
+  'Entry & traffic',
+  'Compute',
+  'Data & messaging',
 ];
 
 export function findCatalogComponent(id: string): CatalogComponent | undefined {
@@ -36,6 +87,8 @@ export function findCatalogComponent(id: string): CatalogComponent | undefined {
 export function searchCatalog(query: string): readonly CatalogComponent[] {
   const normalized = query.trim().toLocaleLowerCase();
   return COMPONENT_CATALOG.filter((item) =>
-    (item.name + ' ' + item.description + ' ' + item.group).toLocaleLowerCase().includes(normalized),
+    (item.name + ' ' + item.description + ' ' + item.group)
+      .toLocaleLowerCase()
+      .includes(normalized),
   );
 }
