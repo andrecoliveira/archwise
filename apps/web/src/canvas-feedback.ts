@@ -41,6 +41,13 @@ export function getCanvasFeedback(
         : status === 'bottleneck'
           ? `${item.label}: modeled incoming ${item.incomingRps} RPS exceeds served ${item.servedRps} RPS. ${item.droppedRps} RPS are dropped. Review configured capacity or routing.`
           : `${item.label}: modeled incoming ${item.incomingRps} RPS, served ${item.servedRps} RPS; utilization ${(item.utilization * 100).toFixed(0)}%.`;
-    return { id: item.id, label, status, detail, utilization: item.utilization, droppedRps: item.droppedRps };
+    return {
+      id: item.id,
+      label,
+      status,
+      detail,
+      utilization: item.utilization,
+      droppedRps: item.droppedRps,
+    };
   });
 }

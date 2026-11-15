@@ -176,7 +176,6 @@ test('rejects unknown imported connection intents', () => {
   );
 });
 
-
 test('preserves custom component presets across export and import without changing simulation kinds', () => {
   const withPresets = {
     ...example(),
@@ -185,7 +184,10 @@ test('preserves custom component presets across export and import without changi
       { ...example().nodes[1]!, preset: 'cache' },
     ],
   };
-  const restored = parseSandboxDocument(serializeSandboxDocument(withPresets), projectSignature(graph));
+  const restored = parseSandboxDocument(
+    serializeSandboxDocument(withPresets),
+    projectSignature(graph),
+  );
   expect(restored.nodes[0]?.preset).toBe('app-server');
   expect(restored.nodes[0]?.label).toBe('Renamed application');
   expect(restored.nodes[1]?.preset).toBe('cache');
@@ -199,7 +201,8 @@ test('rejects invalid or mismatched imported component presets', () => {
       ...current,
       nodes: [{ ...current.nodes[0]!, preset }, current.nodes[1]!],
     };
-    expect(() => parseSandboxDocument(JSON.stringify(malformed), projectSignature(graph)))
-      .toThrow('Invalid proposed node');
+    expect(() => parseSandboxDocument(JSON.stringify(malformed), projectSignature(graph))).toThrow(
+      'Invalid proposed node',
+    );
   }
 });
