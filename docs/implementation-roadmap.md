@@ -10,7 +10,7 @@ Archwise reaches the end of this roadmap when version `1.0.0` is publicly releas
 
 - a developer can install and run Archwise on supported Linux, macOS, and Windows environments;
 - running from `cwd` or an explicit multi-repository workspace produces an evidence-backed graph;
-- the graph opens automatically in a local React Flow browser workspace;
+- the graph opens automatically in a local Svelte Flow browser workspace (ADR 0005);
 - discovery never executes analyzed project code and does not modify analyzed repositories;
 - real graph revisions, sandbox operations, comparisons, simulations, and exports work offline;
 - deterministic interview packs work offline and optional AI providers require explicit configuration and consent;
@@ -213,8 +213,8 @@ Open the discovered architecture automatically in a safe, accessible local brows
 - Implement loopback server startup, random port selection, capability-scoped session URL, origin/host validation, request limits, CSP, and graceful shutdown.
 - Expose versioned workspace, scan, revision, graph, evidence, diagnostic, and progress endpoints.
 - Stream progress and graph patches using Server-Sent Events with reconnect semantics.
-- Build the React application shell, router, error boundaries, keyboard navigation, theme tokens, and local-only status indicators.
-- Render React Flow system/repository/service/module and data-flow views with stable automatic layout.
+- Build the Svelte application shell, router, error boundaries, keyboard navigation, theme tokens, and local-only status indicators.
+- Render Svelte Flow system/repository/service/module and data-flow views with stable automatic layout.
 - Add search, filters, breadcrumbs, confidence/origin legend, revision selector, evidence inspector, diagnostics panel, and coverage summary.
 - Add aggregation, progressive expansion, viewport rendering, and layout caching for large graphs.
 

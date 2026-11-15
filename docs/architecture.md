@@ -18,7 +18,7 @@ Discovery adapters ──> normalized evidence ──> graph builder
                   local HTTP API            simulator           optional AI
                          │                                          adapters
                          ▼
-                React + React Flow UI
+              Svelte + Svelte Flow UI
 ```
 
 ## Components
@@ -45,7 +45,7 @@ The server exposes versioned JSON endpoints and Server-Sent Events initially for
 
 ### Browser workspace
 
-React renders the application shell; React Flow renders interactive graphs. Large-graph strategies include hierarchical aggregation, server-side filtering, progressive expansion, stable layout caching, and viewport virtualization. The UI never receives unrestricted filesystem access.
+Svelte 5 renders the application shell; Svelte Flow renders interactive graphs (see ADR 0005). Large-graph strategies include hierarchical aggregation, server-side filtering, progressive expansion, stable layout caching, and viewport virtualization. The UI never receives unrestricted filesystem access.
 
 ## Core data flow
 

@@ -11,13 +11,13 @@ pnpm check
 
 `pnpm check` runs formatting, dependency-ordered builds, lint, strict type checking, architecture checks, and tests. Build comes before tests because application imports domain through its public built entry point and CLI smoke tests execute the compiled binary. For focused tests, first run `pnpm build`, then `pnpm --filter @archwise/schemas test`. `pnpm test:integration` runs checker/process regressions after building.
 
-Tests cover envelope versions/unknown fields, immutable metadata, safe fixture paths/disposal, CLI arguments and exit codes, a semantic React page, and architectural violations in synthetic workspaces. Full graph workflows and real-browser E2E testing belong to later phases.
+Tests cover envelope versions/unknown fields, immutable metadata, safe fixture paths/disposal, CLI arguments and exit codes, Svelte Studio logic and components, the protected loopback server, and architectural violations in synthetic workspaces. The `Browser Studio Smoke` workflow exercises the Studio in real Chromium; see [Browser QA](../browser-qa.md).
 
 Packages are private during bootstrap. They expose ESM code and declarations under `dist`. Generated output, dependencies and build cache are ignored. Each package README describes its responsibility.
 
 Formatting covers tooling, packages, apps, scripts and CI; historical specifications and canonical license text are excluded. `pnpm lint` uses type-aware rules on production TypeScript. `pnpm boundaries` enforces the [dependency rules](architecture-boundaries.md). `pnpm changeset status` previews release notes without publishing.
 
-Run `node apps/cli/dist/bin.js --help` after building. Run `pnpm dev` to serve the React foundation page on loopback. This development server is not the future authenticated local application API. No repository scanning occurs.
+Run `node apps/cli/dist/bin.js --help` after building. Run `node apps/cli/dist/bin.js --serve --path <project>` for the authenticated local Studio. `pnpm dev` serves only the Svelte frontend on loopback without the authenticated graph API and performs no repository scanning.
 
 `pnpm audit --audit-level moderate` checks registry advisories and requires network access. Security CI also scans Git history with Gitleaks, with redaction enabled and comments/uploads disabled. CodeQL and GitHub dependency-review are not active; see ADR 0004 for the private-repository constraint.
 

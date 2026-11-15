@@ -1,0 +1,272 @@
+import { spawn } from 'node:child_process';
+import { strict as assert } from 'node:assert';
+import { readFile } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
+
+const modulePath = process.env.ARCHWISE_PLAYWRIGHT_ENTRY;
+if (!modulePath)
+  throw new Error('Set ARCHWISE_PLAYWRIGHT_ENTRY to the installed playwright entry point.');
+const { chromium } = await import(pathToFileURL(modulePath).href);
+
+const runner = spawn(
+  process.execPath,
+  ['apps/cli/dist/bin.js', '--serve', '--no-open', '--path', '.'],
+  {
+    cwd: process.cwd(),
+    stdio: ['ignore', 'pipe', 'pipe'],
+  },
+);
+let browser;
+let output = '';
+const urlReady = new Promise((resolve, reject) => {
+  runner.stdout.setEncoding('utf8');
+  runner.stdout.on('data', (chunk) => {
+    output += chunk;
+    const match = output.match(/Local session URL:\s*(https?:\/\/[^\s]+)/);
+    if (match) resolve(match[1]);
+  });
+  runner.once('exit', (code) => reject(new Error(`Local Archwise server exited with ${code}.`)));
+  runner.once('error', reject);
+});
+const timeout = AbortSignal.timeout(30_000);
+try {
+  const url = await Promise.race([
+    urlReady,
+    new Promise((_, reject) =>
+      timeout.addEventListener('abort', () => reject(new Error('Server bootstrap timed out.')), {
+        once: true,
+      }),
+    ),
+  ]);
+  browser = await chromium.launch({
+    headless: true,
+    ...(process.env.ARCHWISE_BROWSER_CHANNEL
+      ? { channel: process.env.ARCHWISE_BROWSER_CHANNEL }
+      : {}),
+  });
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+
+  // The one-time bootstrap URL contains a private session token. Never log it.
+  await page.goto(url, { waitUntil: 'networkidle' });
+  await page.getByRole('button', { name: 'Sandbox · Build' }).waitFor();
+  await page.getByRole('button', { name: 'Add Client' }).click();
+  await page.getByRole('button', { name: 'Add App Server' }).click();
+  await page.getByRole('button', { name: 'Add SQL Database' }).click();
+  await page.locator('.svelte-flow__node').first().waitFor();
+  await page.waitForFunction(
+    () => globalThis.document.querySelectorAll('.svelte-flow__node').length >= 3,
+  );
+  assert.equal(
+    await page.locator('.svelte-flow__node').count(),
+    3,
+    'Three proposed components must render',
+  );
+
+  // The inspector controls the *same* persistent simulation draft.
+  const inspector = page.getByRole('region', { name: 'Selected component properties' });
+  await inspector.waitFor();
+  await inspector.locator('#inspector-name').fill('SQL Primary');
+  await inspector.locator('#inspector-capacity').fill('175');
+  await inspector.locator('#inspector-capacity').press('Tab');
+  await page.getByText('SQL Primary').first().waitFor();
+
+  const nodes = page.locator('.svelte-flow__node');
+  const client = nodes.filter({ hasText: 'Client' });
+  const app = nodes.filter({ hasText: 'App Server' });
+  const database = nodes.filter({ hasText: 'SQL Primary' });
+
+  let dragFallbacks = 0;
+  async function link(from, to) {
+    const source = from.locator('.svelte-flow__handle.source');
+    const target = to.locator('.svelte-flow__handle.target');
+    const a = await source.boundingBox();
+    const b = await target.boundingBox();
+    if (!a || !b) throw new Error('Expected visible source and target connection handles.');
+    const previousCount = await page.locator('.svelte-flow__edge').count();
+    await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 18 });
+    await page.mouse.up();
+    await page.waitForTimeout(400);
+    if ((await page.locator('.svelte-flow__edge').count()) <= previousCount) {
+      dragFallbacks += 1;
+      console.log('Drag did not add an edge; testing click-to-connect fallback.');
+      await source.click();
+      await target.click();
+      await page.waitForTimeout(400);
+    }
+    if ((await page.locator('.svelte-flow__edge').count()) <= previousCount) {
+      const notices = await page.locator('.persistence-status').allTextContents();
+      const handles = await page.locator('.svelte-flow__handle').evaluateAll((items) =>
+        items.map((item) => ({
+          classes: item.className,
+          rect: item.getBoundingClientRect().toJSON(),
+          ariaLabel: item.getAttribute('aria-label'),
+        })),
+      );
+      console.error(
+        'Connection diagnostics:',
+        JSON.stringify({ notices, handles, pageErrors: errors }),
+      );
+      await page.screenshot({ path: '/tmp/archwise-browser-connection.png', fullPage: true });
+      throw new Error('Neither drag nor click connected the selected handles.');
+    }
+  }
+  await link(client, app);
+  await link(app, database);
+  assert.equal(
+    await page.locator('.svelte-flow__edge').count(),
+    2,
+    'Two actual Svelte Flow connections must render',
+  );
+  if (dragFallbacks > 0) {
+    console.warn(
+      `${dragFallbacks} connections required click-to-connect; drag remains unverified.`,
+    );
+  }
+
+  await page.locator('.archwise-edge-pill').filter({ hasText: 'DB' }).click();
+  const connectionPanel = page.getByRole('region', { name: 'Connection intent editor' });
+  await connectionPanel.waitFor();
+  await connectionPanel.locator('#edge-intent').selectOption('REQ');
+  await page.locator('.archwise-edge-pill').filter({ hasText: 'REQ' }).first().waitFor();
+  await connectionPanel.locator('#edge-intent').selectOption('DB');
+
+  // A/B must reflect the *effective* capacity of a horizontally scaled service.
+  const appNodeId = await app.getAttribute('data-id');
+  assert(appNodeId, 'App Server requires a stable Svelte Flow node ID');
+  await app.click();
+  const replicaInput = inspector.locator('#inspector-replicas');
+  await replicaInput.waitFor();
+  const simulation = page.locator('.simulation-panel');
+  await simulation.locator(':scope > summary').click();
+  await simulation.locator('.scenario-fields input[type="number"]').fill('200');
+  await simulation.locator('.scenario-fields select').selectOption(appNodeId);
+  await simulation.getByRole('button', { name: 'Save current as A' }).click();
+  await replicaInput.fill('3');
+  await replicaInput.press('Tab');
+  await simulation.getByRole('button', { name: 'Save current as B' }).click();
+  await simulation.getByText('A → B: +75.0 completed requests/second').waitFor();
+
+  // This tests saved JSON as well as browser restoration, not just a screenshot.
+  const savedDocument = async () =>
+    page.evaluate(() => {
+      const key = Object.keys(globalThis.localStorage).find((item) =>
+        item.startsWith('archwise:sandbox:1:'),
+      );
+      return key ? JSON.parse(globalThis.localStorage.getItem(key)) : null;
+    });
+  await page.waitForFunction(() => {
+    const key = Object.keys(globalThis.localStorage).find((item) =>
+      item.startsWith('archwise:sandbox:1:'),
+    );
+    if (!key) return false;
+    const doc = JSON.parse(globalThis.localStorage.getItem(key));
+    return (
+      doc.nodes.length === 3 &&
+      doc.connections.length === 2 &&
+      doc.nodes.some((n) => n.label === 'SQL Primary') &&
+      doc.draft.capacities[doc.nodes.find((n) => n.label === 'SQL Primary').id] === 175
+    );
+  });
+  const before = await savedDocument();
+  assert.equal(before.connections.find((e) => e.intent === 'DB')?.intent, 'DB');
+  assert.equal(before.draft.replicas[appNodeId], 3);
+  assert(before.draft.savedA && before.draft.savedB, 'Saved A/B snapshots must be persisted');
+
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForFunction(
+    () => globalThis.document.querySelectorAll('.svelte-flow__node').length === 3,
+  );
+  await page.waitForFunction(
+    () => globalThis.document.querySelectorAll('.svelte-flow__edge').length === 2,
+  );
+  const after = await savedDocument();
+  assert.equal(after.nodes.length, 3);
+  assert.equal(after.connections.length, 2);
+  assert(after.nodes.some((n) => n.label === 'SQL Primary'));
+  assert.deepEqual(after.draft.capacities, before.draft.capacities);
+  assert.deepEqual(after.draft.replicas, before.draft.replicas);
+
+  await page.getByRole('button', { name: 'Explore · Inspect' }).click();
+  await page.getByRole('button', { name: 'Sandbox · Build' }).click();
+  await page.waitForFunction(
+    () => globalThis.document.querySelectorAll('.svelte-flow__edge').length === 2,
+  );
+  // Prove that manual dragging changes the persisted model position.
+  const appId = before.nodes.find((node) => node.label === 'App Server')?.id;
+  assert(appId, 'Expected an App Server in the saved Sandbox');
+  const dragTarget = page
+    .locator('.svelte-flow__node')
+    .filter({ hasText: 'App Server' })
+    .locator('.archwise-node-head');
+  const card = await dragTarget.boundingBox();
+  assert(card, 'Expected a draggable custom node card');
+  await page.mouse.move(card.x + card.width / 2, card.y + card.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(card.x + card.width / 2 + 62, card.y + card.height / 2 + 38, { steps: 16 });
+  await page.mouse.up();
+  const previousApp = before.nodes.find((node) => node.id === appId);
+  assert(previousApp, 'App Server needs an original saved position');
+  await page.waitForFunction(
+    ({ id, x, y }) => {
+      const key = Object.keys(globalThis.localStorage).find((item) =>
+        item.startsWith('archwise:sandbox:1:'),
+      );
+      if (!key) return false;
+      const doc = JSON.parse(globalThis.localStorage.getItem(key));
+      const node = doc.nodes.find((item) => item.id === id);
+      return node && (node.x !== x || node.y !== y);
+    },
+    { id: appId, x: previousApp.x, y: previousApp.y },
+    { timeout: 8000 },
+  );
+  const moved = await savedDocument();
+  const movedApp = moved.nodes.find((node) => node.id === appId);
+  assert(movedApp && previousApp, 'App Server must remain in the saved document');
+  assert(
+    movedApp.x !== previousApp.x || movedApp.y !== previousApp.y,
+    'Dragging a node should persist its new canvas position.',
+  );
+
+  // The actual browser download and file import must round-trip without a server.
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export JSON' }).click();
+  const download = await downloadPromise;
+  const exportedText = await readFile(await download.path(), 'utf8');
+  const exported = JSON.parse(exportedText);
+  assert.equal(exported.format, 'archwise-sandbox');
+  assert.equal(exported.nodes.length, 3);
+  assert.equal(exported.connections.length, 2);
+
+  await page.getByRole('button', { name: 'Clear canvas' }).click();
+  await page.waitForFunction(
+    () => globalThis.document.querySelectorAll('.svelte-flow__node').length === 0,
+  );
+  await page.locator('#sandbox-import').setInputFiles({
+    name: 'archwise-sandbox-v1.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(exportedText),
+  });
+  await page.waitForFunction(
+    () => globalThis.document.querySelectorAll('.svelte-flow__node').length === 3,
+  );
+  await page.waitForFunction(
+    () => globalThis.document.querySelectorAll('.svelte-flow__edge').length === 2,
+  );
+  const imported = await savedDocument();
+  assert.equal(imported.connections.length, 2);
+  assert(imported.nodes.some((node) => node.label === 'SQL Primary'));
+  assert.equal(imported.draft.replicas[appNodeId], 3);
+  assert(imported.draft.savedA && imported.draft.savedB);
+
+  assert.deepEqual(errors, [], 'Browser runtime errors must not occur');
+  console.log(
+    'Browser smoke passed: components, handles, edge intent, replica scaling, A/B, drag positions, JSON export/import and reload.',
+  );
+} finally {
+  await browser?.close();
+  runner.kill('SIGTERM');
+}

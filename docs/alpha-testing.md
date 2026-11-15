@@ -1,0 +1,69 @@
+# Archwise Alpha — Local test guide
+
+> **Development preview:** this is a feature branch, not a published npm release. The core is local-first and works without a cloud login or external AI account. Please do not report this branch as a stable public release.
+
+## Prerequisites
+
+- Node.js 24 or 26 (Node.js 26 recommended).
+- pnpm 10.34.9, via Corepack or another trusted package manager.
+- A local Node.js/TypeScript project containing one or more `package.json` files.
+- Linux, macOS or Windows with a modern browser.
+
+## Test Architecture Studio
+
+```bash
+git clone --branch feat/svelte-flow-migration https://github.com/andrecoliveira/archwise.git
+cd archwise
+corepack enable
+pnpm install --frozen-lockfile --ignore-scripts
+pnpm check
+node apps/cli/dist/bin.js --serve --path /absolute/path/to/your/project
+```
+
+On Windows, use the equivalent absolute path, e.g. `C:\\work\\example`, and run the commands in a terminal where Node and pnpm are available.
+
+The CLI starts a server bound to `127.0.0.1` on an available port. If the browser does not open automatically, copy the **Local session URL** printed in the terminal into the browser. The URL includes a sensitive one-time local session capability: do not share it.
+
+## Inspect the graph using the CLI
+
+```bash
+node apps/cli/dist/bin.js --path /absolute/path/to/your/project --graph
+```
+
+Use `--json` for the inventory instead of the graph, or `--serve --no-open` to avoid automatic browser launch.
+
+## What to verify
+
+1. The browser opens to the Architecture Studio with discovered packages and their declared internal dependencies.
+2. Selecting a component shows the relative-path manifest evidence in the inspector.
+3. The search filter narrows visible packages and edges.
+4. Zoom, pan and automatic layout work on the Svelte Flow canvas.
+5. Switching to Sandbox permits proposed nodes and connections, visibly distinct from discovered items.
+6. Switching back to Explore shows the source-backed graph without the proposed items.
+7. In Sandbox, build a proposed topology, then set hypothetical load, capacity, cache-hit ratios and simulated failure in the Simulation panel. Check the displayed assumptions and results.
+8. Confirm that connections involving discovered packages are excluded from the simulation and a cyclic proposed topology reports a validation error.
+9. Save the current hypothetical simulation as scenario A, modify the Sandbox topology and inputs, then save scenario B. Compare modeled output, bottlenecks and per-node differences. Replace B to compare another design.
+10. Verify that A/B snapshots survive switching to Explore and back **and persist after page reload** in the same browser.
+11. Export the Sandbox as versioned JSON; reset it; import the JSON and verify your components, parameters, and A/B snapshots are restored. Invalid files must not replace the current design.
+12. The Architecture Coach panel shows offline contextual questions.
+13. Stop the local server with Ctrl+C. No project files should have been modified.
+
+## Current limits and safety
+
+- Discovery currently covers Node package manifests and explicitly declared dependencies between uniquely identified local packages. It does **not** infer a live runtime system, traffic flows, databases or deployed infrastructure.
+- Sandbox topology, simulation inputs and saved A/B snapshots are automatically persisted in browser localStorage, scoped to a deterministic discovered-graph signature. The offline Coach question index is not persisted. See [Sandbox persistence](sandbox-persistence.md) and [Scenario comparison](scenario-comparison.md).
+- A deterministic Sandbox simulation is available, but it **does not measure production traffic**. It assumes a single entry node, evenly split routing across proposed links, a DAG topology, no retries and modeled capacity drops. See [Simulation assumptions](simulation.md).
+- There is no npm-published `npx archwise` package yet; use the compiled CLI.
+- The current build includes ELK and Svelte Flow and is not yet bundle-size optimized.
+- Default analysis reads project files; it never executes scripts from the inspected repository. No cloud account or remote AI is required.
+- Browser access requires a one-time local session URL; do not share the URL or browser session cookie.
+
+## Verified automated checks
+
+The feature branch passed the full `pnpm check` matrix on Linux, macOS and Windows using Node 24 and Node 26, including an authenticated HTTP smoke test of discovery → graph → server → compiled Studio assets. The new deterministic simulation increment has also passed `pnpm check` on Ubuntu/Node 26; its cross-platform matrix is being validated separately. **Visual interaction in a real browser and OS-specific browser launch still require manual verification.**
+
+See [PR #6](https://github.com/andrecoliveira/archwise/pull/6) for code review and [GitHub Actions](https://github.com/andrecoliveira/archwise/actions) for current CI status.
+
+## Feedback
+
+When testing, note the OS and Node version, the number of detected packages, any errors/diagnostics, and whether the original source files remained unchanged. Never share repository secrets, local session URLs, or sensitive source files in public bug reports.

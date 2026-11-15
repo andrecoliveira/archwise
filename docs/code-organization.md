@@ -5,7 +5,7 @@ archwise/
 ├── apps/
 │   ├── cli/                    # command parsing, lifecycle, browser launch
 │   ├── server/                 # loopback API and streaming transport
-│   └── web/                    # React + React Flow browser workspace
+│   └── web/                    # Svelte + Svelte Flow browser workspace
 ├── packages/
 │   ├── domain/                 # graph, evidence, sandbox, scenario contracts
 │   ├── application/            # use cases and policy enforcement
@@ -30,7 +30,7 @@ archwise/
 - `domain` is pure TypeScript and has no runtime framework, filesystem, database, UI, or provider dependencies.
 - `application` depends on domain contracts and ports, not concrete adapters.
 - Discovery packages emit normalized evidence; they do not construct UI nodes.
-- Graph projections and layouts are derived and replaceable; canonical data does not contain React Flow coordinates except saved user layout preferences.
+- Graph projections and layouts are derived and replaceable; canonical data does not contain canvas coordinates except saved user layout preferences.
 - `simulator` consumes domain graphs and scenarios without importing AI code.
 - `ai-core` consumes curated context DTOs, never filesystem handles or database connections.
 - Apps compose dependencies and own transport/framework concerns.
