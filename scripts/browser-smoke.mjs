@@ -37,7 +37,10 @@ try {
       }),
     ),
   ]);
-  browser = await chromium.launch({ headless: true });
+  browser = await chromium.launch({
+    headless: true,
+    ...(process.env.ARCHWISE_BROWSER_CHANNEL ? { channel: process.env.ARCHWISE_BROWSER_CHANNEL } : {}),
+  });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
