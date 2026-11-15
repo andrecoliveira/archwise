@@ -145,10 +145,10 @@ function snapshot(value: unknown, slot: 'A' | 'B'): ScenarioSnapshot | null {
       id: item.id as string,
       label: item.label,
       kind: item.kind as SimulatedKind,
-      capacityRps: item.capacityRps as number,
-      baseLatencyMs: item.baseLatencyMs as number,
-      ...(item.cacheHitRate === undefined ? {} : { cacheHitRate: item.cacheHitRate as number }),
-      ...(item.failed === undefined ? {} : { failed: item.failed as boolean }),
+      capacityRps: item.capacityRps,
+      baseLatencyMs: item.baseLatencyMs,
+      ...(item.cacheHitRate === undefined ? {} : { cacheHitRate: item.cacheHitRate }),
+      ...(item.failed === undefined ? {} : { failed: item.failed }),
     };
   });
   const connections = scenario.connections.map((item: unknown) => {
