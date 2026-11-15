@@ -615,3 +615,114 @@ li {
     display: none;
   }
 }
+
+/* Custom architecture cards: visible, labeled connection ports and concise status. */
+.archwise-node {
+  position: relative;
+  min-width: 192px;
+  max-width: 224px;
+  background: #12243c;
+  color: #e8f1ff;
+  border: 1px solid #355574;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px #02081740;
+  overflow: visible;
+}
+.archwise-node.chosen { outline: 2px solid #38bdf8; outline-offset: 2px; }
+.archwise-node.critical { border-color: #fb923c; }
+.archwise-node.warning { border-color: #facc15; }
+.archwise-node-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 12px;
+  min-width: 0;
+}
+.archwise-node-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: #183d5e;
+  color: #7dd3fc;
+  font-size: 21px;
+}
+.archwise-node-title { display: flex; flex-direction: column; min-width: 0; gap: 3px; }
+.archwise-node-title strong {
+  max-width: 160px;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+.archwise-node-title small { font-size: 10px; color: #94a8c1; }
+.archwise-node-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: #0d1b30;
+  border-radius: 0 0 11px 11px;
+  border-top: 1px solid #30445e;
+  font-size: 10px;
+}
+.archwise-node-state { color: #a8c3df; max-width: 144px; }
+.archwise-node.critical .archwise-node-state { color: #fdba74; }
+.archwise-node-kind { color: #87a6c9; font-size: 9px; text-transform: uppercase; }
+.archwise-handle.svelte-flow__handle {
+  width: 14px;
+  height: 14px;
+  border: 3px solid #e2e8f0;
+  background: #38bdf8;
+  border-radius: 50%;
+  z-index: 6;
+}
+.archwise-handle-in.svelte-flow__handle { left: -8px; }
+.archwise-handle-out.svelte-flow__handle { right: -8px; background: #34d399; }
+.archwise-handle.svelte-flow__handle:hover { width: 18px; height: 18px; }
+.floating-inspector {
+  position: absolute;
+  z-index: 12;
+  top: 14px;
+  right: 14px;
+  width: min(288px, 42%);
+  max-height: calc(100% - 28px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid #44617e;
+  border-radius: 12px;
+  background: #111e32f5;
+  box-shadow: 0 10px 34px #0008;
+  backdrop-filter: blur(8px);
+}
+.floating-inspector-heading { display: flex; align-items: start; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.floating-inspector-heading div { display: flex; flex-direction: column; gap: 4px; }
+.floating-inspector-heading strong { font-size: 13px; }
+.floating-inspector-heading small { font-size: 10px; color: #9cb1c9; }
+.floating-inspector-heading button { padding: 2px 7px; }
+.floating-inspector label { font-size: 11px; color: #aec4dd; }
+.floating-inspector input[type='number'], .floating-inspector input[type='text'], .floating-inspector input:not([type]) {
+  width: 100%;
+  padding: 7px 9px;
+}
+.inspector-toggle { display: flex; align-items: center; gap: 8px; }
+.inspector-toggle input { width: auto; }
+.inspector-model-note {
+  padding: 8px;
+  margin: 0;
+  background: #182c43;
+  border-radius: 7px;
+  font-size: 11px;
+  color: #bfd1e6;
+}
+.inspector-remove { border-color: #945a50; color: #fed7aa; margin-top: 4px; }
+.studio > main:has(.studio-sidebar) { min-height: 0; }
+@media (max-width: 850px) {
+  .floating-inspector { width: min(250px, 55%); padding: 10px; }
+}
