@@ -18,7 +18,8 @@
 </script>
 
 <div class:chosen={selected} class:critical={active} class:warning={status === 'near-capacity'} class="archwise-node">
-  <Handle type="target" position={Position.Left} class="archwise-handle archwise-handle-in" />
+  <Handle type="target" position={Position.Left} class="archwise-handle archwise-handle-in"
+    aria-label="Input port — click to complete a connection" title="Input: click after choosing an output" />
   <div class="archwise-node-head">
     <span class="archwise-node-icon" aria-hidden="true">{symbol}</span>
     <div class="archwise-node-title">
@@ -38,5 +39,6 @@
     {/if}
     <span class="archwise-node-kind">{kind}</span>
   </div>
-  <Handle type="source" position={Position.Right} class="archwise-handle archwise-handle-out" />
+  <Handle type="source" position={Position.Right} class="archwise-handle archwise-handle-out"
+    aria-label="Output port — click to start a connection" title="Output: click then click an input" />
 </div>
