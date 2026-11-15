@@ -26,7 +26,14 @@ test('applies cache hits locally and does not invent production metrics', () => 
     entryNodeId: 'sandbox-cache',
     incomingRps: 100,
     components: [
-      { id: 'sandbox-cache', label: 'Cache', kind: 'cache', capacityRps: 120, baseLatencyMs: 3, cacheHitRate: 0.8 },
+      {
+        id: 'sandbox-cache',
+        label: 'Cache',
+        kind: 'cache',
+        capacityRps: 120,
+        baseLatencyMs: 3,
+        cacheHitRate: 0.8,
+      },
       { id: 'sandbox-db', label: 'Database', kind: 'database', capacityRps: 40, baseLatencyMs: 20 },
     ],
     connections: [{ source: 'sandbox-cache', target: 'sandbox-db' }],
@@ -50,32 +57,52 @@ test('failure reduces delivered load without mutating model inputs', () => {
 });
 
 test('is deterministic regardless of component or connection input order', () => {
-  expect(simulateSandbox(scenario)).toEqual(simulateSandbox({
-    ...scenario,
-    components: [...scenario.components].reverse(),
-    connections: [...scenario.connections].reverse(),
-  }));
+  expect(simulateSandbox(scenario)).toEqual(
+    simulateSandbox({
+      ...scenario,
+      components: [...scenario.components].reverse(),
+      connections: [...scenario.connections].reverse(),
+    }),
+  );
 });
 
 test('rejects discovered nodes, cyclic topology, duplicates and invalid numeric inputs', () => {
   expect(() => simulateSandbox({ ...scenario, incomingRps: Number.NaN })).toThrow('finite number');
-  expect(() => simulateSandbox({
-    ...scenario,
-    components: [{ id: 'package:package.json', label: 'Discovered', kind: 'service', capacityRps: 100, baseLatencyMs: 10 }],
-  })).toThrow('Only explicitly proposed');
-  expect(() => simulateSandbox({
-    ...scenario,
-    connections: [
-      { source: 'sandbox-api', target: 'sandbox-db' },
-      { source: 'sandbox-db', target: 'sandbox-api' },
-    ],
-  })).toThrow('acyclic');
-  expect(() => simulateSandbox({
-    ...scenario, connections: [...scenario.connections, ...scenario.connections],
-  })).toThrow('Duplicate');
-  expect(() => simulateSandbox({
-    ...scenario, connections: [{ source: 'package:web', target: 'sandbox-db' }],
-  })).toThrow('proposed components');
+  expect(() =>
+    simulateSandbox({
+      ...scenario,
+      components: [
+        {
+          id: 'package:package.json',
+          label: 'Discovered',
+          kind: 'service',
+          capacityRps: 100,
+          baseLatencyMs: 10,
+        },
+      ],
+    }),
+  ).toThrow('Only explicitly proposed');
+  expect(() =>
+    simulateSandbox({
+      ...scenario,
+      connections: [
+        { source: 'sandbox-api', target: 'sandbox-db' },
+        { source: 'sandbox-db', target: 'sandbox-api' },
+      ],
+    }),
+  ).toThrow('acyclic');
+  expect(() =>
+    simulateSandbox({
+      ...scenario,
+      connections: [...scenario.connections, ...scenario.connections],
+    }),
+  ).toThrow('Duplicate');
+  expect(() =>
+    simulateSandbox({
+      ...scenario,
+      connections: [{ source: 'package:web', target: 'sandbox-db' }],
+    }),
+  ).toThrow('proposed components');
 });
 
 test('distributes traffic across branches without counting fan-out as duplicated client requests', () => {

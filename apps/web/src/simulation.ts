@@ -106,7 +106,11 @@ export function simulateSandbox(scenario: SimulationScenario): SimulationReport 
   }
   const seenEdges = new Set<string>();
   for (const link of scenario.connections) {
-    if (!components.has(link.source) || !components.has(link.target) || link.source === link.target) {
+    if (
+      !components.has(link.source) ||
+      !components.has(link.target) ||
+      link.source === link.target
+    ) {
       throw new Error('Every simulated connection must link two different proposed components.');
     }
     const key = JSON.stringify([link.source, link.target]);
