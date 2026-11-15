@@ -35,3 +35,9 @@ Status: **draft; implementation package prepared locally, not yet merged**.
 
 ## Validation caveat
 A cumulative implementation ZIP was prepared in the development conversation, but the dependent packages were unavailable for full installation and E2E verification. This GitHub branch initially contains **only this integration plan**, not the implementation ZIP. Do not merge until the code is published and checked.
+
+## Progress update — 2026-11-15
+
+The feature branch now includes a read-only Node manifest inventory, evidence-backed declared-package graph, CLI `--graph`, a protected loopback HTTP graph endpoint (`--serve`), and an initial Svelte 5/Svelte Flow inspector with an isolated in-memory Sandbox. The pnpm lockfile was refreshed by CI. The browser bundle and full cross-platform pipeline are **not yet verified**; this remains a draft PR. The long-term repository analyzers, persisted graph revisions, simulation UI and coaching are not yet integrated into this branch. Static project inspection is deliberately limited to package manifests and declared internal dependencies.
+
+Next gates: green format, build, lint, typecheck and test; browser integration and session/origin regression tests; then simulator and deterministic coach as independent increments. Do not merge the draft until these are green.
