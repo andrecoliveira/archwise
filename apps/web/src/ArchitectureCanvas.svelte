@@ -3,6 +3,7 @@
   import '@xyflow/svelte/dist/style.css';
   import { onMount, untrack } from 'svelte';
   import { layoutNodes } from './graph-layout.js';
+  import { getCanvasFeedback } from './canvas-feedback.js';
   import SimulationPanel from './SimulationPanel.svelte';
   import {
     defaultSimulationDraft,
@@ -36,6 +37,7 @@
   let newLabel = $state('');
   let selectedEdgeId = $state<string | null>(null);
   let connectionNotice = $state('');
+  let selectedNodeInsight = $state('');
   let proposedNodes: Node[] = $state.raw([]);
   let proposedEdges: Edge[] = $state.raw([]);
   let nodes: Node[] = $state.raw([]);
@@ -175,6 +177,40 @@
     }
   });
 
+  const visualFeedback = $derived.by(() => {
+    if (proposedNodes.length === 0) return new Map<string, { label: string; status: string; detail: string }>();
+    const ids = new Set(proposedNodes.map((node) => node.id));
+    const components = proposedNodes.map((node) => {
+      const kind = (node.data.kind ?? 'service') as SimulatedKind;
+      return {
+        id: node.id,
+        label: String(node.data.label ?? node.id),
+        kind,
+        capacityRps: draft.capacities[node.id] ?? 100,
+        baseLatencyMs: draft.latencies[node.id] ?? 20,
+        ...(kind === 'cache' ? { cacheHitRate: draft.hitRates[node.id] ?? 0.5 } : {}),
+        failed: draft.failed[node.id] === true,
+      };
+    });
+    const connections = proposedEdges
+      .filter((edge) => ids.has(edge.source) && ids.has(edge.target))
+      .map((edge) => ({ source: edge.source, target: edge.target }));
+    const entryNodeId =
+      draft.preferredEntryId && ids.has(draft.preferredEntryId)
+        ? draft.preferredEntryId
+        : proposedNodes[0]!.id;
+    try {
+      return new Map(getCanvasFeedback(components, connections, entryNodeId, draft.inputRps).map((item) => [item.id, item]));
+    } catch {
+      return new Map<string, { label: string; status: string; detail: string }>();
+    }
+  });
+
+  $effect(() => {
+    const selected = selectedId ? visualFeedback.get(selectedId) : undefined;
+    selectedNodeInsight = selected?.detail ?? '';
+  });
+
   $effect(() => {
     const nonce = layoutNonce;
     const discoveredNodes: Node[] = graph.nodes
@@ -197,7 +233,18 @@
         type: 'smoothstep',
         data: { origin: 'discovered' },
       }));
-    const current = mode === 'sandbox' ? [...discoveredNodes, ...proposedNodes] : discoveredNodes;
+    const decoratedProposed = proposedNodes.map((node) => {
+      const feedback = visualFeedback.get(node.id);
+      const color = feedback?.status === 'bottleneck' || feedback?.status === 'failed'
+        ? '#fb923c'
+        : feedback?.status === 'near-capacity' ? '#facc15' : '#14b8a6';
+      return {
+        ...node,
+        data: { ...node.data, label: feedback?.label ?? node.data.label },
+        style: `border:2px dashed ${color};background:#0e3233;color:white;border-radius:8px;max-width:260px;`,
+      };
+    });
+    const current = mode === 'sandbox' ? [...discoveredNodes, ...decoratedProposed] : discoveredNodes;
     const links = mode === 'sandbox' ? [...discoveredEdges, ...proposedEdges] : discoveredEdges;
     const previous = new Map(untrack(() => nodes).map((item) => [item.id, item.position]));
     const positioned = current.map((item) => ({
@@ -354,6 +401,11 @@
   </section>
 {/if}
 {#if connectionNotice}<div class="persistence-status" role="status">{connectionNotice}</div>{/if}
+{#if mode === 'sandbox' && selectedNodeInsight}
+  <div class="persistence-status" role="status">
+    <strong>Modeled component insight:</strong> {selectedNodeInsight}
+  </div>
+{/if}
 <!-- Keep the panel mounted while Explore is active so A/B snapshots are retained in memory. -->
 <div hidden={mode !== 'sandbox'}>
   <SimulationPanel {proposedNodes} {proposedEdges} bind:draft />
