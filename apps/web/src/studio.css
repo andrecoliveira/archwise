@@ -304,3 +304,23 @@ li {
   color: #e6edf7;
   padding: 6px;
 }
+
+.connection-inspector {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 16px;
+  border-block: 1px solid #42506b;
+  background: #14233a;
+  font-size: 12px;
+}
+.connection-inspector select {
+  padding: 7px;
+  background: #172238;
+  color: #e6edf7;
+  border: 1px solid #64748b;
+  border-radius: 6px;
+}
+.connection-inspector p { color: #fdba74; width: 100%; margin: 0; }
+.connection-inspector small { color: #a3b4cf; width: 100%; }
