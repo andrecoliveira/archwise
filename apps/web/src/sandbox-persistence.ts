@@ -57,7 +57,9 @@ export function defaultSimulationDraft(): SimulationDraft {
 /** A stable project-scoped identifier, not a cryptographic security fingerprint. */
 export function projectSignature(graph: Graph): string {
   const text = JSON.stringify({
-    nodes: graph.nodes.map((node) => [node.id, node.evidence.map((item) => item.path).sort()]).sort(),
+    nodes: graph.nodes
+      .map((node) => [node.id, node.evidence.map((item) => item.path).sort()])
+      .sort(),
     edges: graph.edges.map((edge) => edge.id).sort(),
   });
   let hash = 2166136261;
@@ -126,13 +128,17 @@ function snapshot(value: unknown, slot: 'A' | 'B'): ScenarioSnapshot | null {
   }
   // Reject unknown object shapes before passing them to the deterministic engine.
   const components = scenario.components.map((item: unknown) => {
-    if (!record(item) || !ID_PATTERN.test(String(item.id)) ||
-      typeof item.label !== 'string' || item.label.length > 80 ||
+    if (
+      !record(item) ||
+      !ID_PATTERN.test(String(item.id)) ||
+      typeof item.label !== 'string' ||
+      item.label.length > 80 ||
       !KINDS.has(String(item.kind)) ||
       !numberBetween(item.capacityRps, 0, MAX_RPS) ||
       !numberBetween(item.baseLatencyMs, 0, MAX_LATENCY) ||
       (item.cacheHitRate !== undefined && !numberBetween(item.cacheHitRate, 0, 1)) ||
-      (item.failed !== undefined && typeof item.failed !== 'boolean')) {
+      (item.failed !== undefined && typeof item.failed !== 'boolean')
+    ) {
       throw new Error(`Invalid scenario ${slot} component.`);
     }
     return {
@@ -178,26 +184,47 @@ export function parseSandboxDocument(text: string, signature: string): SandboxDo
   if (input.projectSignature !== signature) {
     throw new Error('Sandbox belongs to a different discovered project.');
   }
-  if (!Array.isArray(input.nodes) || input.nodes.length > 100 ||
-      !Array.isArray(input.connections) || input.connections.length > 300) {
+  if (
+    !Array.isArray(input.nodes) ||
+    input.nodes.length > 100 ||
+    !Array.isArray(input.connections) ||
+    input.connections.length > 300
+  ) {
     throw new Error('Sandbox topology exceeds the supported limits.');
   }
   const nodes: SandboxNode[] = input.nodes.map((item: unknown) => {
-    if (!record(item) || typeof item.id !== 'string' || !ID_PATTERN.test(item.id) ||
-        typeof item.label !== 'string' || item.label.length > 80 ||
-        !KINDS.has(String(item.kind)) ||
-        !numberBetween(item.x, -1_000_000, 1_000_000) ||
-        !numberBetween(item.y, -1_000_000, 1_000_000)) {
+    if (
+      !record(item) ||
+      typeof item.id !== 'string' ||
+      !ID_PATTERN.test(item.id) ||
+      typeof item.label !== 'string' ||
+      item.label.length > 80 ||
+      !KINDS.has(String(item.kind)) ||
+      !numberBetween(item.x, -1_000_000, 1_000_000) ||
+      !numberBetween(item.y, -1_000_000, 1_000_000)
+    ) {
       throw new Error('Invalid proposed node in Sandbox file.');
     }
-    return { id: item.id, label: item.label, kind: item.kind as SimulatedKind, x: item.x, y: item.y };
+    return {
+      id: item.id,
+      label: item.label,
+      kind: item.kind as SimulatedKind,
+      x: item.x,
+      y: item.y,
+    };
   });
   const ids = new Set(nodes.map((node) => node.id));
   if (ids.size !== nodes.length) throw new Error('Duplicate proposed nodes.');
   const seenLinks = new Set<string>();
   const connections: SandboxLink[] = input.connections.map((item: unknown) => {
-    if (!record(item) || typeof item.source !== 'string' || typeof item.target !== 'string' ||
-        !ids.has(item.source) || !ids.has(item.target) || item.source === item.target) {
+    if (
+      !record(item) ||
+      typeof item.source !== 'string' ||
+      typeof item.target !== 'string' ||
+      !ids.has(item.source) ||
+      !ids.has(item.target) ||
+      item.source === item.target
+    ) {
       throw new Error('Invalid proposed connection.');
     }
     const key = JSON.stringify([item.source, item.target]);
@@ -205,9 +232,12 @@ export function parseSandboxDocument(text: string, signature: string): SandboxDo
     seenLinks.add(key);
     return { source: item.source, target: item.target };
   });
-  if (!record(input.draft) || !numberBetween(input.draft.inputRps, 0, MAX_RPS) ||
-      typeof input.draft.preferredEntryId !== 'string' ||
-      (input.draft.preferredEntryId !== '' && !ids.has(input.draft.preferredEntryId))) {
+  if (
+    !record(input.draft) ||
+    !numberBetween(input.draft.inputRps, 0, MAX_RPS) ||
+    typeof input.draft.preferredEntryId !== 'string' ||
+    (input.draft.preferredEntryId !== '' && !ids.has(input.draft.preferredEntryId))
+  ) {
     throw new Error('Invalid simulation input settings.');
   }
   const draft: SimulationDraft = {
@@ -239,9 +269,20 @@ export function parseSandboxDocument(text: string, signature: string): SandboxDo
   } else if (connections.length > 0) {
     throw new Error('Connections require proposed nodes.');
   }
-  return { format: 'archwise-sandbox', version: 1, projectSignature: signature, nodes, connections, draft };
+  return {
+    format: 'archwise-sandbox',
+    version: 1,
+    projectSignature: signature,
+    nodes,
+    connections,
+    draft,
+  };
 }
 
 export function serializeSandboxDocument(document: SandboxDocument): string {
-  return JSON.stringify(parseSandboxDocument(JSON.stringify(document), document.projectSignature), null, 2);
+  return JSON.stringify(
+    parseSandboxDocument(JSON.stringify(document), document.projectSignature),
+    null,
+    2,
+  );
 }

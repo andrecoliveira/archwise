@@ -47,7 +47,13 @@ function example(): SandboxDocument {
         incomingRps: 200,
         entryNodeId: 'sandbox-1',
         components: [
-          { id: 'sandbox-1', kind: 'service', label: 'Web API', capacityRps: 300, baseLatencyMs: 20 },
+          {
+            id: 'sandbox-1',
+            kind: 'service',
+            label: 'Web API',
+            capacityRps: 300,
+            baseLatencyMs: 20,
+          },
         ],
         connections: [],
       }),
@@ -68,16 +74,20 @@ test('keeps local storage isolated across discovered projects', () => {
     nodes: [{ ...graph.nodes[0]!, id: 'package:other/package.json' }],
   };
   const signature = projectSignature(graph);
-  expect(workspaceStorageKey(signature)).not.toBe(workspaceStorageKey(projectSignature(alternative)));
-  expect(() => parseSandboxDocument(serializeSandboxDocument(example()), projectSignature(alternative)))
-    .toThrow('different discovered project');
+  expect(workspaceStorageKey(signature)).not.toBe(
+    workspaceStorageKey(projectSignature(alternative)),
+  );
+  expect(() =>
+    parseSandboxDocument(serializeSandboxDocument(example()), projectSignature(alternative)),
+  ).toThrow('different discovered project');
 });
 
 test('rejects invalid JSON, unsupported versions and oversized imports', () => {
   const signature = projectSignature(graph);
   expect(() => parseSandboxDocument('{', signature)).toThrow('not valid JSON');
-  expect(() => parseSandboxDocument(JSON.stringify({ ...example(), version: 3 }), signature))
-    .toThrow('Unsupported');
+  expect(() =>
+    parseSandboxDocument(JSON.stringify({ ...example(), version: 3 }), signature),
+  ).toThrow('Unsupported');
   expect(() => parseSandboxDocument(' '.repeat(256 * 1024 + 1), signature)).toThrow('256 KiB');
 });
 
@@ -87,10 +97,22 @@ test('rejects malicious or invalid nodes and edges without restoration', () => {
     { ...example(), nodes: [{ ...example().nodes[0], id: 'package:source' }] },
     { ...example(), nodes: [example().nodes[0], example().nodes[0]] },
     { ...example(), connections: [{ source: 'sandbox-1', target: 'package:source' }] },
-    { ...example(), connections: [{ source: 'sandbox-1', target: 'sandbox-2' }, { source: 'sandbox-1', target: 'sandbox-2' }] },
+    {
+      ...example(),
+      connections: [
+        { source: 'sandbox-1', target: 'sandbox-2' },
+        { source: 'sandbox-1', target: 'sandbox-2' },
+      ],
+    },
     { ...example(), nodes: [{ ...example().nodes[0], x: Number.POSITIVE_INFINITY }] },
     { ...example(), draft: { ...example().draft, capacities: { 'sandbox-1': -1 } } },
-    { ...example(), draft: { ...example().draft, savedA: { version: 1, slot: 'A', scenario: { incomingRps: -1 } } } },
+    {
+      ...example(),
+      draft: {
+        ...example().draft,
+        savedA: { version: 1, slot: 'A', scenario: { incomingRps: -1 } },
+      },
+    },
   ];
   for (const value of invalids) {
     expect(() => parseSandboxDocument(JSON.stringify(value), signature)).toThrow();
@@ -105,8 +127,9 @@ test('rejects cycles and invalid numeric model configuration', () => {
       { source: 'sandbox-2', target: 'sandbox-1' },
     ],
   };
-  expect(() => parseSandboxDocument(JSON.stringify(value), projectSignature(graph)))
-    .toThrow('acyclic');
+  expect(() => parseSandboxDocument(JSON.stringify(value), projectSignature(graph))).toThrow(
+    'acyclic',
+  );
   const invalid = {
     ...example(),
     draft: { ...example().draft, inputRps: Number.NaN },
@@ -125,6 +148,7 @@ test('permits an empty Sandbox and preserves historical A/B snapshots', () => {
       savedA: workspace.draft.savedA,
     },
   };
-  expect(parseSandboxDocument(JSON.stringify(empty), projectSignature(graph)).draft.savedA)
-    .toEqual(workspace.draft.savedA);
+  expect(parseSandboxDocument(JSON.stringify(empty), projectSignature(graph)).draft.savedA).toEqual(
+    workspace.draft.savedA,
+  );
 });
