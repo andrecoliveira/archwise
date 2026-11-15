@@ -332,7 +332,7 @@
     ];
     selectedId = id;
     selectedEdgeId = null;
-    connectionNotice = `${item.name} added. Add another component and drag between their handles to connect them.`;
+    connectionNotice = `${item.name} added. Add another component, then click its output port and the next component’s input port to connect.`;
   }
 
   $effect(() => {
@@ -478,7 +478,7 @@
     <div class="canvas-empty-state" role="status">
       <strong>Your canvas is ready</strong>
       <p>Choose a component from the left sidebar to start designing.</p>
-      <p>Next, add another and drag between the connection handles to link them.</p>
+      <p>Then click the green output port followed by the blue input port to connect them.</p>
     </div>
   {/if}
   <SvelteFlow
