@@ -1,4 +1,5 @@
 import type { Graph } from './graph-types.js';
+import { findCatalogComponent } from './component-catalog.js';
 import { isConnectionIntent, type ConnectionIntent } from './connection-intents.js';
 import { captureScenario, type ScenarioSnapshot } from './scenario-comparison.js';
 import { simulateSandbox, type SimulatedKind } from './simulation.js';
@@ -7,6 +8,8 @@ export type SandboxNode = Readonly<{
   id: string;
   label: string;
   kind: SimulatedKind;
+  /** Optional preset ID; absent in JSON exported before custom nodes. */
+  preset?: string;
   x: number;
   y: number;
 }>;
@@ -203,6 +206,9 @@ export function parseSandboxDocument(text: string, signature: string): SandboxDo
       typeof item.label !== 'string' ||
       item.label.length > 80 ||
       !KINDS.has(String(item.kind)) ||
+      (item.preset !== undefined &&
+        (typeof item.preset !== 'string' ||
+          findCatalogComponent(item.preset)?.kind !== item.kind)) ||
       !numberBetween(item.x, -1_000_000, 1_000_000) ||
       !numberBetween(item.y, -1_000_000, 1_000_000)
     ) {
@@ -212,6 +218,7 @@ export function parseSandboxDocument(text: string, signature: string): SandboxDo
       id: item.id,
       label: item.label,
       kind: item.kind as SimulatedKind,
+      ...(item.preset === undefined ? {} : { preset: item.preset as string }),
       x: item.x,
       y: item.y,
     };
