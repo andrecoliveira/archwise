@@ -31,6 +31,14 @@ Remote transmission is deny-by-default. Enabling a provider does not enable sour
 - Generate SBOMs and signed checksums for releases; adopt artifact provenance as the release pipeline matures.
 - Require review for changes to parsers, provider boundaries, persistence migrations, export formats, and local-server security.
 
+## Accepted dependency risks
+
+Each accepted advisory has a rationale, an owner and an exit condition. CI fails on moderate or higher audit findings, and dependency review blocks pull requests that introduce them.
+
+| Advisory | Package and path | Severity | Rationale | Exit condition | Owner |
+|---|---|---|---|---|---|
+| [GHSA-gcqx-w48m-w2h4](https://github.com/advisories/GHSA-gcqx-w48m-w2h4) | `deepmerge` 4.3.1, via `@sveltejs/vite-plugin-svelte` (web devDependency) | Low | Build-time only. The plugin merges its own configuration, never untrusted input, and the code is not shipped in the analyzed-repository path. No patched version exists (accepted 2026-11-15). | Upgrade when a patched `deepmerge` or a plugin release without it is available | Maintainer |
+
 ## Vulnerability response
 
 [`SECURITY.md`](../SECURITY.md) defines the private reporting channel (GitHub Private Vulnerability Reporting), supported versions, disclosure expectations and response targets. Security reports must not be filed as public issues when they contain exploit details or secrets.
