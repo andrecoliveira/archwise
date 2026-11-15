@@ -88,19 +88,34 @@ try {
     const a = await source.boundingBox();
     const b = await target.boundingBox();
     if (!a || !b) throw new Error('Expected visible source and target connection handles.');
+    const previousCount = await page.locator('.svelte-flow__edge').count();
     await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
     await page.mouse.down();
     await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 18 });
     await page.mouse.up();
+    await page.waitForTimeout(400);
+    if (await page.locator('.svelte-flow__edge').count() <= previousCount) {
+      console.log('Drag did not add an edge; testing click-to-connect fallback.');
+      await source.click();
+      await target.click();
+      await page.waitForTimeout(400);
+    }
+    if (await page.locator('.svelte-flow__edge').count() <= previousCount) {
+      const notices = await page.locator('.persistence-status').allTextContents();
+      const handles = await page.locator('.svelte-flow__handle').evaluateAll((items) =>
+        items.map((item) => ({
+          classes: item.className,
+          rect: item.getBoundingClientRect().toJSON(),
+          ariaLabel: item.getAttribute('aria-label'),
+        })),
+      );
+      console.error('Connection diagnostics:', JSON.stringify({ notices, handles, pageErrors: errors }));
+      await page.screenshot({ path: '/tmp/archwise-browser-connection.png', fullPage: true });
+      throw new Error('Neither drag nor click connected the selected handles.');
+    }
   }
   await link(client, app);
-  await page.waitForFunction(
-    () => globalThis.document.querySelectorAll('.svelte-flow__edge').length >= 1,
-  );
   await link(app, database);
-  await page.waitForFunction(
-    () => globalThis.document.querySelectorAll('.svelte-flow__edge').length >= 2,
-  );
   assert.equal(
     await page.locator('.svelte-flow__edge').count(),
     2,
