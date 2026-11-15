@@ -493,13 +493,12 @@
     nodesDraggable
     nodesConnectable={mode === 'sandbox'}
     elementsSelectable
-    connectionMode="strict"
     clickConnect
     deleteKey={null}
     minZoom={0.15}
     maxZoom={2}
     onnodeclick={({ node }) => { selectedId = node.id; selectedEdgeId = null; }}
-    onnodedragstop={({ node }) => rememberDragPosition(node)}
+    onnodedragstop={({ targetNode }) => { if (targetNode) rememberDragPosition(targetNode); }}
     onpaneclick={() => { selectedId = null; selectedEdgeId = null; connectionNotice = ''; }}
     onedgeclick={({ edge }) => { selectedId = null; selectedEdgeId = edge.data?.origin === "proposed" ? edge.id : null; }}
     onconnect={connect}
