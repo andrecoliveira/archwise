@@ -275,3 +275,30 @@ test('a long containment chain does not overflow the stack', () => {
   });
   expect(issues).toEqual([]);
 });
+
+describe('enum values from untyped callers are reported, never thrown', () => {
+  const bogus = 'bogus' as never;
+  test.each<[string, (r: MutableRevision) => void, (string | number)[]]>([
+    ['revision status', (r) => (r.status = bogus), ['status']],
+    ['coverage status', (r) => (r.coverage[0]!.status = bogus), ['coverage', 0, 'status']],
+    ['node kind', (r) => (r.nodes[0]!.kind = bogus), ['nodes', 0, 'kind']],
+    ['edge kind', (r) => (r.edges[0]!.kind = bogus), ['edges', 0, 'kind']],
+    [
+      'confidence level',
+      (r) => (r.nodes[0]!.confidence.level = bogus),
+      ['nodes', 0, 'confidence', 'level'],
+    ],
+    [
+      'diagnostic severity',
+      (r) => (r.diagnostics[0]!.severity = bogus),
+      ['diagnostics', 0, 'severity'],
+    ],
+    [
+      'diagnostic reference kind',
+      (r) => (r.diagnostics[0]!.references = [{ kind: bogus, id: 'mod-b' }]),
+      ['diagnostics', 0, 'references', 0, 'kind'],
+    ],
+  ])('%s', (_name, mutate, path) => {
+    expect(issuesOf(mutate)).toContainEqual({ code: 'invalid-value', path });
+  });
+});

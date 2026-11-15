@@ -12,7 +12,8 @@ const SECRET_PATTERNS: readonly RegExp[] = [
   /-----BEGIN [A-Z ]*PRIVATE KEY-----/,
   /gh[pousr]_[A-Za-z0-9]{36,}/,
   /xox[abprs]-[A-Za-z0-9-]{10,}/,
-  /sk-[A-Za-z0-9_-]{20,}/,
+  // Word boundary so ordinary words ending in "sk" (mask-, disk-) are not flagged.
+  /(?<![A-Za-z0-9])sk-[A-Za-z0-9_-]{20,}/,
   /eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\./,
 ];
 

@@ -1,4 +1,15 @@
-import { LIMITS, type Confidence, type GraphRevision } from './graph.js';
+import {
+  CONFIDENCE_LEVELS,
+  COVERAGE_STATUSES,
+  DIAGNOSTIC_REFERENCE_KINDS,
+  DIAGNOSTIC_SEVERITIES,
+  EDGE_KINDS,
+  LIMITS,
+  NODE_KINDS,
+  REVISION_STATUSES,
+  type Confidence,
+  type GraphRevision,
+} from './graph.js';
 import {
   checkRelativePath,
   containsSecretPattern,
@@ -15,6 +26,7 @@ export type ValidationErrorCode =
   | 'missing-evidence'
   | 'invalid-confidence'
   | 'invalid-code'
+  | 'invalid-value'
   | 'invalid-label'
   | 'invalid-timestamp'
   | 'invalid-line-range'
@@ -74,6 +86,13 @@ class IssueCollector {
     else if (containsSecretPattern(value)) this.add('secret-pattern', path);
   }
 
+  /** Enum membership, so untyped callers get an issue instead of an exception or silent acceptance. */
+  oneOf(value: string, allowed: readonly string[], path: IssuePath): boolean {
+    if (allowed.includes(value)) return true;
+    this.add('invalid-value', path);
+    return false;
+  }
+
   limit(length: number, max: number, path: IssuePath): void {
     if (length > max) this.add('limit-exceeded', path);
   }
@@ -106,6 +125,7 @@ class IssueCollector {
   }
 
   confidence(confidence: Confidence, path: IssuePath): void {
+    this.oneOf(confidence.level, CONFIDENCE_LEVELS, [...path, 'level']);
     const reasonsPath = [...path, 'reasons'];
     if (confidence.reasons.length === 0) this.add('invalid-confidence', reasonsPath);
     this.limit(confidence.reasons.length, LIMITS.references, reasonsPath);
@@ -126,6 +146,7 @@ export function validateRevision(revision: GraphRevision): readonly ValidationIs
       check.add('parent-is-self', ['parentRevisionId']);
   }
   if (!isValidTimestamp(revision.createdAt)) check.add('invalid-timestamp', ['createdAt']);
+  check.oneOf(revision.status, REVISION_STATUSES, ['status']);
 
   for (const name of [
     'repositories',
@@ -149,6 +170,7 @@ export function validateRevision(revision: GraphRevision): readonly ValidationIs
     check.reference(coverage.repositoryId, repositories, [...path, 'repositoryId']);
     check.id(coverage.analyzerId, [...path, 'analyzerId']);
     check.id(coverage.analyzerVersion, [...path, 'analyzerVersion']);
+    check.oneOf(coverage.status, COVERAGE_STATUSES, [...path, 'status']);
     const key = `${coverage.repositoryId}\u0000${coverage.analyzerId}\u0000${coverage.analyzerVersion}`;
     if (coverageKeys.has(key)) check.add('duplicate-coverage', path);
     coverageKeys.add(key);
@@ -186,6 +208,7 @@ export function validateRevision(revision: GraphRevision): readonly ValidationIs
   const nodes = check.uniqueIds(revision.nodes, 'nodes');
   revision.nodes.forEach((node, index) => {
     const path = ['nodes', index];
+    check.oneOf(node.kind, NODE_KINDS, [...path, 'kind']);
     check.label(node.label, [...path, 'label']);
     if (node.repositoryId !== null) {
       check.reference(node.repositoryId, repositories, [...path, 'repositoryId']);
@@ -197,6 +220,7 @@ export function validateRevision(revision: GraphRevision): readonly ValidationIs
   const edges = check.uniqueIds(revision.edges, 'edges');
   revision.edges.forEach((edge, index) => {
     const path = ['edges', index];
+    check.oneOf(edge.kind, EDGE_KINDS, [...path, 'kind']);
     check.reference(edge.sourceId, nodes, [...path, 'sourceId']);
     check.reference(edge.targetId, nodes, [...path, 'targetId']);
     check.confidence(edge.confidence, [...path, 'confidence']);
@@ -212,13 +236,16 @@ export function validateRevision(revision: GraphRevision): readonly ValidationIs
   const targets = { repository: repositories, node: nodes, edge: edges, evidence } as const;
   revision.diagnostics.forEach((diagnostic, index) => {
     const path = ['diagnostics', index];
+    check.oneOf(diagnostic.severity, DIAGNOSTIC_SEVERITIES, [...path, 'severity']);
     check.code(diagnostic.code, [...path, 'code']);
     const referencesPath = [...path, 'references'];
     check.limit(diagnostic.references.length, LIMITS.references, referencesPath);
     const seen = new Set<string>();
     diagnostic.references.forEach((reference, referenceIndex) => {
       const referencePath = [...referencesPath, referenceIndex];
-      check.reference(reference.id, targets[reference.kind], [...referencePath, 'id']);
+      if (check.oneOf(reference.kind, DIAGNOSTIC_REFERENCE_KINDS, [...referencePath, 'kind'])) {
+        check.reference(reference.id, targets[reference.kind], [...referencePath, 'id']);
+      }
       const key = `${reference.kind}\u0000${reference.id}`;
       if (seen.has(key)) check.add('duplicate-reference', referencePath);
       seen.add(key);

@@ -60,7 +60,7 @@ test('import then serialize round-trips byte-identically', () => {
 });
 
 test('Unicode labels round-trip without normalization', () => {
-  const label = '🚀 é مرحبا';
+  const label = '\u{1F680} e\u0301 \u0645\u0631\u062D\u0628\u0627'; // NFD + RTL: normalization would change bytes
   const envelope = validEnvelope();
   envelope.revision.nodes[0].label = label;
   const text = serialized(revisionOf(envelope));
@@ -115,4 +115,13 @@ test('serialization excludes undeclared fields', () => {
   const revision = revisionOf(validEnvelope());
   const withExtra = { ...revision, absoluteRoot: '/home/user/repo' } as GraphRevision;
   expect(serialized(withExtra)).not.toContain('absoluteRoot');
+});
+
+test.each([
+  [256, true],
+  [257, false],
+])('a %i code point label imports: %s', (count, ok) => {
+  const envelope = validEnvelope();
+  envelope.revision.nodes[0].label = '\u{1F680}'.repeat(count);
+  expect(importGraphJson(JSON.stringify(envelope)).ok).toBe(ok);
 });

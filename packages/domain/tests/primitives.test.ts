@@ -85,6 +85,8 @@ describe('containsSecretPattern', () => {
   test('ignores ordinary labels', () => {
     expect(containsSecretPattern('ordinary-label')).toBe(false);
     expect(containsSecretPattern('desk-lamp')).toBe(false);
+    expect(containsSecretPattern('mask-sensitive-fields-rule')).toBe(false);
+    expect(containsSecretPattern('Disk-usage-monitor-worker')).toBe(false);
   });
 });
 
