@@ -153,7 +153,6 @@ test('permits an empty Sandbox and preserves historical A/B snapshots', () => {
   );
 });
 
-
 test('preserves semantic connections and accepts historical v1 JSON without intent', () => {
   const current = example();
   const typed = {

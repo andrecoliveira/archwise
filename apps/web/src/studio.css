@@ -322,5 +322,12 @@ li {
   border: 1px solid #64748b;
   border-radius: 6px;
 }
-.connection-inspector p { color: #fdba74; width: 100%; margin: 0; }
-.connection-inspector small { color: #a3b4cf; width: 100%; }
+.connection-inspector p {
+  color: #fdba74;
+  width: 100%;
+  margin: 0;
+}
+.connection-inspector small {
+  color: #a3b4cf;
+  width: 100%;
+}
