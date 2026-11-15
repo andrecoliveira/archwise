@@ -8,7 +8,9 @@ const entry = fileURLToPath(new URL('../../apps/cli/dist/bin.js', import.meta.ur
 test('built CLI exposes help and version with correct exit codes', () => {
   const help = spawnSync(process.execPath, [entry, '--help'], { encoding: 'utf8' });
   assert.equal(help.status, 0, help.stderr);
-  assert.match(help.stdout, /not implemented/);
+  assert.match(help.stdout, /Usage: archwise/);
+  assert.match(help.stdout, /--graph/);
+  assert.match(help.stdout, /--serve/);
   const version = spawnSync(process.execPath, [entry, '--version'], { encoding: 'utf8' });
   assert.equal(version.status, 0, version.stderr);
   const manifest = JSON.parse(
