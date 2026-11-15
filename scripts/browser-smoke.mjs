@@ -187,17 +187,18 @@ try {
   await page.mouse.down();
   await page.mouse.move(card.x + card.width / 2 + 62, card.y + card.height / 2 + 38, { steps: 16 });
   await page.mouse.up();
-  await page.waitForFunction((id) => {
+  const previousApp = before.nodes.find((node) => node.id === appId);
+  assert(previousApp, 'App Server needs an original saved position');
+  await page.waitForFunction(({ id, x, y }) => {
     const key = Object.keys(globalThis.localStorage).find((item) =>
       item.startsWith('archwise:sandbox:1:'),
     );
     if (!key) return false;
     const doc = JSON.parse(globalThis.localStorage.getItem(key));
     const node = doc.nodes.find((item) => item.id === id);
-    return Boolean(node);
-  }, appId).catch(() => {});
+    return node && (node.x !== x || node.y !== y);
+  }, { id: appId, x: previousApp.x, y: previousApp.y }, { timeout: 8000 });
   const moved = await savedDocument();
-  const previousApp = before.nodes.find((node) => node.id === appId);
   const movedApp = moved.nodes.find((node) => node.id === appId);
   assert(movedApp && previousApp, 'App Server must remain in the saved document');
   assert(
