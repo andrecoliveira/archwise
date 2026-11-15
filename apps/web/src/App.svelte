@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import ArchitectureCanvas from './ArchitectureCanvas.svelte';
+  import { getCoachQuestions } from './architecture-coach.js';
   import { isGraph, type Graph } from './graph-types.js';
   import './studio.css';
 
@@ -22,6 +23,9 @@
   );
   const visibleIds = $derived(new Set(visible.map((node) => node.id)));
   const selected = $derived(graph?.nodes.find((node) => node.id === selectedId) ?? null);
+  const coachQuestions = $derived(graph ? getCoachQuestions(graph, selectedId) : []);
+  let questionIndex = $state(0);
+  const currentQuestion = $derived(coachQuestions[questionIndex % Math.max(coachQuestions.length, 1)]);
 
   async function loadGraph() {
     controller?.abort();
@@ -122,6 +126,14 @@
         <p>This component exists only in Sandbox; it does not modify repository files.</p>
       {:else}
         <p>Select a component to inspect its source evidence.</p>
+      {/if}
+      {#if currentQuestion}
+        <section aria-label="Architecture Coach">
+          <h2>Architecture Coach · Offline</h2>
+          <p>{currentQuestion.question}</p>
+          <p>{currentQuestion.explanation}</p>
+          <button type="button" onclick={() => (questionIndex += 1)}>Next question</button>
+        </section>
       {/if}
     </aside>
   </main>
