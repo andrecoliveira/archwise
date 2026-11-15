@@ -8,12 +8,12 @@ This increment provides a **local-only teaching simulation**, not a production o
 2. Switch to **Sandbox**.
 3. Add hypothetical nodes (Service, Cache, Database or Queue). Give each one a name.
 4. Drag connections **between proposed nodes**, from the upstream output handle to the downstream input handle.
-5. Open **Simulation — hypothetical estimates** above the canvas.
+5. Open **Simulation & A/B comparison** below the canvas.
 6. Set the incoming requests per second, select an entry component, and configure capacity and baseline latency for each node.
 7. Optionally set a cache-hit rate or simulate a component failure.
 8. Review modeled throughput, dropped requests and utilization, then expand **Model assumptions and limitations**.
 
-The model recalculates immediately when topology or inputs change. No source files are modified; Sandbox inputs are currently ephemeral.
+The model recalculates immediately when topology or inputs change. No source files are modified. Sandbox inputs are persisted locally in the browser; see [Sandbox persistence](sandbox-persistence.md).
 
 ## Model contract
 

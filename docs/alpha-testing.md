@@ -44,7 +44,8 @@ Use `--json` for the inventory instead of the graph, or `--serve --no-open` to a
 8. Confirm that connections involving discovered packages are excluded from the simulation and a cyclic proposed topology reports a validation error.
 9. Save the current hypothetical simulation as scenario A, modify the Sandbox topology and inputs, then save scenario B. Compare modeled output, bottlenecks and per-node differences. Replace B to compare another design.
 10. Verify that A/B snapshots survive switching to Explore and back **and persist after page reload** in the same browser.
-11. Export the Sandbox as versioned JSON; reset it; import the JSON and verify your components, parameters, and A/B snapshots are restored. Invalid files must not replace the current design.\n12. The Architecture Coach panel shows offline contextual questions.
+11. Export the Sandbox as versioned JSON; reset it; import the JSON and verify your components, parameters, and A/B snapshots are restored. Invalid files must not replace the current design.
+12. The Architecture Coach panel shows offline contextual questions.
 13. Stop the local server with Ctrl+C. No project files should have been modified.
 
 ## Current limits and safety

@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-11-08
+- Note: the browser UI framework was later changed to Svelte 5 and Svelte Flow by [ADR 0005](0005-svelte-flow-browser-workspace.md).
 
 ## Context
 

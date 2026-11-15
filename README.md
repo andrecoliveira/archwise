@@ -46,6 +46,8 @@ The product starts from code already on a developer's machine. From a selected w
 - [CI/CD and release strategy](docs/ci-cd.md)
 - [Optional open-core business strategies](docs/business.md)
 - [Architecture decision](docs/decisions/0001-local-first-open-source.md)
+- [Browser workspace decision: Svelte Flow](docs/decisions/0005-svelte-flow-browser-workspace.md)
+- [Alpha testing guide](docs/alpha-testing.md)
 - [Original README preserved as history](docs/history/README-saas-original.md)
 
 ## Contributing

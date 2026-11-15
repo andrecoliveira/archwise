@@ -8,7 +8,7 @@ A developer can run Archwise in a supported Node.js/TypeScript repository, see a
 
 ### Foundation
 
-- TypeScript monorepo, shared schemas, CLI lifecycle, local API, SQLite migrations, and React shell.
+- TypeScript monorepo, shared schemas, CLI lifecycle, local API, SQLite migrations, and Svelte shell.
 - Workspace resolution from `cwd` and explicit single/multiple paths.
 - Versioned snapshot, evidence, diagnostic, sandbox, and scenario contracts.
 
@@ -19,7 +19,7 @@ A developer can run Archwise in a supported Node.js/TypeScript repository, see a
 
 ### Visual workspace
 
-- React Flow views for repositories/services/modules and data flow.
+- Svelte Flow views for repositories/services/modules and data flow.
 - Search, filtering, evidence inspector, confidence/origin legend, graph revision selector, and stable automatic layout.
 
 ### Sandbox and simulation
