@@ -218,7 +218,7 @@ export function parseSandboxDocument(text: string, signature: string): SandboxDo
       id: item.id,
       label: item.label,
       kind: item.kind as SimulatedKind,
-      ...(item.preset === undefined ? {} : { preset: item.preset as string }),
+      ...(item.preset === undefined ? {} : { preset: item.preset }),
       x: item.x,
       y: item.y,
     };
