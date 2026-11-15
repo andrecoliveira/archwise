@@ -20,5 +20,11 @@
   },
   "bin": {
     "archwise": "dist/bin.js"
+  },
+  "dependencies": {
+    "@archwise/application": "workspace:*",
+    "@archwise/domain": "workspace:*",
+    "@archwise/schemas": "workspace:*",
+    "@archwise/storage": "workspace:*"
   }
 }

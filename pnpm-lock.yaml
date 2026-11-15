@@ -45,7 +45,20 @@ importers:
         specifier: 5.1.0
         version: 5.1.0(@types/node@24.19.2)(jsdom@31.0.0)(vite@8.3.7(@types/node@24.19.2)(yaml@2.9.1))
 
-  apps/cli: {}
+  apps/cli:
+    dependencies:
+      '@archwise/application':
+        specifier: workspace:*
+        version: link:../../packages/application
+      '@archwise/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@archwise/schemas':
+        specifier: workspace:*
+        version: link:../../packages/schemas
+      '@archwise/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
 
   apps/server: {}
 
