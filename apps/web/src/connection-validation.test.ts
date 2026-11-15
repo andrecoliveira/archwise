@@ -14,14 +14,12 @@ test('prevents duplicate edges and cycles before adding them to the canvas', () 
     { source: 'sandbox-1', target: 'sandbox-2' },
     { source: 'sandbox-2', target: 'sandbox-3' },
   ];
-  expect(validateProposedConnection('sandbox-1', 'sandbox-2', ids, edges)).toMatchObject({
-    valid: false,
-    reason: expect.stringContaining('already connected'),
-  });
-  expect(validateProposedConnection('sandbox-3', 'sandbox-1', ids, edges)).toMatchObject({
-    valid: false,
-    reason: expect.stringContaining('cycle'),
-  });
+  const duplicate = validateProposedConnection('sandbox-1', 'sandbox-2', ids, edges);
+  expect(duplicate.valid).toBe(false);
+  if (!duplicate.valid) expect(duplicate.reason).toContain('already connected');
+  const cycle = validateProposedConnection('sandbox-3', 'sandbox-1', ids, edges);
+  expect(cycle.valid).toBe(false);
+  if (!cycle.valid) expect(cycle.reason).toContain('cycle');
   expect(validateProposedConnection('sandbox-1', 'sandbox-3', ids, edges)).toEqual({ valid: true });
 });
 
