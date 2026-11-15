@@ -3,6 +3,7 @@
   import '@xyflow/svelte/dist/style.css';
   import { onMount, untrack } from 'svelte';
   import { layoutNodes } from './graph-layout.js';
+  import { suggestedNodePosition } from './node-placement.js';
   import { getCanvasFeedback } from './canvas-feedback.js';
   import { findCatalogComponent } from './component-catalog.js';
   import SimulationPanel from './SimulationPanel.svelte';
@@ -319,10 +320,7 @@
     counter += 1;
     mode = 'sandbox';
     const id = `sandbox-${counter}`;
-    const position = {
-      x: 180 + ((counter - 1) % 4) * 190,
-      y: 130 + Math.floor((counter - 1) / 4) * 135,
-    };
+    const position = suggestedNodePosition(counter - 1, window.innerWidth);
     proposedNodes = [
       ...proposedNodes,
       {
