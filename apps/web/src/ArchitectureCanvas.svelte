@@ -3,6 +3,8 @@
   import '@xyflow/svelte/dist/style.css';
   import { untrack } from 'svelte';
   import { layoutNodes } from './graph-layout.js';
+  import SimulationPanel from './SimulationPanel.svelte';
+  import type { SimulatedKind } from './simulation.js';
   import type { Graph } from './graph-types.js';
 
   let { graph, visibleIds, selectedId = $bindable(null) }: {
@@ -14,6 +16,8 @@
   type Mode = 'explore' | 'sandbox';
   let mode: Mode = $state('explore');
   let counter = $state(0);
+  let newKind: SimulatedKind = $state('service');
+  let newLabel = $state('');
   let proposedNodes: Node[] = $state.raw([]);
   let proposedEdges: Edge[] = $state.raw([]);
   let nodes: Node[] = $state.raw([]);
@@ -68,17 +72,19 @@
 
   function addNode() {
     counter += 1;
+    const label = newLabel.trim().slice(0, 80) || `Proposed ${newKind}`;
     proposedNodes = [
       ...proposedNodes,
       {
         id: `sandbox-${counter}`,
         type: 'default',
         position: { x: 300, y: counter * 90 },
-        data: { label: 'Proposed service (hypothetical)' },
+        data: { label, kind: newKind, origin: 'proposed' },
         style: 'border:2px dashed #0d9488;background:#0e3233;color:white;border-radius:8px;',
       },
     ];
     selectedId = `sandbox-${counter}`;
+    newLabel = '';
   }
 
   function connect(connection: Connection) {
@@ -112,11 +118,22 @@
   <button type="button" aria-pressed={mode === 'sandbox'} onclick={() => { mode = 'sandbox'; selectedId = null; }}>Sandbox</button>
   <button type="button" onclick={() => (layoutNonce += 1)}>Auto layout</button>
   {#if mode === 'sandbox'}
-    <button type="button" onclick={addNode}>Add proposed service</button>
+    <label for="proposed-type">Component type</label>
+    <select id="proposed-type" bind:value={newKind}>
+      <option value="service">Service</option>
+      <option value="cache">Cache</option>
+      <option value="database">Database</option>
+      <option value="queue">Queue (capacity-only)</option>
+    </select>
+    <input aria-label="Proposed component name" placeholder="Name (optional)" bind:value={newLabel} maxlength="80" />
+    <button type="button" onclick={addNode}>Add proposed component</button>
     <button type="button" disabled={!selectedId?.startsWith('sandbox-')} onclick={removeSelected}>Remove selected</button>
     <button type="button" onclick={() => { proposedNodes = []; proposedEdges = []; selectedId = null; }}>Reset sandbox</button>
   {/if}
 </div>
+{#if mode === 'sandbox'}
+  <SimulationPanel {proposedNodes} {proposedEdges} />
+{/if}
 {#if layoutError}<div role="alert" class="alert">{layoutError}</div>{/if}
 <div class="viewport" role="region" aria-label="Interactive architecture graph">
   <SvelteFlow
