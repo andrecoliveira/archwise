@@ -13,14 +13,19 @@ export interface CoachQuestion {
  * These prompts do not assert runtime topology, performance, or service health
  * based solely on package manifests.
  */
-export function getCoachQuestions(graph: Graph, selectedId: string | null): readonly CoachQuestion[] {
+export function getCoachQuestions(
+  graph: Graph,
+  selectedId: string | null,
+): readonly CoachQuestion[] {
   const selected = graph.nodes.find((node) => node.id === selectedId);
   const questions: CoachQuestion[] = [
     {
       id: 'requirements',
       topic: 'requirements',
-      question: 'What is the most critical business flow in this project, and what failure would users notice first?',
-      explanation: 'Package manifests cannot identify business criticality. Start by clarifying requirements.',
+      question:
+        'What is the most critical business flow in this project, and what failure would users notice first?',
+      explanation:
+        'Package manifests cannot identify business criticality. Start by clarifying requirements.',
       nodeId: null,
     },
   ];
@@ -33,7 +38,8 @@ export function getCoachQuestions(graph: Graph, selectedId: string | null): read
     questions.push({
       id: 'coverage',
       topic: 'evidence',
-      question: 'Some files could not be analyzed or resolved. Which missing evidence would you investigate first?',
+      question:
+        'Some files could not be analyzed or resolved. Which missing evidence would you investigate first?',
       explanation: 'Discovery gaps should be resolved before making architectural recommendations.',
       nodeId: null,
     });
@@ -53,8 +59,10 @@ export function getCoachQuestions(graph: Graph, selectedId: string | null): read
     questions.push({
       id: 'declared-vs-runtime',
       topic: 'dependencies',
-      question: 'Which declared package dependencies represent real network calls, and which are build-time or in-process imports?',
-      explanation: 'Dependency declarations alone do not establish network traffic or availability boundaries.',
+      question:
+        'Which declared package dependencies represent real network calls, and which are build-time or in-process imports?',
+      explanation:
+        'Dependency declarations alone do not establish network traffic or availability boundaries.',
       nodeId: null,
     });
   }
@@ -62,8 +70,10 @@ export function getCoachQuestions(graph: Graph, selectedId: string | null): read
   questions.push({
     id: 'design-tradeoff',
     topic: 'trade-offs',
-    question: 'Before adding a cache, queue, or load balancer, which measurable requirement would justify it?',
-    explanation: 'Start with latency, throughput, reliability or operational constraints rather than assumed components.',
+    question:
+      'Before adding a cache, queue, or load balancer, which measurable requirement would justify it?',
+    explanation:
+      'Start with latency, throughput, reliability or operational constraints rather than assumed components.',
     nodeId: null,
   });
   return questions;
