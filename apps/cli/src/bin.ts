@@ -53,9 +53,10 @@ if (command.kind === 'output') {
       } catch {
         process.stderr.write('Browser assets are not built; serving JSON API only.\n');
       }
-      const server = await startLocalGraphServer(buildArchitectureGraph(result), {
-        webDistPath: assets,
-      });
+      const server = await startLocalGraphServer(
+        buildArchitectureGraph(result),
+        assets ? { webDistPath: assets } : {},
+      );
       process.stdout.write(`Archwise API listening at ${server.address}\n`);
       process.stdout.write(`Local session URL: ${server.bootstrapUrl}\n`);
       process.stdout.write('Press Ctrl+C to stop.\n');
