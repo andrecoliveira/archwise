@@ -82,6 +82,9 @@ importers:
       '@archwise/domain':
         specifier: workspace:*
         version: link:../domain
+      '@archwise/schemas':
+        specifier: workspace:*
+        version: link:../schemas
 
   packages/domain: {}
 
