@@ -43,14 +43,14 @@ Use `--json` for the inventory instead of the graph, or `--serve --no-open` to a
 7. In Sandbox, build a proposed topology, then set hypothetical load, capacity, cache-hit ratios and simulated failure in the Simulation panel. Check the displayed assumptions and results.
 8. Confirm that connections involving discovered packages are excluded from the simulation and a cyclic proposed topology reports a validation error.
 9. Save the current hypothetical simulation as scenario A, modify the Sandbox topology and inputs, then save scenario B. Compare modeled output, bottlenecks and per-node differences. Replace B to compare another design.
-10. Verify that A/B snapshots survive switching to Explore and back, but are cleared on page reload.
-11. The Architecture Coach panel shows offline contextual questions.
-12. Stop the local server with Ctrl+C. No project files should have been modified.
+10. Verify that A/B snapshots survive switching to Explore and back **and persist after page reload** in the same browser.
+11. Export the Sandbox as versioned JSON; reset it; import the JSON and verify your components, parameters, and A/B snapshots are restored. Invalid files must not replace the current design.\n12. The Architecture Coach panel shows offline contextual questions.
+13. Stop the local server with Ctrl+C. No project files should have been modified.
 
 ## Current limits and safety
 
 - Discovery currently covers Node package manifests and explicitly declared dependencies between uniquely identified local packages. It does **not** infer a live runtime system, traffic flows, databases or deployed infrastructure.
-- Sandbox changes, A/B scenario snapshots and interview progress currently live in browser memory; they are not persisted across page reloads or restarts. See [Scenario comparison](scenario-comparison.md).
+- Sandbox topology, simulation inputs and saved A/B snapshots are automatically persisted in browser localStorage, scoped to a deterministic discovered-graph signature. The offline Coach question index is not persisted. See [Sandbox persistence](sandbox-persistence.md) and [Scenario comparison](scenario-comparison.md).
 - A deterministic Sandbox simulation is available, but it **does not measure production traffic**. It assumes a single entry node, evenly split routing across proposed links, a DAG topology, no retries and modeled capacity drops. See [Simulation assumptions](simulation.md).
 - There is no npm-published `npx archwise` package yet; use the compiled CLI.
 - The current build includes ELK and Svelte Flow and is not yet bundle-size optimized.
