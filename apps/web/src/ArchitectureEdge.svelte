@@ -24,7 +24,7 @@
   }));
 </script>
 
-<BaseEdge {id} {path} {markerEnd} {interactionWidth}
+<BaseEdge {id} {path} markerEnd={markerEnd ?? ''} interactionWidth={interactionWidth ?? 28}
   class={selected ? 'archwise-edge-path archwise-edge-selected' : 'archwise-edge-path'}
   style={`stroke:${theme.color};stroke-width:${selected ? 3 : 2};fill:none;`} />
 <EdgeLabel x={labelX} y={labelY} class="archwise-edge-label" selectEdgeOnClick>
