@@ -175,3 +175,31 @@ test('rejects unknown imported connection intents', () => {
     'Unsupported connection intent',
   );
 });
+
+
+test('preserves custom component presets across export and import without changing simulation kinds', () => {
+  const withPresets = {
+    ...example(),
+    nodes: [
+      { ...example().nodes[0]!, label: 'Renamed application', preset: 'app-server' },
+      { ...example().nodes[1]!, preset: 'cache' },
+    ],
+  };
+  const restored = parseSandboxDocument(serializeSandboxDocument(withPresets), projectSignature(graph));
+  expect(restored.nodes[0]?.preset).toBe('app-server');
+  expect(restored.nodes[0]?.label).toBe('Renamed application');
+  expect(restored.nodes[1]?.preset).toBe('cache');
+  expect(restored.nodes.map((node) => node.kind)).toEqual(['service', 'cache']);
+});
+
+test('rejects invalid or mismatched imported component presets', () => {
+  const current = example();
+  for (const preset of ['not-a-component', 'database']) {
+    const malformed = {
+      ...current,
+      nodes: [{ ...current.nodes[0]!, preset }, current.nodes[1]!],
+    };
+    expect(() => parseSandboxDocument(JSON.stringify(malformed), projectSignature(graph)))
+      .toThrow('Invalid proposed node');
+  }
+});
