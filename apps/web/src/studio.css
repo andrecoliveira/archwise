@@ -141,3 +141,48 @@ li {
     display: none;
   }
 }
+
+/* Sandbox simulation is deliberately compact so the canvas keeps the majority of the viewport. */
+.simulation-panel {
+  max-height: 35vh;
+  overflow-y: auto;
+  border-block: 1px solid #334155;
+  padding: 12px 16px;
+  background: #101d32;
+  font-size: 12px;
+}
+.simulation-panel > summary { font-weight: 700; cursor: pointer; }
+.simulation-panel p { margin: 6px 0; }
+.simulation-panel label { color: #b6c6dd; font-size: 12px; }
+.simulation-panel select, .toolbar select {
+  border: 1px solid #475569;
+  border-radius: 6px;
+  color: #e6edf7;
+  background: #1e293b;
+  padding: 6px;
+}
+.toolbar input { width: min(185px, 25vw); }
+.scenario-fields { display: flex; flex-wrap: wrap; gap: 12px; margin-block: 10px; }
+.scenario-fields label { display: grid; gap: 4px; min-width: 180px; }
+.scenario-fields input { width: 100%; }
+.simulation-components { display: flex; gap: 8px; overflow-x: auto; padding-block: 8px; }
+.simulation-component {
+  min-width: 185px;
+  flex: 1;
+  border: 1px solid #35435b;
+  border-radius: 8px;
+  padding: 9px;
+  display: grid;
+  gap: 6px;
+}
+.simulation-component label { display: grid; gap: 3px; }
+.simulation-component input[type="number"] { width: 100%; padding: 5px; }
+.simulation-component small { color: #7dd3fc; }
+.simulation-failure { display: flex !important; align-items: center; gap: 6px !important; }
+.simulation-failure input { width: auto; }
+.simulation-results { margin-top: 10px; }
+.simulation-results table { width: 100%; border-collapse: collapse; margin-block: 8px; font-variant-numeric: tabular-nums; }
+.simulation-results th, .simulation-results td { text-align: left; padding: 5px; border-bottom: 1px solid #35435b; }
+.simulation-results ul { margin: 5px 0; }
+.simulation-note { color: #fbbf24; }
+.simulation-error { color: #fca5a5; }
