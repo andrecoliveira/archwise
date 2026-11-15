@@ -131,9 +131,10 @@
     <button type="button" onclick={() => { proposedNodes = []; proposedEdges = []; selectedId = null; }}>Reset sandbox</button>
   {/if}
 </div>
-{#if mode === 'sandbox'}
+<!-- Keep the panel mounted while Explore is active so A/B snapshots are retained in memory. -->
+<div hidden={mode !== 'sandbox'}>
   <SimulationPanel {proposedNodes} {proposedEdges} />
-{/if}
+</div>
 {#if layoutError}<div role="alert" class="alert">{layoutError}</div>{/if}
 <div class="viewport" role="region" aria-label="Interactive architecture graph">
   <SvelteFlow
