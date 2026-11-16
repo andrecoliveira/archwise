@@ -200,3 +200,15 @@ test('non-session routes still reject mutating methods', async () => {
   const { call } = await start();
   expect((await call('/api/v1/graph', { method: 'POST' })).status).toBe(405);
 });
+
+test('POST /new reserves a fresh current session for same-origin callers', async () => {
+  const { call } = await start();
+  const before = (await (await call('/api/v1/sessions/current')).json()) as { id: string };
+  const denied = await call('/api/v1/sessions/new', { method: 'POST', headers: { origin: '' } });
+  expect(denied.status).toBe(403);
+  const created = await call('/api/v1/sessions/new', { method: 'POST' });
+  expect(created.status).toBe(200);
+  const body = (await created.json()) as { id: string; persisted: boolean; storeEnabled: boolean };
+  expect(body).toMatchObject({ persisted: false, storeEnabled: true });
+  expect(body.id).not.toBe(before.id);
+});

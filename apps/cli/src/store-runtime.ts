@@ -94,6 +94,26 @@ export async function prepareStore(options: PrepareStoreOptions): Promise<StoreR
   }
 }
 
+/** Resolves `latest` or a session ID to a stored session of this workspace, or null. */
+export function resumeTarget(service: SessionService, value: string): string | null {
+  if (value === 'latest') return service.list()[0]?.id ?? null;
+  return service.get(value).ok ? value : null;
+}
+
+/**
+ * Makes the requested session current before serving. Returns an actionable error message
+ * when it cannot, in which case the caller exits with code 2 without starting a server.
+ */
+export function applyResume(runtime: StoreRuntime, value: string): string | null {
+  if (runtime.kind !== 'ready') {
+    return 'The local store is unavailable in this run, so no session can be resumed.';
+  }
+  const target = resumeTarget(runtime.service, value);
+  if (target === null) return `No saved session matches "${value}". Run --sessions to list them.`;
+  runtime.service.resume(target);
+  return null;
+}
+
 export function storeUnavailableMessage(reason: StoreUnavailableReason, dataDir: string): string {
   switch (reason) {
     case 'newer-schema':

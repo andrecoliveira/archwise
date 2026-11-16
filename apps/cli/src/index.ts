@@ -17,6 +17,8 @@ export type CliCommand =
       readonly sessions: boolean;
       /** Use the local session store (disabled by --no-store). */
       readonly store: boolean;
+      /** `latest` or a session ID to resume when serving; null starts a fresh session. */
+      readonly resume: string | null;
     };
 
 /** Parse arguments without touching the filesystem or executing project code. */
@@ -30,10 +32,11 @@ export function parseCli(args: readonly string[], version = 'development'): CliC
       result: {
         exitCode: 0,
         stdout:
-          'Usage: archwise [--path DIRECTORY] [--json | --graph | --sessions | --serve [--no-open] [--no-store]] [--help | --version]\n' +
+          'Usage: archwise [--path DIRECTORY] [--json | --graph | --sessions | --serve [--no-open] [--no-store | --resume latest|SESSION_ID]] [--help | --version]\n' +
           'Read-only inventory of local Node.js package manifests. --graph emits a deterministic evidence-backed graph.\n' +
           '--sessions lists saved Sandbox sessions for this project. --serve opens the local Studio and records\n' +
-          'the discovered graph in the local store outside the project; --no-store disables the store.\n',
+          'the discovered graph in the local store outside the project; --no-store disables the store.\n' +
+          '--resume continues the newest (latest) or a specific saved session instead of a fresh one.\n',
         stderr: '',
       },
     };
@@ -45,6 +48,7 @@ export function parseCli(args: readonly string[], version = 'development'): CliC
   let open = true;
   let sessions = false;
   let store = true;
+  let resume: string | null = null;
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--path' && args[i + 1] && !args[i + 1]!.startsWith('--')) {
       path = args[++i]!;
@@ -60,6 +64,20 @@ export function parseCli(args: readonly string[], version = 'development'): CliC
       sessions = true;
     } else if (args[i] === '--no-store') {
       store = false;
+    } else if (args[i] === '--resume') {
+      const value = args[i + 1];
+      if (!value || !(value === 'latest' || /^ses-[0-9a-f]{24}$/.test(value))) {
+        return {
+          kind: 'output',
+          result: {
+            exitCode: 2,
+            stdout: '',
+            stderr: '--resume expects "latest" or a session ID from --sessions.\n',
+          },
+        };
+      }
+      resume = value;
+      i += 1;
     } else {
       return {
         kind: 'output',
@@ -93,7 +111,18 @@ export function parseCli(args: readonly string[], version = 'development'): CliC
       result: { exitCode: 2, stdout: '', stderr: '--no-store requires --serve.\n' },
     };
   }
-  return { kind: 'inspect', path, json, graph, serve, open, sessions, store };
+  if (resume !== null && (!serve || !store)) {
+    return {
+      kind: 'output',
+      result: {
+        exitCode: 2,
+        stdout: '',
+        stderr:
+          '--resume requires --serve and the local store (it cannot be combined with --no-store).\n',
+      },
+    };
+  }
+  return { kind: 'inspect', path, json, graph, serve, open, sessions, store, resume };
 }
 
 /** Kept as a pure CLI helper for compatibility with the existing CLI tests. */

@@ -46,8 +46,8 @@ const run = (args, env) =>
   });
 
 /** Starts `--serve --no-open`, resolves with the bootstrap URL once printed. */
-function serve(root, env) {
-  const child = spawn(process.execPath, [cli, '--serve', '--no-open', '--path', root], {
+function serve(root, env, extra = []) {
+  const child = spawn(process.execPath, [cli, '--serve', '--no-open', ...extra, '--path', root], {
     env: { ...process.env, ...env },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -133,5 +133,48 @@ test('an unusable data directory stops --serve with an actionable message', asyn
   } finally {
     await rm(root, { recursive: true, force: true });
     await rm(parent, { recursive: true, force: true });
+  }
+});
+
+test('--resume latest fails clearly on an empty store and resumes the newest session otherwise', async () => {
+  const root = await fixture();
+  const dataDir = await mkdtemp(join(tmpdir(), 'archwise-session-data-'));
+  const env = { ARCHWISE_DATA_DIR: dataDir };
+  let server;
+  try {
+    const empty = run(['--serve', '--no-open', '--resume', 'latest', '--path', root], env);
+    assert.equal(empty.status, 2, empty.stdout + empty.stderr);
+    assert.match(empty.stderr, /Run --sessions/);
+
+    server = await serve(root, env);
+    let origin = new URL(server.bootstrapUrl).origin;
+    let cookie = (await fetch(server.bootstrapUrl, { redirect: 'manual' })).headers
+      .get('set-cookie')
+      .split(';')[0];
+    const current = await (
+      await fetch(`${origin}/api/v1/sessions/current`, { headers: { cookie } })
+    ).json();
+    const saved = await fetch(`${origin}/api/v1/sessions/${current.id}/sandbox`, {
+      method: 'PUT',
+      headers: { cookie, origin, 'content-type': 'application/json' },
+      body: JSON.stringify({ format: 'archwise-sandbox', version: 1, nodes: [], draft: {} }),
+    });
+    assert.equal(saved.status, 200);
+    server.child.kill();
+    await new Promise((accept) => server.child.once('exit', accept));
+
+    server = await serve(root, env, ['--resume', 'latest']);
+    origin = new URL(server.bootstrapUrl).origin;
+    cookie = (await fetch(server.bootstrapUrl, { redirect: 'manual' })).headers
+      .get('set-cookie')
+      .split(';')[0];
+    const resumed = await (
+      await fetch(`${origin}/api/v1/sessions/current`, { headers: { cookie } })
+    ).json();
+    assert.deepEqual(resumed, { id: current.id, persisted: true, storeEnabled: true });
+  } finally {
+    server?.child.kill();
+    await rm(root, { recursive: true, force: true });
+    await rm(dataDir, { recursive: true, force: true });
   }
 });

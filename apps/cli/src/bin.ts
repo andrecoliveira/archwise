@@ -9,7 +9,12 @@ import { inspectWorkspace } from './inventory.js';
 import { buildArchitectureGraph } from './graph.js';
 import { parseCli } from './index.js';
 import { startLocalGraphServer } from './local-server.js';
-import { formatSessionList, prepareStore, storeUnavailableMessage } from './store-runtime.js';
+import {
+  applyResume,
+  formatSessionList,
+  prepareStore,
+  storeUnavailableMessage,
+} from './store-runtime.js';
 
 const metadata: unknown = JSON.parse(
   readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
@@ -69,28 +74,35 @@ if (command.kind === 'output') {
       }
     } else if (command.serve) {
       const runtime = await prepareRuntime(command.store);
-      const webDistPath = resolve(fileURLToPath(new URL('../../web/dist/', import.meta.url)));
-      // CLI/API mode works before the browser bundle is built; serve assets if available.
-      let assets: string | undefined;
-      try {
-        const { stat } = await import('node:fs/promises');
-        if ((await stat(resolve(webDistPath, 'index.html'))).isFile()) assets = webDistPath;
-      } catch {
-        process.stderr.write('Browser assets are not built; serving JSON API only.\n');
+      const resumeError = command.resume === null ? null : applyResume(runtime, command.resume);
+      if (resumeError !== null) {
+        process.stderr.write(`${resumeError}\n`);
+        if (runtime.kind === 'ready') runtime.store.close();
+        process.exitCode = 2;
+      } else {
+        const webDistPath = resolve(fileURLToPath(new URL('../../web/dist/', import.meta.url)));
+        // CLI/API mode works before the browser bundle is built; serve assets if available.
+        let assets: string | undefined;
+        try {
+          const { stat } = await import('node:fs/promises');
+          if ((await stat(resolve(webDistPath, 'index.html'))).isFile()) assets = webDistPath;
+        } catch {
+          process.stderr.write('Browser assets are not built; serving JSON API only.\n');
+        }
+        const server = await startLocalGraphServer(graph, {
+          ...(assets ? { webDistPath: assets } : {}),
+          sessions: runtime.kind === 'ready' ? runtime.service : null,
+        });
+        process.stdout.write(`Archwise API listening at ${server.address}\n`);
+        process.stdout.write(`Local session URL: ${server.bootstrapUrl}\n`);
+        process.stdout.write(
+          runtime.kind === 'ready'
+            ? 'Local session store ready (outside the project). List saved sessions with --sessions.\n'
+            : 'Local session store disabled for this run.\n',
+        );
+        process.stdout.write('Press Ctrl+C to stop.\n');
+        if (command.open && assets) openBrowser(server.bootstrapUrl);
       }
-      const server = await startLocalGraphServer(graph, {
-        ...(assets ? { webDistPath: assets } : {}),
-        sessions: runtime.kind === 'ready' ? runtime.service : null,
-      });
-      process.stdout.write(`Archwise API listening at ${server.address}\n`);
-      process.stdout.write(`Local session URL: ${server.bootstrapUrl}\n`);
-      process.stdout.write(
-        runtime.kind === 'ready'
-          ? 'Local session store ready (outside the project). List saved sessions with --sessions.\n'
-          : 'Local session store disabled for this run.\n',
-      );
-      process.stdout.write('Press Ctrl+C to stop.\n');
-      if (command.open && assets) openBrowser(server.bootstrapUrl);
     } else if (command.graph) {
       process.stdout.write(`${JSON.stringify(graph, null, 2)}\n`);
     } else if (command.json) {
