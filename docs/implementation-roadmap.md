@@ -34,13 +34,13 @@ Finalization does not mean development stops. It establishes a reliable open-sou
 
 ## Current state
 
-Snapshot as of 2026-11-15, after PRs #5, #6 and #7 merged into `main`. Issues and milestones remain the live tracker.
+Snapshot as of 2026-11-16, after PRs #5 to #12 and the Phase 2 redaction change. Issues and milestones remain the live tracker.
 
 | Phase | State on `main` | What is missing for the exit gate |
 |---|---|---|
 | 0 | Complete (2026-11-15) | — |
 | 1 | Complete (2026-11-15) | — |
-| 2 | Partial: graph contracts; SQLite store with ports, migrations, backup and recovery; sessions with Studio autosave and resume | Export redaction of home paths; storage recovery in an end-user release guide |
+| 2 | Complete (2026-11-16) | — |
 | 3 | Alpha only: manifest-only inventory in `apps/cli` | Budgets, ignore rules, symlink and nested-repository handling, `--repo` / `--workspace`, persisted scan metadata |
 | 4 | Alpha only: Node package manifests | Analyzer SDK, TS imports, HTTP/DB/queue detectors, Compose, golden graphs |
 | 5 | Alpha only: protected loopback server and Svelte Flow Studio | SSE progress, evidence navigation from domain revisions, accessibility, large-graph strategy |
@@ -139,13 +139,25 @@ Detailed execution plan: [`superpowers/plans/2026-11-08-archwise-foundation.md`]
 
 ## Phase 2 — Domain contracts and local persistence
 
-Status: in progress. The graph-contracts slice is implemented in `@archwise/domain` and `@archwise/schemas`. It covers the validated, immutable and canonically serialized `archwise.graph` v1 revision, strict import, and sandbox base references; see the [spec](superpowers/specs/2026-11-11-graph-contracts-design.md). The sessions slice adds the following (see [Sessions](sessions.md) and [ADR 0006](decisions/0006-local-store-node-sqlite.md)):
+Status: complete (2026-11-16). The graph-contracts slice is implemented in `@archwise/domain` and `@archwise/schemas`. It covers the validated, immutable and canonically serialized `archwise.graph` v1 revision, strict import, and sandbox base references; see the [spec](superpowers/specs/2026-11-11-graph-contracts-design.md). The sessions slice adds the following (see [Sessions](sessions.md) and [ADR 0006](decisions/0006-local-store-node-sqlite.md)):
 - application store ports and a `SessionService`;
 - the `@archwise/storage` SQLite adapter, with transactional migrations, pre-migration backup, corruption quarantine and refusal of newer schemas;
 - revision recording from discovery;
 - the protected session API and `--sessions` / `--no-store`.
 
-The Studio uses the store: autosave, a session list, resume, a changed-architecture notice and `--resume`. Still open: redaction of absolute home paths in exports. The phase exit gate is not yet satisfied.
+The Studio uses the store: autosave, a session list, resume, a changed-architecture notice and `--resume`. Manifest text is redacted at the discovery boundary, and the graph validator rejects labels with home directories or secret shapes ([Security](security.md#redaction-at-the-discovery-boundary)).
+
+Exit-gate evidence:
+
+| Exit criterion | Evidence |
+|---|---|
+| Domain and schemas stay independent of Node APIs and frameworks | `scripts/check-boundaries.mjs` rules with regression tests in `scripts/tests/boundaries.test.mjs`, run by `pnpm check` |
+| The same fixture serializes identically across platforms | The golden canonical-bytes test in `packages/schemas/tests/graph-json.test.ts` passes on the CI matrix (Linux, macOS, Windows × Node 24, 26) |
+| Corrupt or future-version data fails safely with actionable diagnostics | Graph import rejects future versions (`unsupported-future-version`); the store quarantines corrupt files and refuses newer schemas untouched (`packages/storage/tests/lifecycle.test.ts`) |
+| Storage recovery is documented and tested | [Sessions: recovery and failures](sessions.md#recovery-and-failures), the user guide's [store failure section](alpha-testing.md#if-the-local-store-fails), and the lifecycle tests |
+| Redaction tests (required tests) | Domain primitive and validation tests, the inventory adapter test and the built-CLI test in `scripts/tests/cli-smoke.test.mjs` |
+
+Work packages moved to the phase that first needs them, so no port exists without a caller: the filesystem inventory port and scan repositories (Phase 3), scan lifecycle events and event publication (Phase 5), and the provider port (Phase 9). Browser launch stays in `apps/cli` until the server moves out of it (ADR 0005 debt).
 
 ### Goal
 

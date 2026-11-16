@@ -1,5 +1,6 @@
 import { lstat, readdir, readFile, realpath } from 'node:fs/promises';
 import { resolve, relative, join, sep } from 'node:path';
+import { redactSensitiveText } from '@archwise/domain';
 
 const IGNORED = new Set([
   '.git',
@@ -31,8 +32,17 @@ export interface InventoryResult {
   readonly inspectedEntries: number;
 }
 
+export interface InventoryOptions {
+  /** The running user's home directories (as given and resolved), redacted from manifest text. */
+  readonly knownHomes?: readonly string[];
+}
+
 /** Inspect manifests as data. Do not execute/import any code in the target workspace. */
-export async function inspectWorkspace(rootInput: string): Promise<InventoryResult> {
+export async function inspectWorkspace(
+  rootInput: string,
+  options: InventoryOptions = {},
+): Promise<InventoryResult> {
+  const redact = (text: string): string => redactSensitiveText(text, options.knownHomes ?? []);
   const root = await realpath(resolve(rootInput));
   if (!(await lstat(root)).isDirectory()) throw new Error('Workspace root must be a directory');
   const manifests: ManifestEvidence[] = [];
@@ -82,6 +92,8 @@ export async function inspectWorkspace(rootInput: string): Promise<InventoryResu
         const deps = [data.dependencies, data.devDependencies].flatMap((value) =>
           value && typeof value === 'object' && !Array.isArray(value) ? Object.keys(value) : [],
         );
+        // Manifest text is untrusted: home directories and secret shapes never leave this boundary.
+        const dependencyNames = deps.map(redact);
         const frameworks = [
           'next',
           'expo',
@@ -91,12 +103,12 @@ export async function inspectWorkspace(rootInput: string): Promise<InventoryResu
           'express',
           '@nestjs/core',
         ];
-        const framework = frameworks.find((item) => deps.includes(item)) ?? null;
+        const framework = frameworks.find((item) => dependencyNames.includes(item)) ?? null;
         manifests.push({
           path: relativePath,
-          name: typeof data.name === 'string' ? data.name : relativePath,
+          name: typeof data.name === 'string' ? redact(data.name) : relativePath,
           framework,
-          dependencies: [...new Set(deps)].sort(),
+          dependencies: [...new Set(dependencyNames)].sort(),
         });
       } catch {
         diagnostics.push(`Invalid or unreadable manifest: ${relativePath}`);

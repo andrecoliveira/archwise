@@ -132,6 +132,16 @@ describe('rejects each invariant violation with a stable code and structural pat
       { code: 'secret-pattern', path: ['nodes', 0, 'label'] },
     ],
     [
+      'home directory in node label',
+      (r) => (r.nodes[0]!.label = '/Users/alex/app'),
+      { code: 'home-path', path: ['nodes', 0, 'label'] },
+    ],
+    [
+      'home directory in repository label',
+      (r) => (r.repositories[0]!.label = 'C:\\Users\\alex\\repo'),
+      { code: 'home-path', path: ['repositories', 0, 'label'] },
+    ],
+    [
       'secret in path',
       (r) => (r.evidence[0]!.path = `config/${syntheticSecrets.github}`),
       { code: 'secret-pattern', path: ['evidence', 0, 'path'] },

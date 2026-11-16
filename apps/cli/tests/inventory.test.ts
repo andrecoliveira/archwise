@@ -41,3 +41,40 @@ test('reports malformed manifests without failing the entire scan', async () => 
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('redacts home directories and secret shapes in names read from manifests', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'archwise-redact-'));
+  const token = 'AKIA' + 'ABCDEFGHIJKLMNOP';
+  try {
+    await mkdir(join(root, 'a'), { recursive: true });
+    await mkdir(join(root, 'b'), { recursive: true });
+    await writeFile(
+      join(root, 'a', 'package.json'),
+      JSON.stringify({ name: '/Users/alex/app', dependencies: { [`dep-${token}`]: '1' } }),
+    );
+    await writeFile(join(root, 'b', 'package.json'), JSON.stringify({ name: `dep-${token}` }));
+    const result = await inspectWorkspace(root);
+    expect(result.manifests.map((item) => item.name)).toEqual(['~/app', 'dep-[redacted]']);
+    expect(result.manifests[0]?.dependencies).toEqual(['dep-[redacted]']);
+    const text = JSON.stringify(result.manifests);
+    expect(text).not.toContain('/Users/alex');
+    expect(text).not.toContain(token);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('redacts the running user home directory supplied by the caller', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'archwise-home-'));
+  try {
+    await writeFile(
+      join(root, 'package.json'),
+      JSON.stringify({ name: '/home/alex/app', dependencies: { '/home/feed': '1' } }),
+    );
+    const result = await inspectWorkspace(root, { knownHomes: ['/home/alex'] });
+    expect(result.manifests[0]?.name).toBe('~/app');
+    expect(result.manifests[0]?.dependencies).toEqual(['/home/feed']);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

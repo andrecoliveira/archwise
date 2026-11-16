@@ -24,6 +24,19 @@ The local SQLite store ([ADR 0006](decisions/0006-local-store-node-sqlite.md)) l
 
 It never contains source file contents. It is not synchronized or exported, and the API never returns root paths. Session routes require the local session capability. Mutations also require a same-origin `Origin` header, a JSON content type and a body under 300,000 bytes. Users can delete the directory to remove all stored data.
 
+## Redaction at the discovery boundary
+
+Text read from analyzed manifests (package and dependency names) is untrusted. Before it reaches the graph, the store, the API or any output, the CLI inventory:
+- replaces known secret shapes with `[redacted]`, removing the whole token (a private-key block up to its end marker, a JWT including its signature);
+- replaces home directories with `~`: the running user's real home directory, plus the generic `/Users/<name>` and `X:\Users\<name>` shapes;
+- repeats until nothing changes, so removing one piece cannot reassemble another.
+
+The `archwise.graph` validator rejects labels that still contain a secret shape or a generic home-directory shape. Linux `/home/<name>` is redacted only for the running user, because route labels such as `/home/feed` share its shape. `--json` and `--graph` output use repository-relative paths and never print the absolute workspace root. Directory names are not redacted: a directory named like a secret appears in evidence paths, and the graph validator then rejects that revision, so sessions are not saved for that run.
+
+Tests cover the domain primitives and validation, the inventory adapter, and the built CLI output.
+
+Pattern matching is defense in depth. It does not prove that text is free of sensitive data.
+
 ## Secret handling
 
 Archwise inventories the existence of sensitive configuration only when useful; it does not read `.env` values, private keys, credential directories, or known secret files by default. Provider keys live in the OS credential store where supported. Diagnostic bundles require preview and explicit export, with a second redaction pass.

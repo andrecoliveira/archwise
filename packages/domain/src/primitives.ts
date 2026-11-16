@@ -22,6 +22,38 @@ const SECRET_PATTERNS: readonly RegExp[] = [
   /eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\./,
 ];
 
+// Generic home-directory shapes that ordinary route labels do not use: the macOS `/Users/<name>`
+// (case-sensitive, so the common `/users/:id` route stays intact) and the Windows
+// `X:\Users\<name>`. The Windows form runs first so `C:/Users/x` is replaced as one unit.
+// Linux `/home/<name>` and `/root` collide with routes, so adapters pass the real home directory.
+const HOME_PATH_RULES: readonly { readonly source: string; readonly flags: string }[] = [
+  {
+    source: String.raw`(?<![A-Za-z0-9])[A-Za-z]:[\\/](?:Users|Documents and Settings)[\\/][^\\/\s"'<>|()]+`,
+    flags: 'i',
+  },
+  { source: String.raw`(?<![A-Za-z0-9._~-])/Users/[^/\\\s"'<>|()]+`, flags: '' },
+];
+const HOME_PATH_PATTERNS: readonly RegExp[] = HOME_PATH_RULES.map(
+  (rule) => new RegExp(rule.source, rule.flags),
+);
+// Redaction removes the whole token or block, not only the prefix that detection needs.
+const SECRET_REDACTIONS: readonly RegExp[] = [
+  /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z ]*PRIVATE KEY-----|$)/g,
+  /AKIA[0-9A-Z]{16}/g,
+  /gh[pousr]_[A-Za-z0-9]{36,}/g,
+  /xox[abprs]-[A-Za-z0-9-]{10,}/g,
+  /(?<![A-Za-z0-9])sk-[A-Za-z0-9_-]{20,}/g,
+  /eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]*/g,
+];
+const PATH_END = String.raw`(?=$|[\\/\s"'<>|()])`;
+/** Linear-time trim; an anchored `[\\/]+$` regex is polynomial on long runs of separators. */
+function trimTrailingSeparators(path: string): string {
+  let end = path.length;
+  while (end > 0 && (path[end - 1] === '/' || path[end - 1] === '\\')) end--;
+  return path.slice(0, end);
+}
+const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 export function isValidId(value: string): boolean {
   return ID_PATTERN.test(value);
 }
@@ -76,6 +108,39 @@ export function checkRelativePath(value: string): PathIssue | null {
 /** Defense in depth against known credential shapes; not proof that a string is free of secrets. */
 export function containsSecretPattern(value: string): boolean {
   return SECRET_PATTERNS.some((pattern) => pattern.test(value));
+}
+
+/**
+ * Detects the generic home-directory shapes (`/Users/<name>`, `X:\Users\<name>`), which identify
+ * the user and machine. Linux homes are only recognizable when the adapter knows them.
+ */
+export function containsHomePath(value: string): boolean {
+  return HOME_PATH_PATTERNS.some((pattern) => pattern.test(value));
+}
+
+/**
+ * Replaces known secret shapes with `[redacted]`, then home directories with `~`: the generic
+ * shapes plus each of `knownHomes` (the running user's real home directory, supplied by the
+ * adapter). It repeats until nothing changes, so removing one piece cannot reassemble another.
+ * Adapters use it on text read from analyzed projects; validation still rejects what slips through.
+ */
+export function redactSensitiveText(value: string, knownHomes: readonly string[] = []): string {
+  const homes = knownHomes
+    .map(trimTrailingSeparators)
+    .filter((home) => home.length > 1)
+    .map((home) => new RegExp(escapeRegExp(home) + PATH_END, 'g'));
+  let current = value;
+  for (let pass = 0; pass < 8; pass++) {
+    let next = current;
+    for (const pattern of SECRET_REDACTIONS) next = next.replace(pattern, '[redacted]');
+    for (const rule of HOME_PATH_RULES) {
+      next = next.replace(new RegExp(rule.source, `g${rule.flags}`), '~');
+    }
+    for (const home of homes) next = next.replace(home, '~');
+    if (next === current) break;
+    current = next;
+  }
+  return current;
 }
 
 /** Locale-independent ordering by UTF-16 code unit. */

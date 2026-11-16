@@ -2,12 +2,14 @@ import { describe, expect, test } from 'vitest';
 import {
   checkRelativePath,
   compareCodeUnits,
+  containsHomePath,
   containsSecretPattern,
   isValidCode,
   isValidId,
   isValidLabel,
   isValidTimestamp,
   LIMITS,
+  redactSensitiveText,
 } from '../src/index.js';
 import { syntheticSecrets } from './secrets.js';
 
@@ -87,6 +89,105 @@ describe('containsSecretPattern', () => {
     expect(containsSecretPattern('desk-lamp')).toBe(false);
     expect(containsSecretPattern('mask-sensitive-fields-rule')).toBe(false);
     expect(containsSecretPattern('Disk-usage-monitor-worker')).toBe(false);
+  });
+});
+
+describe('containsHomePath', () => {
+  test.each([
+    '/Users/alex',
+    '/Users/alex/projects/app',
+    'C:\\Users\\alex\\app',
+    'c:/users/alex/app',
+    'name at /Users/alex/x',
+    'file:///Users/alex/app',
+    '(/Users/alex)',
+  ])('detects %s', (value) => {
+    expect(containsHomePath(value)).toBe(true);
+  });
+  test.each([
+    'src/home/page',
+    'apps/users/list',
+    '@scope/users',
+    '/api/users',
+    'GET /users/:id',
+    '/home/feed',
+    '/root',
+    '/usr/local/lib',
+    '~/projects/app',
+    'ordinary-label',
+  ])('ignores route-like and relative text %s', (value) => {
+    expect(containsHomePath(value)).toBe(false);
+  });
+});
+
+describe('redactSensitiveText', () => {
+  test.each([
+    ['/Users/alex/projects/app', '~/projects/app'],
+    ['(/Users/alex)', '(~)'],
+    ['C:\\Users\\alex\\app', '~\\app'],
+    ['c:/users/alex/app', '~/app'],
+    ['pkg at /Users/alex/a and /Users/bo/b', 'pkg at ~/a and ~/b'],
+  ])('replaces the home directory in %s', (input, expected) => {
+    expect(redactSensitiveText(input)).toBe(expected);
+  });
+
+  test('replaces the known home directory exactly, without touching routes or longer names', () => {
+    const homes = ['/home/alex'];
+    expect(redactSensitiveText('/home/alex/app and /home/alexander', homes)).toBe(
+      '~/app and /home/alexander',
+    );
+    expect(redactSensitiveText('/home/alex', homes)).toBe('~');
+    expect(redactSensitiveText('GET /home/feed', homes)).toBe('GET /home/feed');
+    expect(redactSensitiveText('/root/app', ['/root'])).toBe('~/app');
+  });
+
+  // An unterminated private key block runs to the end of the text; the next test covers PEM.
+  test.each(Object.entries(syntheticSecrets).filter(([name]) => name !== 'pem'))(
+    'removes a whole %s secret',
+    (_name, secret) => {
+      expect(redactSensitiveText(`before ${secret} after`)).toBe('before [redacted] after');
+    },
+  );
+
+  test('removes a private key body and a JWT signature, not just their prefixes', () => {
+    const pem = '-----BEGIN ' + 'RSA PRIVATE KEY-----MIIEbody\nmore-----END RSA PRIVATE KEY-----';
+    expect(redactSensitiveText(`a ${pem} b`)).toBe('a [redacted] b');
+    expect(redactSensitiveText('-----BEGIN ' + 'PRIVATE KEY-----MIIEunterminated')).toBe(
+      '[redacted]',
+    );
+    expect(redactSensitiveText(`${syntheticSecrets.jwt}SIGNATURE x`)).toBe('[redacted] x');
+  });
+
+  test('never reassembles a home path or a secret from adjacent pieces', () => {
+    const pieces = [
+      ...Object.values(syntheticSecrets),
+      '/Users/alex',
+      '/home/alex',
+      'C:\\Users\\alex',
+      '/',
+      'x',
+      ' ',
+    ];
+    for (const a of pieces) {
+      for (const b of pieces) {
+        for (const c of pieces) {
+          const out = redactSensitiveText(a + b + c, ['/home/alex']);
+          expect(containsHomePath(out), out).toBe(false);
+          expect(containsSecretPattern(out), out).toBe(false);
+          expect(out.includes('/home/alex/') || out.endsWith('/home/alex'), out).toBe(false);
+        }
+      }
+    }
+  });
+
+  test('accepts known homes with trailing separators and ignores the filesystem root', () => {
+    expect(redactSensitiveText('/home/alex/app', ['/home/alex///'])).toBe('~/app');
+    expect(redactSensitiveText('C:\\home\\x', ['C:\\home\\'])).toBe('~\\x');
+    expect(redactSensitiveText('/etc/app', ['/', '//'])).toBe('/etc/app');
+  });
+
+  test('leaves ordinary text unchanged', () => {
+    expect(redactSensitiveText('@scope/users-api', ['/home/alex'])).toBe('@scope/users-api');
   });
 });
 

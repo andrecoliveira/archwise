@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync } from 'node:fs';
+import { realpath } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { basename, resolve } from 'node:path';
@@ -51,7 +52,9 @@ if (command.kind === 'output') {
 } else {
   const dataDir = resolveDataDir(process.env, process.platform, homedir());
   try {
-    const result = await inspectWorkspace(command.path);
+    const home = homedir();
+    const knownHomes = [home, await realpath(home).catch(() => home)];
+    const result = await inspectWorkspace(command.path, { knownHomes });
     const graph = buildArchitectureGraph(result);
     const prepareRuntime = async (enabled: boolean) => {
       const runtime = await prepareStore({
@@ -106,7 +109,14 @@ if (command.kind === 'output') {
     } else if (command.graph) {
       process.stdout.write(`${JSON.stringify(graph, null, 2)}\n`);
     } else if (command.json) {
-      process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+      // Allowlist: the absolute root identifies the user and machine, so it is never printed.
+      const portable = {
+        version: result.version,
+        manifests: result.manifests,
+        diagnostics: result.diagnostics,
+        inspectedEntries: result.inspectedEntries,
+      };
+      process.stdout.write(`${JSON.stringify(portable, null, 2)}\n`);
     } else {
       process.stdout.write(`Archwise — local inventory (${result.manifests.length} manifests)\n`);
       for (const item of result.manifests) {
