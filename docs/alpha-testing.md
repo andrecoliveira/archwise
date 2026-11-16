@@ -30,7 +30,7 @@ The CLI starts a server bound to `127.0.0.1` on an available port. If the browse
 node apps/cli/dist/bin.js --path /absolute/path/to/your/project --graph
 ```
 
-Use `--json` for the inventory instead of the graph, or `--serve --no-open` to avoid automatic browser launch.
+Use `--json` for the inventory instead of the graph, or `--serve --no-open` to avoid automatic browser launch. Both JSON outputs use repository-relative paths and omit the absolute project root. They still contain your package names, so review them before sharing.
 
 ## What to verify
 
@@ -57,6 +57,10 @@ Use `--json` for the inventory instead of the graph, or `--serve --no-open` to a
 - The current build includes ELK and Svelte Flow and is not yet bundle-size optimized.
 - Default analysis reads project files; it never executes scripts from the inspected repository. No cloud account or remote AI is required.
 - Browser access requires a one-time local session URL; do not share the URL or browser session cookie.
+
+## If the local store fails
+
+Archwise never deletes your sessions to recover. When the store is corrupt it moves the file aside, starts a fresh store and prints where the old file is. When the store was written by a newer Archwise, or an upgrade fails, it exits with code 2 and leaves the file untouched. Run with `--no-store` to keep inspecting without sessions, or set `ARCHWISE_DATA_DIR` to use another directory. The full table is in [Sessions: recovery and failures](sessions.md#recovery-and-failures).
 
 ## Verified automated checks
 

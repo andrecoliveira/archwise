@@ -106,7 +106,14 @@ if (command.kind === 'output') {
     } else if (command.graph) {
       process.stdout.write(`${JSON.stringify(graph, null, 2)}\n`);
     } else if (command.json) {
-      process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+      // Allowlist: the absolute root identifies the user and machine, so it is never printed.
+      const portable = {
+        version: result.version,
+        manifests: result.manifests,
+        diagnostics: result.diagnostics,
+        inspectedEntries: result.inspectedEntries,
+      };
+      process.stdout.write(`${JSON.stringify(portable, null, 2)}\n`);
     } else {
       process.stdout.write(`Archwise — local inventory (${result.manifests.length} manifests)\n`);
       for (const item of result.manifests) {

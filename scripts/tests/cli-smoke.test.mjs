@@ -22,3 +22,28 @@ test('built CLI exposes help and version with correct exit codes', () => {
   assert.equal(unsupported.stdout, '');
   assert.match(unsupported.stderr, /Unsupported/);
 });
+
+test('--json and --graph never print the absolute root, home directories or secret shapes', async () => {
+  const { mkdtempSync, mkdirSync, writeFileSync, realpathSync, rmSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const { tmpdir } = await import('node:os');
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'archwise-export-')));
+  const token = 'AKIA' + 'ABCDEFGHIJKLMNOP';
+  try {
+    mkdirSync(join(root, 'app'));
+    writeFileSync(
+      join(root, 'app', 'package.json'),
+      JSON.stringify({ name: '/home/alex/app', dependencies: { [`x-${token}`]: '1' } }),
+    );
+    for (const flag of ['--json', '--graph']) {
+      const run = spawnSync(process.execPath, [entry, '--path', root, flag], { encoding: 'utf8' });
+      assert.equal(run.status, 0, run.stderr);
+      JSON.parse(run.stdout);
+      assert.ok(!run.stdout.includes(root), `${flag} printed the absolute root`);
+      assert.ok(!run.stdout.includes('/home/alex'), `${flag} printed a home directory`);
+      assert.ok(!run.stdout.includes(token), `${flag} printed a secret shape`);
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

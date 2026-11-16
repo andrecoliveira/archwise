@@ -111,6 +111,20 @@ test('refuses to serialize a secret-bearing label and does not echo it', () => {
   expect(JSON.stringify(result)).not.toContain(syntheticAwsKey);
 });
 
+test('neither export nor import accepts a label with a home directory, and neither echoes it', () => {
+  const revision = revisionOf(validEnvelope());
+  const home = '/home/alex/private-app';
+  const tampered = { ...revision, nodes: revision.nodes.map((n) => ({ ...n, label: home })) };
+  const exported = serializeGraphRevision(tampered);
+  expect(exported.ok ? [] : exported.issues.map((i) => i.code)).toContain('home-path');
+  expect(JSON.stringify(exported)).not.toContain(home);
+  const envelope = validEnvelope();
+  envelope.revision.nodes[0].label = home;
+  const imported = importGraphJson(JSON.stringify(envelope));
+  expect(imported.ok ? [] : imported.issues.map((i) => i.code)).toContain('home-path');
+  expect(JSON.stringify(imported)).not.toContain(home);
+});
+
 test('serialization excludes undeclared fields', () => {
   const revision = revisionOf(validEnvelope());
   const withExtra = { ...revision, absoluteRoot: '/home/user/repo' } as GraphRevision;

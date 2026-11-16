@@ -2,12 +2,14 @@ import { describe, expect, test } from 'vitest';
 import {
   checkRelativePath,
   compareCodeUnits,
+  containsHomePath,
   containsSecretPattern,
   isValidCode,
   isValidId,
   isValidLabel,
   isValidTimestamp,
   LIMITS,
+  redactSensitiveText,
 } from '../src/index.js';
 import { syntheticSecrets } from './secrets.js';
 
@@ -87,6 +89,60 @@ describe('containsSecretPattern', () => {
     expect(containsSecretPattern('desk-lamp')).toBe(false);
     expect(containsSecretPattern('mask-sensitive-fields-rule')).toBe(false);
     expect(containsSecretPattern('Disk-usage-monitor-worker')).toBe(false);
+  });
+});
+
+describe('containsHomePath', () => {
+  test.each([
+    '/Users/alex',
+    '/Users/alex/projects/app',
+    '/home/alex/app',
+    '/var/home/alex/app',
+    '/root/app',
+    '/root',
+    'C:\\Users\\alex\\app',
+    'c:/users/alex/app',
+    'name at /Users/alex/x',
+    'file:///home/alex/app',
+  ])('detects %s', (value) => {
+    expect(containsHomePath(value)).toBe(true);
+  });
+  test.each([
+    'src/home/page',
+    'apps/users/list',
+    '@scope/users',
+    '/api/users',
+    '/usr/local/lib',
+    '~/projects/app',
+    'rootless',
+    '/rooted',
+    'ordinary-label',
+  ])('ignores %s', (value) => {
+    expect(containsHomePath(value)).toBe(false);
+  });
+});
+
+describe('redactSensitiveText', () => {
+  test.each([
+    ['/Users/alex/projects/app', '~/projects/app'],
+    ['/home/alex', '~'],
+    ['/var/home/alex/app', '~/app'],
+    ['/root/app', '~/app'],
+    ['C:\\Users\\alex\\app', '~\\app'],
+    ['pkg at /home/alex/a and /Users/bo/b', 'pkg at ~/a and ~/b'],
+  ])('replaces the home directory in %s', (input, expected) => {
+    expect(redactSensitiveText(input)).toBe(expected);
+    expect(containsHomePath(redactSensitiveText(input))).toBe(false);
+  });
+  test.each(Object.entries(syntheticSecrets))('replaces a %s secret', (_name, secret) => {
+    const redacted = redactSensitiveText(`before ${secret} after`);
+    expect(redacted.startsWith('before [redacted]')).toBe(true);
+    expect(redacted.endsWith(' after')).toBe(true);
+    expect(redacted).not.toContain(secret);
+    expect(containsSecretPattern(redacted)).toBe(false);
+  });
+  test('leaves ordinary text unchanged', () => {
+    expect(redactSensitiveText('@scope/users-api')).toBe('@scope/users-api');
   });
 });
 

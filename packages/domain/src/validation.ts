@@ -12,6 +12,7 @@ import {
 } from './graph.js';
 import {
   checkRelativePath,
+  containsHomePath,
   containsSecretPattern,
   isValidCode,
   isValidId,
@@ -32,6 +33,7 @@ export type ValidationErrorCode =
   | 'invalid-line-range'
   | 'unsafe-path'
   | 'secret-pattern'
+  | 'home-path'
   | 'limit-exceeded'
   | 'containment-cycle'
   | 'self-containment'
@@ -79,6 +81,7 @@ class IssueCollector {
   label(value: string, path: IssuePath): void {
     if (!isValidLabel(value)) this.add('invalid-label', path);
     else if (containsSecretPattern(value)) this.add('secret-pattern', path);
+    else if (containsHomePath(value)) this.add('home-path', path);
   }
 
   code(value: string, path: IssuePath): void {

@@ -24,6 +24,12 @@ The local SQLite store ([ADR 0006](decisions/0006-local-store-node-sqlite.md)) l
 
 It never contains source file contents. It is not synchronized or exported, and the API never returns root paths. Session routes require the local session capability. Mutations also require a same-origin `Origin` header, a JSON content type and a body under 300,000 bytes. Users can delete the directory to remove all stored data.
 
+## Redaction at the discovery boundary
+
+Text read from analyzed manifests (package and dependency names) is untrusted. Before it reaches the graph, the store, the API or any output, the CLI inventory replaces home-directory prefixes (`/Users/<name>`, `/home/<name>`, `/var/home/<name>`, `/root`, `C:\Users\<name>`) with `~` and known secret shapes with `[redacted]`. The `archwise.graph` validator then rejects any label that still contains either, so a revision cannot carry them. `--json` and `--graph` output contain repository-relative paths only, never the absolute workspace root. Tests cover each layer: domain primitives and validation, the inventory adapter, and the built CLI output.
+
+Pattern matching is defense in depth. It does not prove that text is free of sensitive data.
+
 ## Secret handling
 
 Archwise inventories the existence of sensitive configuration only when useful; it does not read `.env` values, private keys, credential directories, or known secret files by default. Provider keys live in the OS credential store where supported. Diagnostic bundles require preview and explicit export, with a second redaction pass.

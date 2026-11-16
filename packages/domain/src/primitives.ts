@@ -22,6 +22,17 @@ const SECRET_PATTERNS: readonly RegExp[] = [
   /eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\./,
 ];
 
+// A home directory is a recognizable absolute prefix. The look-behind keeps relative paths such
+// as `src/home/page` and route-like labels such as `/api/users` out of the match.
+const HOME_PATH_SOURCES: readonly string[] = [
+  String.raw`(?<![A-Za-z0-9._~-])(?:/var)?/(?:Users|home)/[^/\s"'<>|]+`,
+  String.raw`(?<![A-Za-z0-9._~-])/root(?=[/\s"'<>|]|$)`,
+  String.raw`(?<![A-Za-z0-9])[A-Za-z]:[\\/](?:Users|Documents and Settings)[\\/][^\\/\s"'<>|]+`,
+];
+const HOME_PATH_PATTERNS: readonly RegExp[] = HOME_PATH_SOURCES.map(
+  (source) => new RegExp(source, 'i'),
+);
+
 export function isValidId(value: string): boolean {
   return ID_PATTERN.test(value);
 }
@@ -76,6 +87,25 @@ export function checkRelativePath(value: string): PathIssue | null {
 /** Defense in depth against known credential shapes; not proof that a string is free of secrets. */
 export function containsSecretPattern(value: string): boolean {
   return SECRET_PATTERNS.some((pattern) => pattern.test(value));
+}
+
+/** Detects absolute home-directory paths (macOS, Linux, Windows), which identify the user and machine. */
+export function containsHomePath(value: string): boolean {
+  return HOME_PATH_PATTERNS.some((pattern) => pattern.test(value));
+}
+
+/**
+ * Replaces home-directory prefixes with `~` and known secret shapes with `[redacted]`.
+ * Adapters use it on text read from analyzed projects before that text can reach a graph,
+ * an export or an API response. Validation still rejects anything that slips through.
+ */
+export function redactSensitiveText(value: string): string {
+  let result = value;
+  for (const source of HOME_PATH_SOURCES) result = result.replace(new RegExp(source, 'gi'), '~');
+  for (const pattern of SECRET_PATTERNS) {
+    result = result.replace(new RegExp(pattern.source, 'g'), '[redacted]');
+  }
+  return result;
 }
 
 /** Locale-independent ordering by UTF-16 code unit. */
