@@ -182,3 +182,23 @@ test('a changed view with an unchanged revision records a new revision', () => {
     '{"framework":"react"}',
   );
 });
+
+test('startNew reserves a fresh session and keeps saved ones listed', () => {
+  const service = open(deps());
+  const first = service.current().id;
+  service.saveSandbox(first, sandboxDoc(1));
+  const next = service.startNew();
+  expect(next).toEqual({ id: next.id, persisted: false });
+  expect(next.id).not.toBe(first);
+  expect(service.current()).toEqual(next);
+  expect(service.list().map((s) => s.id)).toEqual([first]);
+});
+
+test('resuming discards the reserved, never-persisted session id', () => {
+  const service = open(deps());
+  const saved = service.current().id;
+  service.saveSandbox(saved, sandboxDoc(1));
+  const reserved = service.startNew().id;
+  service.resume(saved);
+  expect(service.saveSandbox(reserved, sandboxDoc(1))).toEqual({ ok: false, error: 'not-found' });
+});

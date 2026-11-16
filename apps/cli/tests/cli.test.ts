@@ -11,6 +11,7 @@ test('defaults to read-only inspection of current directory', () => {
     open: true,
     sessions: false,
     store: true,
+    resume: null,
   });
 });
 
@@ -24,6 +25,7 @@ test('accepts a workspace path and graph output', () => {
     open: true,
     sessions: false,
     store: true,
+    resume: null,
   });
 });
 
@@ -47,6 +49,7 @@ test('prints help and rejects unsupported or contradictory options', () => {
     open: false,
     sessions: false,
     store: true,
+    resume: null,
   });
 });
 
@@ -65,4 +68,19 @@ test('help does not claim the Studio already saves sessions', () => {
   expect(help).not.toContain('saves\nSandbox sessions');
   expect(help).not.toMatch(/saves Sandbox sessions/);
   expect(help).toContain('local store');
+});
+
+test('--resume requires --serve, the store, and latest or a session id', () => {
+  expect(parseCli(['--serve', '--resume', 'latest'])).toMatchObject({
+    serve: true,
+    resume: 'latest',
+  });
+  const id = `ses-${'a'.repeat(24)}`;
+  expect(parseCli(['--serve', '--resume', id])).toMatchObject({ resume: id });
+  expect(parseCli(['--serve'])).toMatchObject({ resume: null });
+  expect(runCli(['--resume', 'latest']).exitCode).toBe(2);
+  expect(runCli(['--serve', '--resume', 'ses-bad']).exitCode).toBe(2);
+  expect(runCli(['--serve', '--resume']).exitCode).toBe(2);
+  expect(runCli(['--serve', '--resume', 'latest', '--no-store']).exitCode).toBe(2);
+  expect(runCli(['--help']).stdout).toContain('--resume');
 });

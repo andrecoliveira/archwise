@@ -858,3 +858,114 @@ li {
     transition: none;
   }
 }
+
+/* Sessions: autosave indicator, session list and historical-graph notice. */
+.header-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.save-indicator {
+  font-size: 12px;
+  color: #b9e6cc;
+}
+.save-indicator[data-state='saving'] {
+  color: #7dd3fc;
+}
+.save-indicator[data-state='unsaved'] {
+  color: #fca5a5;
+}
+.save-indicator[data-state='disabled'] {
+  color: #94a3b8;
+}
+.sessions-panel {
+  position: fixed;
+  top: 62px;
+  right: 16px;
+  z-index: 50;
+  width: min(460px, calc(100vw - 32px));
+  max-height: calc(100vh - 90px);
+  overflow: auto;
+  padding: 16px;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  box-shadow: 0 16px 40px rgb(0 0 0 / 45%);
+}
+.sessions-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.sessions-heading h2 {
+  margin: 0;
+  font-size: 16px;
+}
+.sessions-heading div {
+  display: flex;
+  gap: 6px;
+}
+.sessions-hint {
+  color: #94a3b8;
+  font-size: 12px;
+}
+.sessions-error {
+  color: #fca5a5;
+}
+.session-list {
+  list-style: none;
+  padding: 0;
+}
+.session-row {
+  border: 1px solid #29344b;
+  border-radius: 8px;
+  padding: 10px;
+  display: grid;
+  gap: 6px;
+}
+.session-row.current {
+  border-color: #0ea5e9;
+}
+.session-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  overflow-wrap: anywhere;
+}
+.session-row small {
+  color: #94a3b8;
+}
+.session-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.session-row form {
+  display: flex;
+  gap: 6px;
+}
+.badge {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #1e3a5f;
+  color: #bae6fd;
+}
+.badge.warning {
+  background: #422006;
+  color: #fcd34d;
+}
+.historical-notice {
+  padding: 8px 16px;
+  color: #fde68a;
+  background: #332608;
+  border-block: 1px solid #854d0e;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}

@@ -5,7 +5,6 @@ import {
   parseSandboxDocument,
   projectSignature,
   serializeSandboxDocument,
-  workspaceStorageKey,
   type SandboxDocument,
 } from './sandbox-persistence.js';
 import { captureScenario } from './scenario-comparison.js';
@@ -68,15 +67,12 @@ test('round-trips topology, controls and scenario A in versioned JSON', () => {
   expect(JSON.parse(encoded)).toMatchObject({ format: 'archwise-sandbox', version: 1 });
 });
 
-test('keeps local storage isolated across discovered projects', () => {
+test('rejects Sandbox documents from a different discovered project', () => {
   const alternative: Graph = {
     ...graph,
     nodes: [{ ...graph.nodes[0]!, id: 'package:other/package.json' }],
   };
-  const signature = projectSignature(graph);
-  expect(workspaceStorageKey(signature)).not.toBe(
-    workspaceStorageKey(projectSignature(alternative)),
-  );
+  expect(projectSignature(graph)).not.toBe(projectSignature(alternative));
   expect(() =>
     parseSandboxDocument(serializeSandboxDocument(example()), projectSignature(alternative)),
   ).toThrow('different discovered project');

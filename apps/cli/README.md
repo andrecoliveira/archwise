@@ -2,7 +2,7 @@
 
 Argument parsing, the read-only Node package-manifest inventory, evidence-backed package graph construction and the protected loopback HTTP server that serves the Studio (`--json`, `--graph`, `--serve`, `--no-open`). It never executes or imports code from the inspected project.
 
-With `--serve`, it also records the discovered graph as an `archwise.graph` revision and serves the protected session API (see `docs/sessions.md`). `--sessions` lists saved sessions, and `--no-store` disables the local store.
+With `--serve`, it also records the discovered graph as an `archwise.graph` revision and serves the protected session API (see `docs/sessions.md`). `--sessions` lists saved sessions, `--resume latest|SESSION_ID` continues one, and `--no-store` disables the local store.
 
 Inventory, graph and server logic live here temporarily during the Alpha; ADR 0005 records the planned extraction into discovery, domain/schemas and server packages.
 

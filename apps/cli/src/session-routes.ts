@@ -69,6 +69,14 @@ export async function handleSessionRoute(
     notFound(res);
     return;
   }
+  if (pathname === `${PREFIX}/new` && method === 'POST') {
+    if (req.headers.origin !== context.origin) {
+      json(res, 403, { error: 'Same-origin request required' });
+      return;
+    }
+    json(res, 200, { ...sessions.startNew(), storeEnabled: true });
+    return;
+  }
   if (pathname === PREFIX && method === 'GET') {
     json(res, 200, { sessions: sessions.list() });
     return;

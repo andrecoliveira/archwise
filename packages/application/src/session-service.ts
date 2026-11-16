@@ -136,6 +136,12 @@ export class SessionService {
     return { ...this.#current };
   }
 
+  /** Reserves a fresh, unpersisted session as current (e.g. "New session" in the Studio). */
+  startNew(): { readonly id: string; readonly persisted: boolean } {
+    this.#current = { id: this.#deps.ids.next('ses'), persisted: false };
+    return { ...this.#current };
+  }
+
   list(): readonly SessionSummary[] {
     return this.#deps.store.sessions
       .list(this.workspaceId)
@@ -150,6 +156,10 @@ export class SessionService {
     return { ok: true, value: this.#detail(session, base) };
   }
 
+  /**
+   * Continues a stored session in place. A reserved, never-persisted current ID is discarded:
+   * nothing was stored under it, and later saves to it are rejected as not-found.
+   */
   resume(id: string): ServiceResult<SessionDetail> {
     const detail = this.get(id);
     if (detail.ok) this.#current = { id, persisted: true };

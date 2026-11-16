@@ -43,7 +43,7 @@ Use `--json` for the inventory instead of the graph, or `--serve --no-open` to a
 7. In Sandbox, build a proposed topology, then set hypothetical load, capacity, cache-hit ratios and simulated failure in the Simulation panel. Check the displayed assumptions and results.
 8. Confirm that connections involving discovered packages are excluded from the simulation and a cyclic proposed topology reports a validation error.
 9. Save the current hypothetical simulation as scenario A, modify the Sandbox topology and inputs, then save scenario B. Compare modeled output, bottlenecks and per-node differences. Replace B to compare another design.
-10. Verify that A/B snapshots survive switching to Explore and back **and persist after page reload** in the same browser.
+10. Verify that A/B snapshots survive switching to Explore and back **and persist after page reload**. The header indicator should read **All changes saved**. Stop the server, start it again, open **Sessions** and **Resume** the previous session (or start with `--resume latest`). Its components and snapshots must return.
 11. Export the Sandbox as versioned JSON; reset it; import the JSON and verify your components, parameters, and A/B snapshots are restored. Invalid files must not replace the current design.
 12. The Architecture Coach panel shows offline contextual questions.
 13. Stop the local server with Ctrl+C. No project files should have been modified.
@@ -51,7 +51,7 @@ Use `--json` for the inventory instead of the graph, or `--serve --no-open` to a
 ## Current limits and safety
 
 - Discovery currently covers Node package manifests and explicitly declared dependencies between uniquely identified local packages. It does **not** infer a live runtime system, traffic flows, databases or deployed infrastructure.
-- The Studio still persists Sandbox topology, simulation inputs and saved A/B snapshots in browser localStorage, scoped to a deterministic discovered-graph signature. The CLI already records discovered revisions in the local store outside the project (`--sessions`, `--no-store`; see [Sessions](sessions.md)), and the Studio will switch to that store in the next increment. The offline Coach question index is not persisted. See [Sandbox persistence](sandbox-persistence.md) and [Scenario comparison](scenario-comparison.md).
+- Sandbox topology, simulation inputs and saved A/B snapshots are autosaved to sessions in the local store outside the project. You can resume them from **Sessions**, `--resume` or `--sessions`, and disable the store with `--no-store`; see [Sessions](sessions.md). A resumed session shows the graph as it was; rebasing onto newer discoveries is future work. The offline Coach question index is not persisted. See [Sandbox persistence](sandbox-persistence.md) and [Scenario comparison](scenario-comparison.md).
 - A deterministic Sandbox simulation is available, but it **does not measure production traffic**. It assumes a single entry node, evenly split routing across proposed links, a DAG topology, no retries and modeled capacity drops. See [Simulation assumptions](simulation.md).
 - There is no npm-published `npx archwise` package yet; use the compiled CLI.
 - The current build includes ELK and Svelte Flow and is not yet bundle-size optimized.

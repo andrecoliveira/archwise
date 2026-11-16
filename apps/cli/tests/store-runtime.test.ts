@@ -62,3 +62,30 @@ test('a data directory outside the root opens the store', async () => {
   expect(runtime.kind).toBe('ready');
   if (runtime.kind === 'ready') runtime.store.close();
 });
+
+test('resumeTarget resolves latest and known ids only', async () => {
+  const { resumeTarget } = await import('../src/store-runtime.js');
+  const root = temp('archwise-root-');
+  const data = temp('archwise-data-');
+  const runtime = await prepareStore({
+    enabled: true,
+    dataDir: data,
+    rootPath: root,
+    rootLabel: 'r',
+    graph,
+  });
+  if (runtime.kind !== 'ready') throw new Error('store expected');
+  try {
+    expect(resumeTarget(runtime.service, 'latest')).toBeNull();
+    const id = runtime.service.current().id;
+    runtime.service.saveSandbox(
+      id,
+      JSON.stringify({ format: 'archwise-sandbox', version: 1, nodes: [], draft: {} }),
+    );
+    expect(resumeTarget(runtime.service, 'latest')).toBe(id);
+    expect(resumeTarget(runtime.service, id)).toBe(id);
+    expect(resumeTarget(runtime.service, `ses-${'f'.repeat(24)}`)).toBeNull();
+  } finally {
+    runtime.store.close();
+  }
+});
