@@ -113,7 +113,7 @@ test('refuses to serialize a secret-bearing label and does not echo it', () => {
 
 test('neither export nor import accepts a label with a home directory, and neither echoes it', () => {
   const revision = revisionOf(validEnvelope());
-  const home = '/home/alex/private-app';
+  const home = '/Users/alex/private-app';
   const tampered = { ...revision, nodes: revision.nodes.map((n) => ({ ...n, label: home })) };
   const exported = serializeGraphRevision(tampered);
   expect(exported.ok ? [] : exported.issues.map((i) => i.code)).toContain('home-path');

@@ -63,3 +63,18 @@ test('redacts home directories and secret shapes in names read from manifests', 
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('redacts the running user home directory supplied by the caller', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'archwise-home-'));
+  try {
+    await writeFile(
+      join(root, 'package.json'),
+      JSON.stringify({ name: '/home/alex/app', dependencies: { '/home/feed': '1' } }),
+    );
+    const result = await inspectWorkspace(root, { knownHomes: ['/home/alex'] });
+    expect(result.manifests[0]?.name).toBe('~/app');
+    expect(result.manifests[0]?.dependencies).toEqual(['/home/feed']);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

@@ -8,6 +8,6 @@ Pure graph contracts with no runtime dependencies, filesystem, clock or randomne
 - `revision.ts`: `createRevision` copies the input, validates it and returns a canonical, deeply frozen revision. `canonicalizeRevision` applies the deterministic ordering.
 - `sandbox.ts`: `bindSandbox` checks that a readonly sandbox reference matches its base revision. Operation logs are not part of this package yet.
 
-Labels that contain a known secret shape (`secret-pattern`) or an absolute home-directory path such as `/Users/<name>`, `/home/<name>` or `C:\Users\<name>` (`home-path`) are rejected. These checks are defense in depth, not proof that a label or path contains no sensitive data.
+Labels that contain a known secret shape (`secret-pattern`) or a generic home-directory path, `/Users/<name>` or `C:\Users\<name>` (`home-path`), are rejected. `redactSensitiveText` also accepts the running user's home directories, so adapters can redact Linux homes without flagging route labels such as `/home/feed`. These checks are defense in depth, not proof that a label or path contains no sensitive data.
 
 Public exports live in `src/index.ts`. Tests live in `tests/`. Run `pnpm --filter @archwise/domain test` from the root. Build dependencies first with `pnpm build`.

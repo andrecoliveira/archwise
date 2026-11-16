@@ -60,7 +60,7 @@ Use `--json` for the inventory instead of the graph, or `--serve --no-open` to a
 
 ## If the local store fails
 
-Archwise never deletes your sessions to recover. When the store is corrupt it moves the file aside, starts a fresh store and prints where the old file is. When the store was written by a newer Archwise, or an upgrade fails, it exits with code 2 and leaves the file untouched. Run with `--no-store` to keep inspecting without sessions, or set `ARCHWISE_DATA_DIR` to use another directory. The full table is in [Sessions: recovery and failures](sessions.md#recovery-and-failures).
+Archwise never deletes your sessions to recover. When the store is corrupt it moves the file aside, starts a fresh store and prints where the old file is. When the store was written by a newer Archwise, or an upgrade fails, it exits with code 2 and leaves the file untouched. It also exits with code 2 when the data directory is not writable. Run with `--no-store` to keep inspecting without sessions, or set `ARCHWISE_DATA_DIR` to use another directory. The full table is in [Sessions: recovery and failures](sessions.md#recovery-and-failures).
 
 ## Verified automated checks
 

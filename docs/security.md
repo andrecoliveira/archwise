@@ -26,7 +26,14 @@ It never contains source file contents. It is not synchronized or exported, and 
 
 ## Redaction at the discovery boundary
 
-Text read from analyzed manifests (package and dependency names) is untrusted. Before it reaches the graph, the store, the API or any output, the CLI inventory replaces home-directory prefixes (`/Users/<name>`, `/home/<name>`, `/var/home/<name>`, `/root`, `C:\Users\<name>`) with `~` and known secret shapes with `[redacted]`. The `archwise.graph` validator then rejects any label that still contains either, so a revision cannot carry them. `--json` and `--graph` output contain repository-relative paths only, never the absolute workspace root. Tests cover each layer: domain primitives and validation, the inventory adapter, and the built CLI output.
+Text read from analyzed manifests (package and dependency names) is untrusted. Before it reaches the graph, the store, the API or any output, the CLI inventory:
+- replaces known secret shapes with `[redacted]`, removing the whole token (a private-key block up to its end marker, a JWT including its signature);
+- replaces home directories with `~`: the running user's real home directory, plus the generic `/Users/<name>` and `X:\Users\<name>` shapes;
+- repeats until nothing changes, so removing one piece cannot reassemble another.
+
+The `archwise.graph` validator rejects labels that still contain a secret shape or a generic home-directory shape. Linux `/home/<name>` is redacted only for the running user, because route labels such as `/home/feed` share its shape. `--json` and `--graph` output use repository-relative paths and never print the absolute workspace root. Directory names are not redacted: a directory named like a secret appears in evidence paths, and the graph validator then rejects that revision, so sessions are not saved for that run.
+
+Tests cover the domain primitives and validation, the inventory adapter, and the built CLI output.
 
 Pattern matching is defense in depth. It does not prove that text is free of sensitive data.
 

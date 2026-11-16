@@ -22,16 +22,31 @@ const SECRET_PATTERNS: readonly RegExp[] = [
   /eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\./,
 ];
 
-// A home directory is a recognizable absolute prefix. The look-behind keeps relative paths such
-// as `src/home/page` and route-like labels such as `/api/users` out of the match.
-const HOME_PATH_SOURCES: readonly string[] = [
-  String.raw`(?<![A-Za-z0-9._~-])(?:/var)?/(?:Users|home)/[^/\s"'<>|]+`,
-  String.raw`(?<![A-Za-z0-9._~-])/root(?=[/\s"'<>|]|$)`,
-  String.raw`(?<![A-Za-z0-9])[A-Za-z]:[\\/](?:Users|Documents and Settings)[\\/][^\\/\s"'<>|]+`,
+// Generic home-directory shapes that ordinary route labels do not use: the macOS `/Users/<name>`
+// (case-sensitive, so the common `/users/:id` route stays intact) and the Windows
+// `X:\Users\<name>`. The Windows form runs first so `C:/Users/x` is replaced as one unit.
+// Linux `/home/<name>` and `/root` collide with routes, so adapters pass the real home directory.
+const HOME_PATH_RULES: readonly { readonly source: string; readonly flags: string }[] = [
+  {
+    source: String.raw`(?<![A-Za-z0-9])[A-Za-z]:[\\/](?:Users|Documents and Settings)[\\/][^\\/\s"'<>|()]+`,
+    flags: 'i',
+  },
+  { source: String.raw`(?<![A-Za-z0-9._~-])/Users/[^/\\\s"'<>|()]+`, flags: '' },
 ];
-const HOME_PATH_PATTERNS: readonly RegExp[] = HOME_PATH_SOURCES.map(
-  (source) => new RegExp(source, 'i'),
+const HOME_PATH_PATTERNS: readonly RegExp[] = HOME_PATH_RULES.map(
+  (rule) => new RegExp(rule.source, rule.flags),
 );
+// Redaction removes the whole token or block, not only the prefix that detection needs.
+const SECRET_REDACTIONS: readonly RegExp[] = [
+  /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z ]*PRIVATE KEY-----|$)/g,
+  /AKIA[0-9A-Z]{16}/g,
+  /gh[pousr]_[A-Za-z0-9]{36,}/g,
+  /xox[abprs]-[A-Za-z0-9-]{10,}/g,
+  /(?<![A-Za-z0-9])sk-[A-Za-z0-9_-]{20,}/g,
+  /eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]*/g,
+];
+const PATH_END = String.raw`(?=$|[\\/\s"'<>|()])`;
+const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 export function isValidId(value: string): boolean {
   return ID_PATTERN.test(value);
@@ -89,23 +104,37 @@ export function containsSecretPattern(value: string): boolean {
   return SECRET_PATTERNS.some((pattern) => pattern.test(value));
 }
 
-/** Detects absolute home-directory paths (macOS, Linux, Windows), which identify the user and machine. */
+/**
+ * Detects the generic home-directory shapes (`/Users/<name>`, `X:\Users\<name>`), which identify
+ * the user and machine. Linux homes are only recognizable when the adapter knows them.
+ */
 export function containsHomePath(value: string): boolean {
   return HOME_PATH_PATTERNS.some((pattern) => pattern.test(value));
 }
 
 /**
- * Replaces home-directory prefixes with `~` and known secret shapes with `[redacted]`.
- * Adapters use it on text read from analyzed projects before that text can reach a graph,
- * an export or an API response. Validation still rejects anything that slips through.
+ * Replaces known secret shapes with `[redacted]`, then home directories with `~`: the generic
+ * shapes plus each of `knownHomes` (the running user's real home directory, supplied by the
+ * adapter). It repeats until nothing changes, so removing one piece cannot reassemble another.
+ * Adapters use it on text read from analyzed projects; validation still rejects what slips through.
  */
-export function redactSensitiveText(value: string): string {
-  let result = value;
-  for (const source of HOME_PATH_SOURCES) result = result.replace(new RegExp(source, 'gi'), '~');
-  for (const pattern of SECRET_PATTERNS) {
-    result = result.replace(new RegExp(pattern.source, 'g'), '[redacted]');
+export function redactSensitiveText(value: string, knownHomes: readonly string[] = []): string {
+  const homes = knownHomes
+    .map((home) => home.replace(/[\\/]+$/, ''))
+    .filter((home) => home.length > 1)
+    .map((home) => new RegExp(escapeRegExp(home) + PATH_END, 'g'));
+  let current = value;
+  for (let pass = 0; pass < 8; pass++) {
+    let next = current;
+    for (const pattern of SECRET_REDACTIONS) next = next.replace(pattern, '[redacted]');
+    for (const rule of HOME_PATH_RULES) {
+      next = next.replace(new RegExp(rule.source, `g${rule.flags}`), '~');
+    }
+    for (const home of homes) next = next.replace(home, '~');
+    if (next === current) break;
+    current = next;
   }
-  return result;
+  return current;
 }
 
 /** Locale-independent ordering by UTF-16 code unit. */

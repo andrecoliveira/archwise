@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync } from 'node:fs';
+import { realpath } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { basename, resolve } from 'node:path';
@@ -51,7 +52,9 @@ if (command.kind === 'output') {
 } else {
   const dataDir = resolveDataDir(process.env, process.platform, homedir());
   try {
-    const result = await inspectWorkspace(command.path);
+    const home = homedir();
+    const knownHomes = [home, await realpath(home).catch(() => home)];
+    const result = await inspectWorkspace(command.path, { knownHomes });
     const graph = buildArchitectureGraph(result);
     const prepareRuntime = async (enabled: boolean) => {
       const runtime = await prepareStore({

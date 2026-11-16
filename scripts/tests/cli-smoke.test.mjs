@@ -26,21 +26,23 @@ test('built CLI exposes help and version with correct exit codes', () => {
 test('--json and --graph never print the absolute root, home directories or secret shapes', async () => {
   const { mkdtempSync, mkdirSync, writeFileSync, realpathSync, rmSync } = await import('node:fs');
   const { join } = await import('node:path');
-  const { tmpdir } = await import('node:os');
+  const { tmpdir, homedir } = await import('node:os');
+  const home = homedir();
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'archwise-export-')));
   const token = 'AKIA' + 'ABCDEFGHIJKLMNOP';
   try {
     mkdirSync(join(root, 'app'));
     writeFileSync(
       join(root, 'app', 'package.json'),
-      JSON.stringify({ name: '/home/alex/app', dependencies: { [`x-${token}`]: '1' } }),
+      JSON.stringify({ name: join(home, 'app'), dependencies: { [`x-${token}`]: '1' } }),
     );
     for (const flag of ['--json', '--graph']) {
       const run = spawnSync(process.execPath, [entry, '--path', root, flag], { encoding: 'utf8' });
       assert.equal(run.status, 0, run.stderr);
       JSON.parse(run.stdout);
       assert.ok(!run.stdout.includes(root), `${flag} printed the absolute root`);
-      assert.ok(!run.stdout.includes('/home/alex'), `${flag} printed a home directory`);
+      // JSON escapes Windows backslashes, so compare against the escaped form.
+      assert.ok(!run.stdout.includes(JSON.stringify(home).slice(1, -1)), `${flag} printed home`);
       assert.ok(!run.stdout.includes(token), `${flag} printed a secret shape`);
     }
   } finally {

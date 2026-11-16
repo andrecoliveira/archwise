@@ -32,8 +32,17 @@ export interface InventoryResult {
   readonly inspectedEntries: number;
 }
 
+export interface InventoryOptions {
+  /** The running user's home directories (as given and resolved), redacted from manifest text. */
+  readonly knownHomes?: readonly string[];
+}
+
 /** Inspect manifests as data. Do not execute/import any code in the target workspace. */
-export async function inspectWorkspace(rootInput: string): Promise<InventoryResult> {
+export async function inspectWorkspace(
+  rootInput: string,
+  options: InventoryOptions = {},
+): Promise<InventoryResult> {
+  const redact = (text: string): string => redactSensitiveText(text, options.knownHomes ?? []);
   const root = await realpath(resolve(rootInput));
   if (!(await lstat(root)).isDirectory()) throw new Error('Workspace root must be a directory');
   const manifests: ManifestEvidence[] = [];
@@ -84,7 +93,7 @@ export async function inspectWorkspace(rootInput: string): Promise<InventoryResu
           value && typeof value === 'object' && !Array.isArray(value) ? Object.keys(value) : [],
         );
         // Manifest text is untrusted: home directories and secret shapes never leave this boundary.
-        const dependencyNames = deps.map(redactSensitiveText);
+        const dependencyNames = deps.map(redact);
         const frameworks = [
           'next',
           'expo',
@@ -97,7 +106,7 @@ export async function inspectWorkspace(rootInput: string): Promise<InventoryResu
         const framework = frameworks.find((item) => dependencyNames.includes(item)) ?? null;
         manifests.push({
           path: relativePath,
-          name: typeof data.name === 'string' ? redactSensitiveText(data.name) : relativePath,
+          name: typeof data.name === 'string' ? redact(data.name) : relativePath,
           framework,
           dependencies: [...new Set(dependencyNames)].sort(),
         });

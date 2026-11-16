@@ -34,7 +34,7 @@ Finalization does not mean development stops. It establishes a reliable open-sou
 
 ## Current state
 
-Snapshot as of 2026-11-16, after the Phase 2 redaction PR. Issues and milestones remain the live tracker.
+Snapshot as of 2026-11-16, after PRs #5 to #12 and the Phase 2 redaction change. Issues and milestones remain the live tracker.
 
 | Phase | State on `main` | What is missing for the exit gate |
 |---|---|---|
