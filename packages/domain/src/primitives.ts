@@ -46,6 +46,12 @@ const SECRET_REDACTIONS: readonly RegExp[] = [
   /eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]*/g,
 ];
 const PATH_END = String.raw`(?=$|[\\/\s"'<>|()])`;
+/** Linear-time trim; an anchored `[\\/]+$` regex is polynomial on long runs of separators. */
+function trimTrailingSeparators(path: string): string {
+  let end = path.length;
+  while (end > 0 && (path[end - 1] === '/' || path[end - 1] === '\\')) end--;
+  return path.slice(0, end);
+}
 const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 export function isValidId(value: string): boolean {
@@ -120,7 +126,7 @@ export function containsHomePath(value: string): boolean {
  */
 export function redactSensitiveText(value: string, knownHomes: readonly string[] = []): string {
   const homes = knownHomes
-    .map((home) => home.replace(/[\\/]+$/, ''))
+    .map(trimTrailingSeparators)
     .filter((home) => home.length > 1)
     .map((home) => new RegExp(escapeRegExp(home) + PATH_END, 'g'));
   let current = value;

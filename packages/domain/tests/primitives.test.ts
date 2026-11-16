@@ -180,6 +180,12 @@ describe('redactSensitiveText', () => {
     }
   });
 
+  test('accepts known homes with trailing separators and ignores the filesystem root', () => {
+    expect(redactSensitiveText('/home/alex/app', ['/home/alex///'])).toBe('~/app');
+    expect(redactSensitiveText('C:\\home\\x', ['C:\\home\\'])).toBe('~\\x');
+    expect(redactSensitiveText('/etc/app', ['/', '//'])).toBe('/etc/app');
+  });
+
   test('leaves ordinary text unchanged', () => {
     expect(redactSensitiveText('@scope/users-api', ['/home/alex'])).toBe('@scope/users-api');
   });
