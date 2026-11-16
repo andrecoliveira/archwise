@@ -4,7 +4,7 @@ Each time you launch the Studio on a project, Archwise starts a **fresh session*
 
 ## In the Studio
 
-- **Autosave.** Every Sandbox change saves to the current session about 750 ms after you stop editing. The header indicator shows **All changes saved**, **Saving…**, or **Not saved — retrying on next change**, which offers a **Retry** button. Pending changes are also saved when you leave or hide the page. A failed save never discards what is on the canvas.
+- **Autosave.** Every Sandbox change saves to the current session about 750 ms after you stop editing. The header indicator shows **All changes saved**, **Saving…**, or **Not saved — retrying on next change**, which offers a **Retry** button. Pending changes are also saved when you leave or hide the page. This is best effort: browsers only allow it for Sandbox documents up to about 60 KB, so larger documents rely on the normal 750 ms autosave. A failed save never discards what is on the canvas.
 - **Reload.** Reloading the page restores the current session from the store.
 - **Sessions.** The **Sessions** button lists this project's saved sessions, newest first. Each entry shows its name, its component count, an `A/B` badge when it has scenario snapshots, and an **Architecture changed** badge when discovery differs from the session's start. From the list you can:
   - **Resume** a session, which continues it in place;
@@ -15,7 +15,9 @@ Each time you launch the Studio on a project, Archwise starts a **fresh session*
   Deleting the session you have open switches to a fresh, empty session.
 
 - **Changed architecture.** A resumed session shows the graph **as it was** when the session started, with a notice and a button to start a new session on the current graph. Re-applying an old Sandbox onto a newer graph (rebase) is future work.
-- **One active tab.** If another tab replaces or deletes the session, saving stops with **This session changed elsewhere. Reload to continue.** Your edits stay on the canvas, so you can export them as JSON before reloading.
+- **One active tab per session.** Two tabs editing the same session overwrite each other: the last save wins, with no warning. If another tab or process deletes the session, saving stops with **This session was deleted elsewhere. Reload to continue.** Your edits stay on the canvas, so you can export them as JSON before reloading.
+- **Unrestorable sessions.** If a saved Sandbox cannot be restored (for example, it was written for a different project), the Studio stops saving so the stored copy is never overwritten. Start a new session from **Sessions**.
+- **Switching safely.** Refresh, resume and new-session first save pending edits. If that save fails, the switch is cancelled so nothing is lost.
 - **`--no-store`.** The indicator shows **Not saving (store disabled)** and the Sessions button is hidden. JSON export and import still work.
 
 The Studio no longer keeps Sandbox state in browser `localStorage`. A Sandbox that lived only in an older build's browser storage can be moved over with **Export JSON** in that build, then **Import JSON** here.

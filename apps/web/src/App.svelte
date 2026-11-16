@@ -72,7 +72,13 @@
   let questionIndex = $state(0);
   const currentQuestion = $derived(coachQuestions[questionIndex % Math.max(coachQuestions.length, 1)]);
 
+  const UNSAVED_SWITCH =
+    'Your latest changes are not saved yet. Retry saving, or export them as JSON, before switching.';
+  let noticeError = $state('');
+
   async function loadGraph() {
+    // Never drop an edit made just before a refresh or a session switch.
+    if (autosave && !(await autosave.flush())) return;
     controller?.abort();
     controller = new AbortController();
     const signal = controller.signal;
@@ -119,7 +125,7 @@
 
   /** Saves pending edits first so switching sessions never drops the last change. */
   async function switchSession(action: () => Promise<{ ok: boolean }>, failure: string): Promise<string | null> {
-    await autosave?.flush();
+    if (autosave && !(await autosave.flush())) return UNSAVED_SWITCH;
     const result = await action();
     if (!result.ok) return failure;
     await loadGraph();
@@ -138,7 +144,22 @@
 
   async function rename(id: string, label: string): Promise<string | null> {
     const result = await renameSession(id, label);
-    return result.ok ? null : 'Use a name of 1–256 characters without control characters.';
+    if (result.ok) return null;
+    if (result.status === 422) {
+      return 'Use a name of 1–256 characters, without control characters or credential-like text.';
+    }
+    if (result.status === 404) return 'That session no longer exists.';
+    return 'Unable to rename that session.';
+  }
+
+  async function startNewFromNotice(): Promise<void> {
+    noticeError = (await startNew()) ?? '';
+  }
+
+  function restoreFailed(): void {
+    autosave?.halt(
+      'Saved session could not be restored, so changes are not saved. Start a new session from Sessions.',
+    );
   }
 
   onMount(() => {
@@ -244,12 +265,14 @@
         {#if historical}
           <div class="historical-notice" role="status">
             Architecture changed since this session started. You are viewing the graph as it was then.
-            <button type="button" onclick={() => void startNew()}>Start a new session on the current graph</button>
+            <button type="button" onclick={() => void startNewFromNotice()}>Start a new session on the current graph</button>
+            {#if noticeError}<span role="alert">{noticeError}</span>{/if}
           </div>
         {/if}
         {#key workspaceKey}
           <ArchitectureCanvas {graph} {visibleIds} bind:selectedId bind:mode={studioMode} {addRequest}
-            {initialDocument} onDocumentChange={(text) => autosave?.schedule(text)} />
+            {initialDocument} onDocumentChange={(text) => autosave?.schedule(text)}
+            onRestoreFailed={restoreFailed} />
         {/key}
       {/if}
       {#if graph && graph.diagnostics.length > 0}

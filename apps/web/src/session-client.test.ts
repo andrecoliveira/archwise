@@ -92,3 +92,12 @@ describe('responses', () => {
     expect(await getCurrent(f)).toEqual({ ok: false, status: 0, error: 'network' });
   });
 });
+
+test('keepalive is only used for bodies browsers accept on page exit', async () => {
+  const small = respond(200, { id });
+  await saveSandbox(id, 'x'.repeat(1000), small, { keepalive: true });
+  expect(small.mock.calls[0]![1]?.keepalive).toBe(true);
+  const large = respond(200, { id });
+  await saveSandbox(id, 'x'.repeat(70_000), large, { keepalive: true });
+  expect(large.mock.calls[0]![1]?.keepalive).toBeUndefined();
+});

@@ -75,7 +75,7 @@ test('a 404 stops autosave until an explicit retry', async () => {
   await vi.advanceTimersByTimeAsync(750);
   expect(last()).toEqual({
     state: 'unsaved',
-    message: 'This session changed elsewhere. Reload to continue.',
+    message: 'This session was deleted elsewhere. Reload to continue.',
   });
   autosave.schedule('b');
   await vi.advanceTimersByTimeAsync(2000);
@@ -135,4 +135,34 @@ test('ignoreFirst treats the initial render as already saved', async () => {
   autosave.schedule('edited');
   await vi.advanceTimersByTimeAsync(750);
   expect(save).toHaveBeenCalledWith('edited', false);
+});
+
+test('flush waits for an in-flight save and then saves queued changes', async () => {
+  let resolve!: (r: ClientResult<unknown>) => void;
+  save.mockImplementationOnce(() => new Promise((r) => (resolve = r)));
+  const autosave = make();
+  autosave.schedule('a');
+  await vi.advanceTimersByTimeAsync(750);
+  autosave.schedule('b');
+  const flushed = autosave.flush();
+  resolve({ ok: true, value: null });
+  expect(await flushed).toBe(true);
+  expect(save).toHaveBeenLastCalledWith('b', false);
+});
+
+test('flush reports whether everything is saved', async () => {
+  const autosave = make();
+  expect(await autosave.flush()).toBe(true);
+  save.mockResolvedValueOnce({ ok: false, status: 413, error: 'too-large' });
+  autosave.schedule('a');
+  expect(await autosave.flush()).toBe(false);
+});
+
+test('halt stops saving and reports the reason', async () => {
+  const autosave = make();
+  autosave.halt('Saved session could not be restored.');
+  autosave.schedule('a');
+  await vi.advanceTimersByTimeAsync(2000);
+  expect(save).not.toHaveBeenCalled();
+  expect(last()).toEqual({ state: 'unsaved', message: 'Saved session could not be restored.' });
 });

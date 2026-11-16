@@ -27,6 +27,8 @@ export type ClientResult<T> =
 
 type Fetch = typeof fetch;
 const BASE = '/api/v1/sessions';
+/** Browsers reject keepalive requests whose bodies exceed 64 KiB; stay safely below. */
+export const KEEPALIVE_MAX_BYTES = 60_000;
 
 async function request<T>(
   f: Fetch,
@@ -90,7 +92,13 @@ export const saveSandbox = (
   request(
     f,
     `${BASE}/${id}/sandbox`,
-    { method: 'PUT', jsonBody: text, ...(init.keepalive ? { keepalive: true } : {}) },
+    {
+      method: 'PUT',
+      jsonBody: text,
+      ...(init.keepalive && new TextEncoder().encode(text).byteLength <= KEEPALIVE_MAX_BYTES
+        ? { keepalive: true }
+        : {}),
+    },
     identity<SessionSummary>,
   );
 

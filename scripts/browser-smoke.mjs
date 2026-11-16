@@ -336,12 +336,99 @@ try {
   await resumedPage.waitForFunction(
     () => globalThis.document.querySelectorAll('.svelte-flow__node').length === 0,
   );
-  const indicator = await resumedPage.locator('.save-indicator').getAttribute('data-state');
-  assert.notEqual(indicator, 'unsaved', 'Deleting the open session must not leave failed saves');
+  await resumedPage.waitForTimeout(1500);
+  assert.notEqual(
+    await resumedPage.locator('.save-indicator').getAttribute('data-state'),
+    'unsaved',
+    'Deleting the open session must not leave failed saves',
+  );
+
+  // Switching sessions must never replay the last catalog addition into the next session.
+  const countSessions = () =>
+    resumedPage.evaluate(
+      async () => (await (await fetch('/api/v1/sessions')).json()).sessions.length,
+    );
+  await resumedPage.getByRole('button', { name: 'Add Cache' }).click();
+  await waitForDocument((doc) => doc.nodes.length === 1, 'cache added', resumedPage);
+  const sessionsBefore = await countSessions();
+  await resumedPage.getByRole('button', { name: 'Sessions' }).click();
+  await resumedPage
+    .getByRole('dialog', { name: 'Sessions' })
+    .getByRole('button', { name: 'New session' })
+    .click();
+  await resumedPage.waitForFunction(
+    () => globalThis.document.querySelectorAll('.svelte-flow__node').length === 0,
+  );
+  await resumedPage.waitForTimeout(1500);
+  assert.equal(
+    await resumedPage.locator('.svelte-flow__node').count(),
+    0,
+    'A new session must not replay the last catalog addition',
+  );
+  assert.equal(await countSessions(), sessionsBefore, 'An unedited new session must not persist');
+
+  // An edit made just before "Refresh graph" is saved, not dropped.
+  await resumedPage.getByRole('button', { name: 'Add Client' }).click();
+  const freshInspector = resumedPage.getByRole('region', { name: 'Selected component properties' });
+  await freshInspector.locator('#inspector-name').fill('Edge Client');
+  await resumedPage.getByRole('button', { name: 'Refresh graph' }).click();
+  await waitForDocument(
+    (doc) => doc.nodes.length === 1 && doc.nodes[0].label === 'Edge Client',
+    'edit before refresh saved',
+    resumedPage,
+  );
+
+  // The Sessions panel works from the keyboard and returns focus on Escape.
+  const sessionsButton = resumedPage.getByRole('button', { name: 'Sessions' });
+  await sessionsButton.focus();
+  await resumedPage.keyboard.press('Enter');
+  const keyboardDialog = resumedPage.getByRole('dialog', { name: 'Sessions' });
+  await keyboardDialog.waitFor();
+  assert(
+    await keyboardDialog.evaluate((el) => el.contains(globalThis.document.activeElement)),
+    'Opening Sessions moves focus into the panel',
+  );
+  await resumedPage.keyboard.press('Escape');
+  await keyboardDialog.waitFor({ state: 'detached' });
+  assert.equal(
+    await resumedPage.evaluate(() => globalThis.document.activeElement?.textContent?.trim()),
+    'Sessions',
+    'Closing Sessions returns focus to its button',
+  );
+
+  // A stored Sandbox that cannot be restored is never overwritten by later edits.
+  await resumedPage.evaluate(async () => {
+    const { id } = await (await fetch('/api/v1/sessions/current')).json();
+    await fetch(`/api/v1/sessions/${id}/sandbox`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        format: 'archwise-sandbox',
+        version: 1,
+        projectSignature: 'foreign-project',
+        nodes: [],
+        connections: [],
+        draft: {},
+      }),
+    });
+  });
+  await resumedPage.reload({ waitUntil: 'networkidle' });
+  await resumedPage
+    .locator('.save-indicator')
+    .filter({ hasText: 'could not be restored' })
+    .waitFor();
+  await resumedPage.getByRole('button', { name: 'Add Worker' }).click();
+  await resumedPage.waitForTimeout(1500);
+  const untouched = await savedDocument(resumedPage);
+  assert.equal(
+    untouched.projectSignature,
+    'foreign-project',
+    'An unrestorable session must not be overwritten',
+  );
 
   assert.deepEqual(errors, [], 'Browser runtime errors must not occur');
   console.log(
-    'Browser smoke passed: components, handles, edge intent, replica scaling, A/B, autosave, drag positions, JSON export/import, reload, cross-launch resume, rename and delete.',
+    'Browser smoke passed: components, handles, edge intent, replica scaling, A/B, autosave, drag positions, JSON export/import, reload, cross-launch resume, rename, delete, no catalog replay, edit-before-refresh, keyboard panel and unrestorable-session protection.',
   );
 } finally {
   await browser?.close();

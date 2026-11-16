@@ -38,6 +38,7 @@
     addRequest = null,
     initialDocument = null,
     onDocumentChange = () => {},
+    onRestoreFailed = () => {},
   }: {
     graph: Graph;
     visibleIds: Set<string>;
@@ -48,9 +49,12 @@
     initialDocument?: string | null;
     /** Receives the serialized Sandbox after every change, for autosave. */
     onDocumentChange?: (text: string) => void;
+    /** Called when the saved Sandbox cannot be restored, so it is never overwritten. */
+    onRestoreFailed?: (message: string) => void;
   } = $props();
   let counter = $state(0);
-  let lastHandledRequest = 0;
+  // A remount (session switch) must not replay a catalog request the previous canvas handled.
+  let lastHandledRequest = untrack(() => addRequest?.id ?? 0);
   let hasRequestedLayout = 0;
   let selectedEdgeId = $state<string | null>(null);
   let connectionNotice = $state('');
@@ -210,6 +214,7 @@
       persistenceStatus = `Saved session could not be restored: ${
         error instanceof Error ? error.message : 'invalid document'
       }`;
+      untrack(() => onRestoreFailed(persistenceStatus));
     } finally {
       storageReady = true;
     }

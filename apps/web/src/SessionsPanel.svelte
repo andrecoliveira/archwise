@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import { listSessions, type SessionSummary } from './session-client.js';
 
   let {
@@ -23,6 +24,29 @@
   let confirmingId: string | null = $state(null);
   let renamingId: string | null = $state(null);
   let renameValue = $state('');
+  let dialog: HTMLDivElement | null = $state(null);
+  let opener: HTMLElement | null = null;
+
+  /** Moves focus into the panel on open and back to whatever opened it on close. */
+  $effect(() => {
+    if (open) {
+      const active = document.activeElement;
+      opener = active instanceof HTMLElement ? active : null;
+      void tick().then(() => dialog?.focus());
+    }
+  });
+
+  function close(): void {
+    open = false;
+    const target = opener;
+    opener = null;
+    void tick().then(() => target?.focus());
+  }
+
+  async function focusIn(selector: string): Promise<void> {
+    await tick();
+    dialog?.querySelector<HTMLElement>(selector)?.focus();
+  }
 
   async function refresh(): Promise<void> {
     loading = true;
@@ -48,7 +72,7 @@
     }
     confirmingId = null;
     renamingId = null;
-    if (closeOnSuccess) open = false;
+    if (closeOnSuccess) close();
     else await refresh();
   }
 
@@ -56,13 +80,13 @@
 </script>
 
 {#if open}
-  <div class="sessions-panel" role="dialog" aria-label="Sessions" tabindex="-1"
-    onkeydown={(event) => { if (event.key === 'Escape') open = false; }}>
+  <div class="sessions-panel" role="dialog" aria-label="Sessions" aria-modal="false" tabindex="-1"
+    bind:this={dialog} onkeydown={(event) => { if (event.key === 'Escape') close(); }}>
     <div class="sessions-heading">
       <h2>Sessions</h2>
       <div>
         <button type="button" onclick={() => void run(onNew, true)}>New session</button>
-        <button type="button" onclick={() => (open = false)} aria-label="Close sessions">Close</button>
+        <button type="button" onclick={close} aria-label="Close sessions">Close</button>
       </div>
     </div>
     <p class="sessions-hint">Sessions are saved locally, outside your project. Resuming one continues it where you left off.</p>
@@ -78,7 +102,13 @@
             {#if renamingId === session.id}
               <form onsubmit={(event) => { event.preventDefault(); void run(() => onRename(session.id, renameValue), false); }}>
                 <label class="visually-hidden" for={`rename-${session.id}`}>Session name</label>
-                <input id={`rename-${session.id}`} bind:value={renameValue} maxlength="256" />
+                <input id={`rename-${session.id}`} bind:value={renameValue} maxlength="256"
+                  onkeydown={(event) => {
+                    if (event.key === 'Escape') {
+                      event.stopPropagation();
+                      renamingId = null;
+                    }
+                  }} />
                 <button type="submit">Save</button>
                 <button type="button" onclick={() => (renamingId = null)}>Cancel</button>
               </form>
@@ -94,13 +124,14 @@
             <div class="session-actions">
               {#if confirmingId === session.id}
                 <span>Delete this session?</span>
-                <button type="button" onclick={() => void run(() => onDelete(session.id), session.id === currentId)}>Confirm delete</button>
+                <button type="button" data-confirm-delete
+                  onclick={() => void run(() => onDelete(session.id), session.id === currentId)}>Confirm delete</button>
                 <button type="button" onclick={() => (confirmingId = null)}>Keep</button>
               {:else}
                 <button type="button" disabled={session.id === currentId}
                   onclick={() => void run(() => onResume(session.id), true)}>Resume</button>
-                <button type="button" onclick={() => { renamingId = session.id; renameValue = session.label; }}>Rename</button>
-                <button type="button" onclick={() => (confirmingId = session.id)}>Delete</button>
+                <button type="button" onclick={() => { renamingId = session.id; renameValue = session.label; void focusIn(`#rename-${session.id}`); }}>Rename</button>
+                <button type="button" onclick={() => { confirmingId = session.id; void focusIn('[data-confirm-delete]'); }}>Delete</button>
               {/if}
             </div>
           </li>
