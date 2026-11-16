@@ -11,7 +11,7 @@ Use **Architecture Studio → Sandbox → Simulation** to compare **two explicit
 5. Choose **Save current as B**. The panel shows A → B completed requests/second, newly introduced/resolved bottlenecks, and per-node served/dropped deltas.
 6. To compare another design, change the Sandbox and select **Replace B with current**. You can replace A too, or clear both snapshots.
 
-A and B are *independent copies*, not references to the live editor state. The comparison remains available when temporarily switching between Explore and Sandbox. These snapshots are automatically persisted in this browser's localStorage along with the Sandbox and can also be exported/imported as versioned JSON. See [Sandbox persistence](sandbox-persistence.md). No source file is modified and no remote service is contacted.
+A and B are *independent copies*, not references to the live editor state. The comparison remains available when temporarily switching between Explore and Sandbox. These snapshots are autosaved with the Sandbox to the current session in the local store, and can also be exported/imported as versioned JSON. See [Sandbox persistence](sandbox-persistence.md). No source file is modified and no remote service is contacted.
 
 ## Interpretation
 

@@ -2,7 +2,23 @@
 
 Each time you launch the Studio on a project, Archwise starts a **fresh session**: the graph discovered now, plus an empty Sandbox. Sessions are saved in a local store outside your project, so earlier work can be listed and resumed, much like `/resume` in a chat tool.
 
-> **Status:** the store, the session API and `--sessions` are implemented. The Studio does not use them yet: it still keeps the Sandbox in browser `localStorage` (see [Sandbox persistence](sandbox-persistence.md)). Autosave, the session list in the Studio, `--resume`, and the changed-architecture notice come in the next increment.
+## In the Studio
+
+- **Autosave.** Every Sandbox change saves to the current session about 750 ms after you stop editing. The header indicator shows **All changes saved**, **Saving…**, or **Not saved — retrying on next change**, which offers a **Retry** button. Pending changes are also saved when you leave or hide the page. A failed save never discards what is on the canvas.
+- **Reload.** Reloading the page restores the current session from the store.
+- **Sessions.** The **Sessions** button lists this project's saved sessions, newest first. Each entry shows its name, its component count, an `A/B` badge when it has scenario snapshots, and an **Architecture changed** badge when discovery differs from the session's start. From the list you can:
+  - **Resume** a session, which continues it in place;
+  - **Rename** it;
+  - **Delete** it, after a confirmation;
+  - start a **New session**.
+
+  Deleting the session you have open switches to a fresh, empty session.
+
+- **Changed architecture.** A resumed session shows the graph **as it was** when the session started, with a notice and a button to start a new session on the current graph. Re-applying an old Sandbox onto a newer graph (rebase) is future work.
+- **One active tab.** If another tab replaces or deletes the session, saving stops with **This session changed elsewhere. Reload to continue.** Your edits stay on the canvas, so you can export them as JSON before reloading.
+- **`--no-store`.** The indicator shows **Not saving (store disabled)** and the Sessions button is hidden. JSON export and import still work.
+
+The Studio no longer keeps Sandbox state in browser `localStorage`. A Sandbox that lived only in an older build's browser storage can be moved over with **Export JSON** in that build, then **Import JSON** here.
 
 ## What is stored, and where
 
@@ -25,6 +41,8 @@ Archwise never writes inside the analyzed project. The API never returns the abs
 ```bash
 node apps/cli/dist/bin.js --sessions --path /absolute/path/to/project   # list saved sessions, newest first
 node apps/cli/dist/bin.js --serve --path /absolute/path/to/project      # Studio with the store enabled
+node apps/cli/dist/bin.js --serve --resume latest --path /absolute/path/to/project   # continue the newest session
+node apps/cli/dist/bin.js --serve --resume ses-… --path /absolute/path/to/project    # continue a specific session
 node apps/cli/dist/bin.js --serve --no-store --path /absolute/path/to/project   # run without saving anything
 ```
 
@@ -39,11 +57,11 @@ Each line of `--sessions` shows, in order:
 
 Listing runs a discovery to compute the `changed` flag, so a changed project records a new revision.
 
-A session is saved only after its first Sandbox change. Launches where nothing changed leave no entry.
+A session is saved only after its first Sandbox change. Launches where nothing changed leave no entry. `--resume` exits with code 2 and a hint to run `--sessions` when no saved session matches; it cannot be combined with `--no-store`.
 
 ## Session API (loopback, capability-protected)
 
-The Studio will use these endpoints. All of them require the local session cookie. Mutations (`PUT`, `PATCH`, `POST`, `DELETE`) also require a same-origin `Origin` header. `PUT` and `PATCH` also require a JSON body.
+The Studio uses these endpoints. All of them require the local session cookie. Mutations (`PUT`, `PATCH`, `POST`, `DELETE`) also require a same-origin `Origin` header. `PUT` and `PATCH` also require a JSON body.
 
 | Method and path                     | Purpose                                                                           |
 | ----------------------------------- | --------------------------------------------------------------------------------- |
@@ -52,6 +70,7 @@ The Studio will use these endpoints. All of them require the local session cooki
 | `GET /api/v1/sessions/{id}`         | Sandbox document, base revision view, and whether that revision is still current  |
 | `POST /api/v1/sessions/{id}/resume` | Continue that session in place (later saves update it)                            |
 | `PUT /api/v1/sessions/{id}/sandbox` | Save the Sandbox; the first save persists a fresh session                         |
+| `POST /api/v1/sessions/new`         | Reserve a fresh, empty current session                                            |
 | `PATCH /api/v1/sessions/{id}`       | Rename (`{"label": "..."}`)                                                       |
 | `DELETE /api/v1/sessions/{id}`      | Delete a session                                                                  |
 

@@ -78,10 +78,6 @@ export function projectSignature(graph: Graph): string {
   return `v1-${hash.toString(16).padStart(8, '0')}-${graph.nodes.length}-${graph.edges.length}`;
 }
 
-export function workspaceStorageKey(signature: string): string {
-  return `archwise:sandbox:1:${signature}`;
-}
-
 function record(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }

@@ -40,12 +40,12 @@ Snapshot as of 2026-11-15, after PRs #5, #6 and #7 merged into `main`. Issues an
 |---|---|---|
 | 0 | Complete (2026-11-15) | — |
 | 1 | Complete (2026-11-15) | — |
-| 2 | Partial: graph contracts; SQLite store with ports, migrations, backup and recovery; sessions API | Studio session UI (next PR), export redaction of home paths, storage recovery documented for end users in a release guide |
+| 2 | Partial: graph contracts; SQLite store with ports, migrations, backup and recovery; sessions with Studio autosave and resume | Export redaction of home paths; storage recovery in an end-user release guide |
 | 3 | Alpha only: manifest-only inventory in `apps/cli` | Budgets, ignore rules, symlink and nested-repository handling, `--repo` / `--workspace`, persisted scan metadata |
 | 4 | Alpha only: Node package manifests | Analyzer SDK, TS imports, HTTP/DB/queue detectors, Compose, golden graphs |
 | 5 | Alpha only: protected loopback server and Svelte Flow Studio | SSE progress, evidence navigation from domain revisions, accessibility, large-graph strategy |
 | 6 | Not started | — |
-| 7 | Alpha only: localStorage Sandbox and JSON v1 snapshot | Revision-based operation log, undo/redo, rebase, checksummed exports |
+| 7 | Alpha only: Sandbox JSON v1 snapshots autosaved per session | Revision-based operation log, undo/redo, rebase, checksummed exports |
 | 8 | Alpha only: deterministic capacity simulation with replicas and A/B | Latency, availability, retries, queues, cost, seeds, scenario templates |
 | 9 | Alpha only: offline coach questions | Question packs and rubric, provider interface, consent flow |
 | 10–11 | Not started | — |
@@ -145,7 +145,7 @@ Status: in progress. The graph-contracts slice is implemented in `@archwise/doma
 - revision recording from discovery;
 - the protected session API and `--sessions` / `--no-store`.
 
-Still open: the Studio session UI (the second PR of that slice) and redaction of absolute home paths in exports. The phase exit gate is not yet satisfied.
+The Studio uses the store: autosave, a session list, resume, a changed-architecture notice and `--resume`. Still open: redaction of absolute home paths in exports. The phase exit gate is not yet satisfied.
 
 ### Goal
 

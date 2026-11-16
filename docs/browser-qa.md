@@ -5,17 +5,22 @@ A successful `pnpm check` proves the Svelte application builds, but does **not**
 ## Real browser scenarios covered
 
 The test at `scripts/browser-smoke.mjs`:
-1. Starts the built CLI in local protected `--serve --no-open` mode and opens its one-time session in headless Chrome, without printing the private session token.
+1. Writes a synthetic two-package project and a temporary data directory, starts the built CLI in local protected `--serve --no-open` mode against them, and opens its one-time session in headless Chrome, without printing the private session token.
 2. Uses the **component catalog** to add Client, App Server and SQL Database.
 3. Renames SQL Database and changes its modeled capacity in the **contextual inspector**.
 4. Connects Client → App Server → SQL Database using **real Svelte Flow handles** and checks two edges are present. It tries dragging and falls back to clicking output then input if needed.
 5. Clicks the `DB` edge label and changes its intent to `REQ` and back to `DB`.
 6. Sets an App Server as the simulation entry, saves scenario A with one replica and B with three, and checks the modeled +75 RPS throughput difference for the configured database capacity.
-7. Verifies the browser's persisted document includes node names, capacity, replica counts, A/B snapshots and typed links.
+7. Waits for **All changes saved** and verifies, through the session API, that the autosaved document includes node names, capacity, replica counts, A/B snapshots and typed links.
 8. Reloads the page, switches to Explore and back, and confirms the design is restored.
 9. Drags a custom node and checks its new position is saved in the JSON state.
 10. Downloads an exported JSON file, clears the canvas, imports that exact file, and checks the original nodes and links return.
-11. Fails on uncaught browser JavaScript errors.
+11. **Cross-launch resume:**
+    1. Stops the server, adds a package to the project and starts a new server. The new launch must show an empty Sandbox.
+    2. Opens **Sessions**. The previous session must show `A/B` and **Architecture changed**.
+    3. Resumes it. The saved document must return byte-for-byte, with the changed-architecture notice.
+12. Renames the session to an HTML payload and checks it renders as text with no element created, then deletes the open session and checks the Studio switches to an empty, non-failing session.
+13. Fails on uncaught browser JavaScript errors.
 
 ## How to execute
 
