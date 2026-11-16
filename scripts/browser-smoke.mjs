@@ -1,6 +1,8 @@
 import { spawn } from 'node:child_process';
 import { strict as assert } from 'node:assert';
-import { readFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const modulePath = process.env.ARCHWISE_PLAYWRIGHT_ENTRY;
@@ -8,29 +10,43 @@ if (!modulePath)
   throw new Error('Set ARCHWISE_PLAYWRIGHT_ENTRY to the installed playwright entry point.');
 const { chromium } = await import(pathToFileURL(modulePath).href);
 
-const runner = spawn(
-  process.execPath,
-  ['apps/cli/dist/bin.js', '--serve', '--no-open', '--path', '.'],
-  {
-    cwd: process.cwd(),
-    stdio: ['ignore', 'pipe', 'pipe'],
-  },
-);
-let browser;
-let output = '';
-const urlReady = new Promise((resolve, reject) => {
-  runner.stdout.setEncoding('utf8');
-  runner.stdout.on('data', (chunk) => {
-    output += chunk;
-    const match = output.match(/Local session URL:\s*(https?:\/\/[^\s]+)/);
-    if (match) resolve(match[1]);
-  });
-  runner.once('exit', (code) => reject(new Error(`Local Archwise server exited with ${code}.`)));
-  runner.once('error', reject);
+// Analyze a synthetic project and an isolated store; never the repository itself.
+const fixtureRoot = await mkdtemp(join(tmpdir(), 'archwise-smoke-project-'));
+const dataDir = await mkdtemp(join(tmpdir(), 'archwise-smoke-store-'));
+async function writeManifest(path, manifest) {
+  await mkdir(dirname(join(fixtureRoot, path)), { recursive: true });
+  await writeFile(join(fixtureRoot, path), JSON.stringify(manifest));
+}
+await writeManifest('apps/web/package.json', {
+  name: '@smoke/web',
+  dependencies: { '@smoke/api': 'workspace:*' },
 });
-const timeout = AbortSignal.timeout(30_000);
-try {
-  const url = await Promise.race([
+await writeManifest('apps/api/package.json', { name: '@smoke/api' });
+
+let runner;
+function startServer() {
+  runner = spawn(
+    process.execPath,
+    ['apps/cli/dist/bin.js', '--serve', '--no-open', '--path', fixtureRoot],
+    {
+      cwd: process.cwd(),
+      env: { ...process.env, ARCHWISE_DATA_DIR: dataDir },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
+  );
+  let output = '';
+  const urlReady = new Promise((resolve, reject) => {
+    runner.stdout.setEncoding('utf8');
+    runner.stdout.on('data', (chunk) => {
+      output += chunk;
+      const match = output.match(/Local session URL:\s*(https?:\/\/[^\s]+)/);
+      if (match) resolve(match[1]);
+    });
+    runner.once('exit', (code) => reject(new Error(`Local Archwise server exited with ${code}.`)));
+    runner.once('error', reject);
+  });
+  const timeout = AbortSignal.timeout(30_000);
+  return Promise.race([
     urlReady,
     new Promise((_, reject) =>
       timeout.addEventListener('abort', () => reject(new Error('Server bootstrap timed out.')), {
@@ -38,6 +54,16 @@ try {
       }),
     ),
   ]);
+}
+async function stopServer() {
+  const exited = new Promise((resolve) => runner.once('exit', resolve));
+  runner.kill('SIGTERM');
+  await exited;
+}
+
+let browser;
+try {
+  const url = await startServer();
   browser = await chromium.launch({
     headless: true,
     ...(process.env.ARCHWISE_BROWSER_CHANNEL
@@ -150,27 +176,35 @@ try {
   await simulation.getByRole('button', { name: 'Save current as B' }).click();
   await simulation.getByText('A → B: +75.0 completed requests/second').waitFor();
 
-  // This tests saved JSON as well as browser restoration, not just a screenshot.
-  const savedDocument = async () =>
-    page.evaluate(() => {
-      const key = Object.keys(globalThis.localStorage).find((item) =>
-        item.startsWith('archwise:sandbox:1:'),
-      );
-      return key ? JSON.parse(globalThis.localStorage.getItem(key)) : null;
+  // The Sandbox autosaves to the local session store; read it back through the API.
+  const savedDocument = async (target = page) =>
+    target.evaluate(async () => {
+      const current = await (await fetch('/api/v1/sessions/current')).json();
+      if (!current.id) return null;
+      const response = await fetch(`/api/v1/sessions/${current.id}`);
+      if (!response.ok) return null;
+      return JSON.parse((await response.json()).sandbox);
     });
-  await page.waitForFunction(() => {
-    const key = Object.keys(globalThis.localStorage).find((item) =>
-      item.startsWith('archwise:sandbox:1:'),
-    );
-    if (!key) return false;
-    const doc = JSON.parse(globalThis.localStorage.getItem(key));
-    return (
+  async function waitForDocument(predicate, label, target = page) {
+    const deadline = Date.now() + 10_000;
+    for (;;) {
+      const doc = await savedDocument(target);
+      if (doc && predicate(doc)) return doc;
+      if (Date.now() > deadline) throw new Error(`Timed out waiting for saved document: ${label}`);
+      await target.waitForTimeout(250);
+    }
+  }
+  await waitForDocument(
+    (doc) =>
       doc.nodes.length === 3 &&
       doc.connections.length === 2 &&
       doc.nodes.some((n) => n.label === 'SQL Primary') &&
-      doc.draft.capacities[doc.nodes.find((n) => n.label === 'SQL Primary').id] === 175
-    );
-  });
+      doc.draft.capacities[doc.nodes.find((n) => n.label === 'SQL Primary').id] === 175 &&
+      doc.draft.savedA &&
+      doc.draft.savedB,
+    'three components, two connections and A/B',
+  );
+  await page.locator('.save-indicator').filter({ hasText: 'All changes saved' }).waitFor();
   const before = await savedDocument();
   assert.equal(before.connections.find((e) => e.intent === 'DB')?.intent, 'DB');
   assert.equal(before.draft.replicas[appNodeId], 3);
@@ -210,19 +244,10 @@ try {
   await page.mouse.up();
   const previousApp = before.nodes.find((node) => node.id === appId);
   assert(previousApp, 'App Server needs an original saved position');
-  await page.waitForFunction(
-    ({ id, x, y }) => {
-      const key = Object.keys(globalThis.localStorage).find((item) =>
-        item.startsWith('archwise:sandbox:1:'),
-      );
-      if (!key) return false;
-      const doc = JSON.parse(globalThis.localStorage.getItem(key));
-      const node = doc.nodes.find((item) => item.id === id);
-      return node && (node.x !== x || node.y !== y);
-    },
-    { id: appId, x: previousApp.x, y: previousApp.y },
-    { timeout: 8000 },
-  );
+  await waitForDocument((doc) => {
+    const node = doc.nodes.find((item) => item.id === appId);
+    return node && (node.x !== previousApp.x || node.y !== previousApp.y);
+  }, 'dragged App Server position');
   const moved = await savedDocument();
   const movedApp = moved.nodes.find((node) => node.id === appId);
   assert(movedApp && previousApp, 'App Server must remain in the saved document');
@@ -256,17 +281,71 @@ try {
   await page.waitForFunction(
     () => globalThis.document.querySelectorAll('.svelte-flow__edge').length === 2,
   );
-  const imported = await savedDocument();
+  const imported = await waitForDocument(
+    (doc) => doc.nodes.length === 3 && doc.connections.length === 2,
+    'imported Sandbox autosaved',
+  );
   assert.equal(imported.connections.length, 2);
   assert(imported.nodes.some((node) => node.label === 'SQL Primary'));
   assert.equal(imported.draft.replicas[appNodeId], 3);
   assert(imported.draft.savedA && imported.draft.savedB);
 
+  // A new launch starts a fresh session; the previous one can be resumed as it was.
+  await page.locator('.save-indicator').filter({ hasText: 'All changes saved' }).waitFor();
+  const previous = await savedDocument();
+  await page.close();
+  await stopServer();
+  await writeManifest('packages/shared/package.json', { name: '@smoke/shared' });
+  const secondUrl = await startServer();
+  const resumedPage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  resumedPage.on('pageerror', (error) => errors.push(error.message));
+  await resumedPage.goto(secondUrl, { waitUntil: 'networkidle' });
+  await resumedPage.getByRole('button', { name: 'Sandbox · Build' }).waitFor();
+  assert.equal(
+    await resumedPage.locator('.svelte-flow__node').count(),
+    0,
+    'A new launch must start with an empty Sandbox',
+  );
+  await resumedPage.getByRole('button', { name: 'Sessions' }).click();
+  const panel = resumedPage.getByRole('dialog', { name: 'Sessions' });
+  const row = panel.locator('.session-row').first();
+  await row.waitFor();
+  await row.getByText('A/B').waitFor();
+  await row.getByText('Architecture changed').waitFor();
+  await row.getByRole('button', { name: 'Resume' }).click();
+  await resumedPage.waitForFunction(
+    () => globalThis.document.querySelectorAll('.svelte-flow__edge').length === 2,
+  );
+  await resumedPage.getByText('Architecture changed since this session started').waitFor();
+  const resumed = await savedDocument(resumedPage);
+  assert.deepEqual(resumed, previous, 'Resuming restores the saved Sandbox exactly');
+
+  // Untrusted labels render as text, never as markup.
+  const hostile = '<img src=x onerror=alert(1)>';
+  await resumedPage.getByRole('button', { name: 'Sessions' }).click();
+  const reopened = resumedPage.getByRole('dialog', { name: 'Sessions' });
+  await reopened.locator('.session-row').first().getByRole('button', { name: 'Rename' }).click();
+  await reopened.locator('.session-row input').fill(hostile);
+  await reopened.getByRole('button', { name: 'Save' }).click();
+  await reopened.getByText(hostile).waitFor();
+  assert.equal(await reopened.locator('img').count(), 0, 'Session labels must not render HTML');
+
+  // Deleting the open session switches to a fresh, empty session.
+  await reopened.locator('.session-row').first().getByRole('button', { name: 'Delete' }).click();
+  await reopened.getByRole('button', { name: 'Confirm delete' }).click();
+  await resumedPage.waitForFunction(
+    () => globalThis.document.querySelectorAll('.svelte-flow__node').length === 0,
+  );
+  const indicator = await resumedPage.locator('.save-indicator').getAttribute('data-state');
+  assert.notEqual(indicator, 'unsaved', 'Deleting the open session must not leave failed saves');
+
   assert.deepEqual(errors, [], 'Browser runtime errors must not occur');
   console.log(
-    'Browser smoke passed: components, handles, edge intent, replica scaling, A/B, drag positions, JSON export/import and reload.',
+    'Browser smoke passed: components, handles, edge intent, replica scaling, A/B, autosave, drag positions, JSON export/import, reload, cross-launch resume, rename and delete.',
   );
 } finally {
   await browser?.close();
-  runner.kill('SIGTERM');
+  runner?.kill('SIGTERM');
+  await rm(fixtureRoot, { recursive: true, force: true });
+  await rm(dataDir, { recursive: true, force: true });
 }
