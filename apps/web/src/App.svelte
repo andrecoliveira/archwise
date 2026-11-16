@@ -1,6 +1,18 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import ArchitectureCanvas from './ArchitectureCanvas.svelte';
+  import SessionsPanel from './SessionsPanel.svelte';
+  import { createAutosave, type Autosave, type AutosaveStatus } from './autosave.js';
+  import {
+    deleteSession,
+    getCurrent,
+    getSession,
+    renameSession,
+    resumeSession,
+    saveSandbox,
+    startNewSession,
+  } from './session-client.js';
+  import { chooseWorkspaceGraph } from './session-view.js';
   import { CATALOG_GROUPS, searchCatalog } from './component-catalog.js';
   import { getCoachQuestions } from './architecture-coach.js';
   import { isGraph, type Graph } from './graph-types.js';
@@ -22,6 +34,31 @@
     addRequest = { id: catalogCounter, preset };
   }
   let controller: AbortController | null = null;
+
+  // Session state: the local store autosaves the Sandbox of the current session.
+  let sessionId: string | null = $state(null);
+  let storeEnabled = $state(false);
+  let initialDocument: string | null = $state(null);
+  let historical = $state(false);
+  let workspaceKey = $state(0);
+  let sessionsOpen = $state(false);
+  let saveStatus: AutosaveStatus = $state({ state: 'disabled', message: 'Connecting to the local store…' });
+  let autosave: Autosave | null = null;
+
+  function setupAutosave(id: string | null, enabled: boolean): void {
+    autosave?.dispose();
+    autosave = null;
+    if (!enabled || id === null) {
+      saveStatus = { state: 'disabled', message: 'Not saving (store disabled)' };
+      return;
+    }
+    saveStatus = { state: 'saved', message: 'Changes save automatically' };
+    autosave = createAutosave({
+      save: (text, keepalive) => saveSandbox(id, text, fetch, { keepalive }),
+      onStatus: (status) => (saveStatus = status),
+      ignoreFirst: true,
+    });
+  }
 
   const graph = $derived(graphData);
   const visible = $derived(
@@ -55,8 +92,21 @@
       }
       const payload: unknown = await response.json();
       if (!isGraph(payload)) throw new Error('Unsupported graph format.');
+      const current = await getCurrent();
+      let detail: { baseIsCurrent: boolean; view: unknown; sandbox: string } | null = null;
+      if (current.ok && current.value.storeEnabled && current.value.persisted && current.value.id) {
+        const loaded = await getSession(current.value.id);
+        if (loaded.ok) detail = loaded.value;
+      }
       if (!signal.aborted) {
-        graphData = payload;
+        const chosen = chooseWorkspaceGraph(detail, payload);
+        graphData = chosen.graph;
+        historical = chosen.historical;
+        initialDocument = detail?.sandbox ?? null;
+        sessionId = current.ok ? current.value.id : null;
+        storeEnabled = current.ok && current.value.storeEnabled;
+        setupAutosave(sessionId, storeEnabled);
+        workspaceKey += 1;
         loading = false;
       }
     } catch (error) {
@@ -67,9 +117,44 @@
     }
   }
 
+  /** Saves pending edits first so switching sessions never drops the last change. */
+  async function switchSession(action: () => Promise<{ ok: boolean }>, failure: string): Promise<string | null> {
+    await autosave?.flush();
+    const result = await action();
+    if (!result.ok) return failure;
+    await loadGraph();
+    return null;
+  }
+
+  const resume = (id: string) => switchSession(() => resumeSession(id), 'Unable to resume that session.');
+  const startNew = () => switchSession(() => startNewSession(), 'Unable to start a new session.');
+
+  async function remove(id: string): Promise<string | null> {
+    const result = await deleteSession(id);
+    if (!result.ok) return 'Unable to delete that session.';
+    if (id === sessionId) await loadGraph();
+    return null;
+  }
+
+  async function rename(id: string, label: string): Promise<string | null> {
+    const result = await renameSession(id, label);
+    return result.ok ? null : 'Use a name of 1–256 characters without control characters.';
+  }
+
   onMount(() => {
     void loadGraph();
-    return () => controller?.abort();
+    const flush = () => void autosave?.flush({ keepalive: true });
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') flush();
+    };
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      controller?.abort();
+      autosave?.dispose();
+      window.removeEventListener('pagehide', flush);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   });
 </script>
 
@@ -77,8 +162,19 @@
 <div class="studio">
   <header>
     <strong>⬡ Archwise <small>Architecture Studio</small></strong>
-    <small>● Local · Read-only project inspection</small>
+    <div class="header-status">
+      <span class="save-indicator" data-state={saveStatus.state} role="status" aria-live="polite">{saveStatus.message}</span>
+      {#if saveStatus.state === 'unsaved' && !saveStatus.message.includes('Reload')}
+        <button type="button" onclick={() => autosave?.retry()}>Retry</button>
+      {/if}
+      {#if storeEnabled}
+        <button type="button" onclick={() => (sessionsOpen = !sessionsOpen)} aria-expanded={sessionsOpen}>Sessions</button>
+      {/if}
+      <small>● Local · Read-only project inspection</small>
+    </div>
   </header>
+  <SessionsPanel bind:open={sessionsOpen} currentId={sessionId}
+    onResume={resume} onNew={startNew} onDelete={remove} onRename={rename} />
   <main class:sandbox-workspace={studioMode === 'sandbox'}>
     <aside class="studio-sidebar" aria-label="Component library">
       <div class="sidebar-heading">
@@ -145,7 +241,16 @@
             No package manifests found. You can still experiment with hypothetical architecture in Sandbox.
           </div>
         {/if}
-        <ArchitectureCanvas {graph} {visibleIds} bind:selectedId bind:mode={studioMode} {addRequest} />
+        {#if historical}
+          <div class="historical-notice" role="status">
+            Architecture changed since this session started. You are viewing the graph as it was then.
+            <button type="button" onclick={() => void startNew()}>Start a new session on the current graph</button>
+          </div>
+        {/if}
+        {#key workspaceKey}
+          <ArchitectureCanvas {graph} {visibleIds} bind:selectedId bind:mode={studioMode} {addRequest}
+            {initialDocument} onDocumentChange={(text) => autosave?.schedule(text)} />
+        {/key}
       {/if}
       {#if graph && graph.diagnostics.length > 0}
         <details><summary>{graph.diagnostics.length} scan diagnostics</summary>

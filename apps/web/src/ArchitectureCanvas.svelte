@@ -16,7 +16,6 @@
     parseSandboxDocument,
     projectSignature,
     serializeSandboxDocument,
-    workspaceStorageKey,
     type SimulationDraft,
     type SandboxDocument,
   } from './sandbox-persistence.js';
@@ -37,12 +36,18 @@
     selectedId = $bindable(null),
     mode = $bindable<Mode>('sandbox'),
     addRequest = null,
+    initialDocument = null,
+    onDocumentChange = () => {},
   }: {
     graph: Graph;
     visibleIds: Set<string>;
     selectedId: string | null;
     mode: Mode;
     addRequest: { id: number; preset: string } | null;
+    /** Saved archwise-sandbox text restored once on mount (from the local session store). */
+    initialDocument?: string | null;
+    /** Receives the serialized Sandbox after every change, for autosave. */
+    onDocumentChange?: (text: string) => void;
   } = $props();
   let counter = $state(0);
   let lastHandledRequest = 0;
@@ -195,29 +200,26 @@
   }
 
   onMount(() => {
+    const saved = untrack(() => initialDocument);
     try {
-      const raw = window.localStorage.getItem(workspaceStorageKey(signature));
-      if (raw !== null) {
-        restoreDocument(parseSandboxDocument(raw, signature));
-        persistenceStatus = 'Previous Sandbox recovered from this browser.';
+      if (saved !== null) {
+        restoreDocument(parseSandboxDocument(saved, signature));
+        persistenceStatus = 'Session restored from the local store.';
       }
     } catch (error) {
-      persistenceStatus = error instanceof Error ? error.message : 'Local persistence unavailable.';
+      persistenceStatus = `Saved session could not be restored: ${
+        error instanceof Error ? error.message : 'invalid document'
+      }`;
     } finally {
       storageReady = true;
     }
   });
 
+  // Every Sandbox change is reported upward; the Studio autosaves it to the local store.
   $effect(() => {
     if (!storageReady) return;
-    try {
-      window.localStorage.setItem(
-        workspaceStorageKey(signature),
-        serializeSandboxDocument(createDocument()),
-      );
-    } catch (error) {
-      persistenceStatus = error instanceof Error ? error.message : 'Local persistence unavailable.';
-    }
+    const text = serializeSandboxDocument(createDocument());
+    untrack(() => onDocumentChange(text));
   });
 
   const visualFeedback = $derived.by(() => {
