@@ -97,3 +97,15 @@ export function scanWorkspace(
 ): Promise<InventoryResult> {
   return inventory.inspect(request);
 }
+
+export type InventoryRootFailure = 'not-found' | 'not-directory' | 'unreadable';
+
+/** A user root that cannot be scanned. Carries no path, so it is safe to log. */
+export class InventoryRootError extends Error {
+  readonly reason: InventoryRootFailure;
+  constructor(reason: InventoryRootFailure) {
+    super(`Workspace root ${reason}`);
+    this.name = 'InventoryRootError';
+    this.reason = reason;
+  }
+}
