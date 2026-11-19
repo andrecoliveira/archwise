@@ -1,10 +1,17 @@
 import { createHash } from 'node:crypto';
 import { LIMITS, type Diagnostic, type Evidence, type GraphRevision } from '@archwise/domain';
-import type { RevisionIds } from '@archwise/application';
+import type { InventoryResult, RevisionIds } from '@archwise/application';
 import type { ArchitectureGraph } from './graph.js';
 
+/** What the revision needs from the inventory: repositories, manifest ownership and truncation. */
+export interface RevisionScan {
+  readonly repositories: InventoryResult['repositories'];
+  readonly manifests: readonly { readonly repositoryId: string; readonly path: string }[];
+  readonly truncated: InventoryResult['truncated'];
+}
+
 export const MANIFEST_ANALYZER = { id: 'node-manifest', version: '1.0.0' } as const;
-const REPOSITORY_ID = 'repo-root';
+const ROOT_REPOSITORY_ID = 'repo-root';
 
 const shortHash = (text: string): string =>
   createHash('sha256').update(text, 'utf8').digest('hex').slice(0, 16);
@@ -12,6 +19,7 @@ const shortHash = (text: string): string =>
 const DIAGNOSTIC_CODES: readonly [prefix: string, code: string][] = [
   ['Ambiguous package name', 'ambiguous-package-name'],
   ['Unresolved dependency', 'unresolved-dependency'],
+  ['Scan truncated', 'scan-truncated'],
 ];
 
 function diagnosticCode(message: string): string {
@@ -33,19 +41,27 @@ function rootLabelOf(label: string): string {
  */
 export function buildGraphRevision(
   graph: ArchitectureGraph,
-  rootLabel: string,
+  scan: RevisionScan,
   ids: RevisionIds,
 ): GraphRevision {
+  const repositoryPaths = new Map(scan.repositories.map((r) => [r.id, r.path]));
+  const owners = new Map(scan.manifests.map((m) => [m.path, m.repositoryId]));
+  /** Evidence is relative to the repository that owns the manifest. */
+  const locate = (rootPath: string): { repositoryId: string; path: string } => {
+    const repositoryId = owners.get(rootPath) ?? ROOT_REPOSITORY_ID;
+    const base = repositoryPaths.get(repositoryId) ?? '';
+    return { repositoryId, path: base === '' ? rootPath : rootPath.slice(base.length + 1) };
+  };
   const evidence = new Map<string, Evidence>();
+  // IDs hash the root-relative path, so single-root identifiers match earlier releases.
   const addEvidence = (rule: 'package-manifest' | 'package-dependency', path: string): string => {
     const id = `ev-${shortHash(`${rule === 'package-manifest' ? 'manifest' : 'dependency'}:${path}`)}`;
     evidence.set(id, {
       id,
-      repositoryId: REPOSITORY_ID,
+      ...locate(path),
       analyzerId: MANIFEST_ANALYZER.id,
       analyzerVersion: MANIFEST_ANALYZER.version,
       ruleId: rule,
-      path,
       lines: null,
     });
     return id;
@@ -60,7 +76,7 @@ export function buildGraphRevision(
       id,
       kind: 'module' as const,
       label: node.label,
-      repositoryId: REPOSITORY_ID,
+      repositoryId: locate(path).repositoryId,
       confidence: { level: 'observed' as const, reasons: ['manifest-declared'] },
       evidenceIds: [addEvidence('package-manifest', path)],
     };
@@ -82,7 +98,7 @@ export function buildGraphRevision(
     code,
     references: [],
   }));
-  const status = graph.diagnostics.length === 0 ? 'complete' : 'partial';
+  const status = graph.diagnostics.length === 0 && scan.truncated === null ? 'complete' : 'partial';
 
   return {
     id: ids.revisionId,
@@ -90,15 +106,13 @@ export function buildGraphRevision(
     parentRevisionId: ids.parentRevisionId,
     createdAt: ids.createdAt,
     status,
-    repositories: [{ id: REPOSITORY_ID, label: rootLabelOf(rootLabel) }],
-    coverage: [
-      {
-        repositoryId: REPOSITORY_ID,
-        analyzerId: MANIFEST_ANALYZER.id,
-        analyzerVersion: MANIFEST_ANALYZER.version,
-        status,
-      },
-    ],
+    repositories: scan.repositories.map((r) => ({ id: r.id, label: rootLabelOf(r.label) })),
+    coverage: scan.repositories.map((r) => ({
+      repositoryId: r.id,
+      analyzerId: MANIFEST_ANALYZER.id,
+      analyzerVersion: MANIFEST_ANALYZER.version,
+      status,
+    })),
     evidence: [...evidence.values()],
     nodes,
     edges,

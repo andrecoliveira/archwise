@@ -4,7 +4,7 @@ import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { RevisionInvalidError, SessionService, type SessionSummary } from '@archwise/application';
 import { openStore, type OpenedStore, type StoreUnavailableReason } from '@archwise/storage';
 import type { ArchitectureGraph } from './graph.js';
-import { buildGraphRevision } from './revision.js';
+import { buildGraphRevision, type RevisionScan } from './revision.js';
 
 export type StoreRuntime =
   | { readonly kind: 'disabled'; readonly notices: readonly string[] }
@@ -19,7 +19,8 @@ export interface PrepareStoreOptions {
   readonly enabled: boolean;
   readonly dataDir: string;
   readonly rootPath: string;
-  readonly rootLabel: string;
+  /** Repositories, manifest ownership and truncation from the inventory. */
+  readonly scan: RevisionScan;
   readonly graph: ArchitectureGraph;
 }
 
@@ -74,7 +75,7 @@ export async function prepareStore(options: PrepareStoreOptions): Promise<StoreR
         rootPath: options.rootPath,
         view: JSON.stringify(options.graph),
         viewIdentity: JSON.stringify({ ...options.graph, inspectedEntries: 0 }),
-        build: (ids) => buildGraphRevision(options.graph, options.rootLabel, ids),
+        build: (ids) => buildGraphRevision(options.graph, options.scan, ids),
       },
     );
     if (!opened.ok) throw new Error(opened.error);

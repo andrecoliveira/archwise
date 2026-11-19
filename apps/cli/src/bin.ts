@@ -3,10 +3,10 @@ import { readFileSync } from 'node:fs';
 import { realpath } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { basename, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { resolveDataDir, StoreUnavailableError } from '@archwise/storage';
-import { inspectWorkspace } from '@archwise/discovery';
+import { filesystemInventory } from '@archwise/discovery';
 import { buildArchitectureGraph } from './graph.js';
 import { parseCli } from './index.js';
 import { startLocalGraphServer } from './local-server.js';
@@ -54,14 +54,14 @@ if (command.kind === 'output') {
   try {
     const home = homedir();
     const knownHomes = [home, await realpath(home).catch(() => home)];
-    const result = await inspectWorkspace(command.path, { knownHomes });
+    const result = await filesystemInventory.inspect({ root: command.path, knownHomes });
     const graph = buildArchitectureGraph(result);
     const prepareRuntime = async (enabled: boolean) => {
       const runtime = await prepareStore({
         enabled,
         dataDir,
         rootPath: result.root,
-        rootLabel: basename(result.root),
+        scan: result,
         graph,
       });
       for (const notice of runtime.notices) process.stderr.write(`${notice}\n`);
@@ -112,9 +112,12 @@ if (command.kind === 'output') {
       // Allowlist: the absolute root identifies the user and machine, so it is never printed.
       const portable = {
         version: result.version,
+        repositories: result.repositories,
         manifests: result.manifests,
+        listedEntries: result.listedEntries,
+        skipped: result.skipped,
+        truncated: result.truncated,
         diagnostics: result.diagnostics,
-        inspectedEntries: result.inspectedEntries,
       };
       process.stdout.write(`${JSON.stringify(portable, null, 2)}\n`);
     } else {

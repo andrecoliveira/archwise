@@ -1,0 +1,74 @@
+{
+  "view": {
+    "version": 1,
+    "nodes": [
+      {
+        "id": "package:apps/api/package.json",
+        "type": "package",
+        "label": "@demo/api",
+        "framework": "fastify",
+        "origin": "discovered",
+        "evidence": [{ "path": "apps/api/package.json", "kind": "package-manifest" }]
+      },
+      {
+        "id": "package:apps/web/package.json",
+        "type": "package",
+        "label": "@demo/web",
+        "framework": "next",
+        "origin": "discovered",
+        "evidence": [{ "path": "apps/web/package.json", "kind": "package-manifest" }]
+      },
+      {
+        "id": "package:package.json",
+        "type": "package",
+        "label": "demo-root",
+        "framework": null,
+        "origin": "discovered",
+        "evidence": [{ "path": "package.json", "kind": "package-manifest" }]
+      },
+      {
+        "id": "package:packages/core/package.json",
+        "type": "package",
+        "label": "@demo/core",
+        "framework": null,
+        "origin": "discovered",
+        "evidence": [{ "path": "packages/core/package.json", "kind": "package-manifest" }]
+      }
+    ],
+    "edges": [
+      {
+        "id": "dependency:package:apps/api/package.json->package:packages/core/package.json",
+        "type": "declared-dependency",
+        "source": "package:apps/api/package.json",
+        "target": "package:packages/core/package.json",
+        "origin": "discovered",
+        "evidence": [{ "path": "apps/api/package.json", "kind": "package-dependency" }]
+      },
+      {
+        "id": "dependency:package:apps/web/package.json->package:packages/core/package.json",
+        "type": "declared-dependency",
+        "source": "package:apps/web/package.json",
+        "target": "package:packages/core/package.json",
+        "origin": "discovered",
+        "evidence": [{ "path": "apps/web/package.json", "kind": "package-dependency" }]
+      }
+    ],
+    "diagnostics": [],
+    "inspectedEntries": 0
+  },
+  "nodes": [
+    "mod-2c40985d6d91eed8",
+    "mod-14b60f636e1a2b00",
+    "mod-7ae45ad102eab3b6",
+    "mod-0b810c38f3c138a3"
+  ],
+  "edges": ["dep-8f2cf734056c2e8a", "dep-064aa4aba1738d18"],
+  "evidence": [
+    "ev-8ea786cf6227aaff",
+    "ev-f2dabac59b188215",
+    "ev-c4480ca02ca17390",
+    "ev-8b0908b7c4491185",
+    "ev-ec64505b1798b169",
+    "ev-f4dfc57e2c6686c4"
+  ]
+}
