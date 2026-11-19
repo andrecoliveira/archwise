@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { inspectWorkspace } from '../../apps/cli/dist/inventory.js';
+import { filesystemInventory } from '../../packages/discovery/dist/index.js';
 import { buildArchitectureGraph } from '../../apps/cli/dist/graph.js';
 import { startLocalGraphServer } from '../../apps/cli/dist/local-server.js';
 
@@ -34,7 +34,7 @@ test('CLI discovery to authenticated browser Studio serves a traced graph withou
     await writeFile(webPath, webManifest);
     await writeFile(apiPath, apiManifest);
 
-    const inventory = await inspectWorkspace(root);
+    const inventory = await filesystemInventory.inspect({ root, knownHomes: [] });
     const graph = buildArchitectureGraph(inventory);
     assert.equal(graph.nodes.length, 2);
     assert.equal(graph.edges.length, 1);

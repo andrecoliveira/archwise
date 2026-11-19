@@ -49,3 +49,48 @@ test('--json and --graph never print the absolute root, home directories or secr
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('root errors exit with code 2 and a stable message', async () => {
+  const { mkdtempSync, writeFileSync, rmSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const { tmpdir } = await import('node:os');
+  const dir = mkdtempSync(join(tmpdir(), 'archwise-roots-'));
+  try {
+    const missing = join(dir, 'missing');
+    const file = join(dir, 'file.txt');
+    writeFileSync(file, 'x');
+    const a = spawnSync(process.execPath, [entry, '--path', missing], { encoding: 'utf8' });
+    assert.equal(a.status, 2);
+    assert.equal(
+      a.stderr,
+      `Workspace root not found: ${missing}. Pass an existing directory with --path.\n`,
+    );
+    const b = spawnSync(process.execPath, [entry, '--path', file], { encoding: 'utf8' });
+    assert.equal(b.status, 2);
+    assert.match(b.stderr, /^Workspace root is not a directory: /);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('--json is inventory version 2 with skip counts and manifest hashes', async () => {
+  const { mkdtempSync, mkdirSync, writeFileSync, rmSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const { tmpdir } = await import('node:os');
+  const root = mkdtempSync(join(tmpdir(), 'archwise-json-'));
+  try {
+    mkdirSync(join(root, 'node_modules', 'x'), { recursive: true });
+    writeFileSync(join(root, 'package.json'), '{"name":"demo"}');
+    const run = spawnSync(process.execPath, [entry, '--path', root, '--json'], {
+      encoding: 'utf8',
+    });
+    assert.equal(run.status, 0, run.stderr);
+    const parsed = JSON.parse(run.stdout);
+    assert.equal(parsed.version, 2);
+    assert.equal(parsed.skipped['ignored-builtin'].count, 1);
+    assert.match(parsed.manifests[0].sha256, /^[0-9a-f]{64}$/);
+    assert.equal(parsed.truncated, null);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

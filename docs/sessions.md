@@ -35,6 +35,7 @@ Set `ARCHWISE_DATA_DIR` to use another directory. The store is a single SQLite f
 - **Workspaces:** the absolute project root path that identifies each project.
 - **Graph revisions:** the discovered package graph as an `archwise.graph` v1 revision, plus the Studio's view of it. An unchanged rescan reuses the previous revision instead of adding a new one. A rescan counts as changed when either the graph or its view differs, for example a new framework label.
 - **Sessions:** the Sandbox document, a label, and creation and update times. Each session records the revision it started from.
+- **Scans:** for each `--serve` or `--sessions` run, the start and finish times, counts per skip reason, truncation and analyzer versions. A scan record holds counts and codes only, never paths. `--json` and `--graph` never open the store. Schema version 2 added this table. Upgrading from version 1 takes a backup first.
 
 Archwise never writes inside the analyzed project. The API never returns the absolute root path. To remove all saved data, delete the directory.
 
@@ -56,6 +57,8 @@ Each line of `--sessions` shows, in order:
 - `A/B` if it has saved scenario snapshots;
 - `changed` if the project's discovered architecture changed since the session started;
 - the session ID.
+
+A final `Last scan: <time>` line shows when the project was last scanned.
 
 Listing runs a discovery to compute the `changed` flag, so a changed project records a new revision.
 

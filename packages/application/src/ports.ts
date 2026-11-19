@@ -1,4 +1,5 @@
 import type { GraphRevision } from '@archwise/domain';
+import type { BudgetName, SkipReason } from './inventory.js';
 
 /*
  * Application ports. Adapters (memory, SQLite) implement them; use cases depend only on these.
@@ -58,10 +59,31 @@ export interface SessionRepository {
   delete(workspaceId: string, id: string): boolean;
 }
 
+/** Metadata of one completed or truncated scan: counts and codes only, never paths. */
+export interface StoredScan {
+  readonly id: string;
+  readonly workspaceId: string;
+  readonly revisionId: string;
+  readonly startedAt: string;
+  readonly finishedAt: string;
+  readonly listedEntries: number;
+  readonly bytesRead: number;
+  readonly skipped: Readonly<Partial<Record<SkipReason, number>>>;
+  readonly truncated: BudgetName | null;
+  readonly analyzers: readonly { readonly id: string; readonly version: string }[];
+}
+
+export interface ScanRepository {
+  record(scan: StoredScan): void;
+  /** Newest `finishedAt` first, then the highest ID. */
+  latest(workspaceId: string): StoredScan | null;
+}
+
 export interface Store {
   readonly workspaces: WorkspaceRepository;
   readonly revisions: RevisionRepository;
   readonly sessions: SessionRepository;
+  readonly scans: ScanRepository;
 }
 
 export interface Clock {
@@ -70,7 +92,7 @@ export interface Clock {
 }
 
 export interface IdGenerator {
-  next(prefix: 'ws' | 'rev' | 'ses'): string;
+  next(prefix: 'ws' | 'rev' | 'ses' | 'scan'): string;
 }
 
 export interface Digest {

@@ -1,10 +1,16 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { existsSync, realpathSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
-import { RevisionInvalidError, SessionService, type SessionSummary } from '@archwise/application';
+import {
+  RevisionInvalidError,
+  SessionService,
+  type DiscoveryInput,
+  type SessionSummary,
+  type StoredScan,
+} from '@archwise/application';
 import { openStore, type OpenedStore, type StoreUnavailableReason } from '@archwise/storage';
 import type { ArchitectureGraph } from './graph.js';
-import { buildGraphRevision } from './revision.js';
+import { buildGraphRevision, type RevisionScan } from './revision.js';
 
 export type StoreRuntime =
   | { readonly kind: 'disabled'; readonly notices: readonly string[] }
@@ -19,7 +25,10 @@ export interface PrepareStoreOptions {
   readonly enabled: boolean;
   readonly dataDir: string;
   readonly rootPath: string;
-  readonly rootLabel: string;
+  /** Repositories, manifest ownership and truncation from the inventory. */
+  readonly scan: RevisionScan;
+  /** Scan metadata to record with the revision (counts and codes only). */
+  readonly scanRecord?: DiscoveryInput['scan'];
   readonly graph: ArchitectureGraph;
 }
 
@@ -74,7 +83,8 @@ export async function prepareStore(options: PrepareStoreOptions): Promise<StoreR
         rootPath: options.rootPath,
         view: JSON.stringify(options.graph),
         viewIdentity: JSON.stringify({ ...options.graph, inspectedEntries: 0 }),
-        build: (ids) => buildGraphRevision(options.graph, options.rootLabel, ids),
+        build: (ids) => buildGraphRevision(options.graph, options.scan, ids),
+        ...(options.scanRecord ? { scan: options.scanRecord } : {}),
       },
     );
     if (!opened.ok) throw new Error(opened.error);
@@ -125,8 +135,12 @@ export function storeUnavailableMessage(reason: StoreUnavailableReason, dataDir:
   }
 }
 
-export function formatSessionList(sessions: readonly SessionSummary[]): string {
-  if (sessions.length === 0) return 'No saved sessions for this project.\n';
+export function formatSessionList(
+  sessions: readonly SessionSummary[],
+  lastScan: StoredScan | null = null,
+): string {
+  const footer = lastScan === null ? '' : `Last scan: ${lastScan.finishedAt}\n`;
+  if (sessions.length === 0) return `No saved sessions for this project.\n${footer}`;
   return sessions
     .map((session) => {
       const flags = [session.hasSnapshots ? 'A/B' : '', session.baseIsCurrent ? '' : 'changed']
@@ -138,5 +152,5 @@ export function formatSessionList(sessions: readonly SessionSummary[]): string {
         .join('  ');
     })
     .join('\n')
-    .concat('\n');
+    .concat('\n', footer);
 }

@@ -30,6 +30,15 @@ export default {
       },
     },
     {
+      name: 'discovery-inward-only',
+      severity: 'error',
+      from: { path: '^packages/discovery/src/' },
+      to: {
+        pathNot: '^packages/(discovery|application|domain|schemas)/',
+        dependencyTypesNot: ['core'],
+      },
+    },
+    {
       name: 'schemas-inward-only',
       severity: 'error',
       from: { path: '^packages/schemas/src/' },

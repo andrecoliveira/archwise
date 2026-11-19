@@ -22,13 +22,19 @@ const temp = (prefix: string) => {
   return path;
 };
 
+const scanLabelled = (label: string) => ({
+  repositories: [{ id: 'repo-root', label, path: '', nested: false }],
+  manifests: [],
+  truncated: null,
+});
+
 test('a data directory inside the analyzed root disables the store without writing there', async () => {
   const root = temp('archwise-root-');
   const runtime = await prepareStore({
     enabled: true,
     dataDir: join(root, '.archwise-data'),
     rootPath: root,
-    rootLabel: 'root',
+    scan: scanLabelled('root'),
     graph,
   });
   expect(runtime.kind).toBe('disabled');
@@ -42,7 +48,7 @@ test('the analyzed root itself is also refused as a data directory', async () =>
     enabled: true,
     dataDir: root,
     rootPath: root,
-    rootLabel: 'r',
+    scan: scanLabelled('r'),
     graph,
   });
   expect(runtime.kind).toBe('disabled');
@@ -56,7 +62,7 @@ test('a data directory outside the root opens the store', async () => {
     enabled: true,
     dataDir: data,
     rootPath: root,
-    rootLabel: 'r',
+    scan: scanLabelled('r'),
     graph,
   });
   expect(runtime.kind).toBe('ready');
@@ -71,7 +77,7 @@ test('resumeTarget resolves latest and known ids only', async () => {
     enabled: true,
     dataDir: data,
     rootPath: root,
-    rootLabel: 'r',
+    scan: scanLabelled('r'),
     graph,
   });
   if (runtime.kind !== 'ready') throw new Error('store expected');

@@ -1,0 +1,28 @@
+{
+  "name": "@archwise/discovery",
+  "version": "0.1.0-dev.0",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.check.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@archwise/application": "workspace:*",
+    "@archwise/domain": "workspace:*"
+  },
+  "devDependencies": {
+    "@archwise/test-fixtures": "workspace:*"
+  }
+}

@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@archwise/application": "workspace:*",
+    "@archwise/discovery": "workspace:*",
     "@archwise/domain": "workspace:*",
     "@archwise/schemas": "workspace:*",
     "@archwise/storage": "workspace:*"

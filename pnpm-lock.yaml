@@ -50,6 +50,9 @@ importers:
       '@archwise/application':
         specifier: workspace:*
         version: link:../../packages/application
+      '@archwise/discovery':
+        specifier: workspace:*
+        version: link:../../packages/discovery
       '@archwise/domain':
         specifier: workspace:*
         version: link:../../packages/domain
@@ -98,6 +101,19 @@ importers:
       '@archwise/schemas':
         specifier: workspace:*
         version: link:../schemas
+
+  packages/discovery:
+    dependencies:
+      '@archwise/application':
+        specifier: workspace:*
+        version: link:../application
+      '@archwise/domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      '@archwise/test-fixtures':
+        specifier: workspace:*
+        version: link:../test-fixtures
 
   packages/domain: {}
 

@@ -16,6 +16,7 @@
     "changeset": "changeset",
     "dev": "pnpm --filter @archwise/web dev",
     "test:integration": "node --test scripts/tests/*.test.mjs",
+    "bench:inventory": "node scripts/bench-inventory.mjs",
     "format": "prettier --write package.json pnpm-workspace.yaml turbo.json tsconfig*.json *.config.* .dependency-cruiser.mjs packages apps scripts .changeset .github/workflows",
     "format:check": "prettier --check package.json pnpm-workspace.yaml turbo.json tsconfig*.json *.config.* .dependency-cruiser.mjs packages apps scripts .changeset .github/workflows",
     "check": "pnpm format:check && pnpm build && pnpm lint && pnpm typecheck && pnpm boundaries && pnpm test"

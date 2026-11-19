@@ -30,7 +30,16 @@ function service(): SessionService {
       rootPath: '/secret/absolute/root',
       view: JSON.stringify(graph),
       viewIdentity: JSON.stringify(graph),
-      build: (ids) => buildGraphRevision(graph, 'root', ids),
+      build: (ids) =>
+        buildGraphRevision(
+          graph,
+          {
+            repositories: [{ id: 'repo-root', label: 'root', path: '', nested: false }],
+            manifests: [],
+            truncated: null,
+          },
+          ids,
+        ),
     },
   );
   if (!opened.ok) throw new Error(opened.error);

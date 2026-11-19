@@ -1,25 +1,34 @@
 import { expect, test } from 'vitest';
 import { buildArchitectureGraph } from '../src/graph.js';
-import type { InventoryResult } from '../src/inventory.js';
+import type { InventoryManifest, InventoryResult } from '@archwise/application';
+
+const manifest = (
+  path: string,
+  name: string,
+  framework: string | null,
+  dependencies: string[],
+): InventoryManifest => ({
+  repositoryId: 'repo-root',
+  path,
+  name,
+  framework,
+  dependencies,
+  sha256: '0',
+});
 
 const sample: InventoryResult = {
-  version: 1,
+  version: 2,
   root: '/private/home/developer',
-  inspectedEntries: 10,
+  repositories: [{ id: 'repo-root', label: 'developer', path: '', nested: false }],
+  listedEntries: 10,
+  bytesRead: 0,
+  skipped: {},
+  truncated: null,
+  durationMs: 0,
   diagnostics: [],
   manifests: [
-    {
-      path: 'apps/web/package.json',
-      name: '@demo/web',
-      framework: 'next',
-      dependencies: ['next', '@demo/api', 'axios'],
-    },
-    {
-      path: 'apps/api/package.json',
-      name: '@demo/api',
-      framework: 'fastify',
-      dependencies: ['fastify', 'pg'],
-    },
+    manifest('apps/web/package.json', '@demo/web', 'next', ['next', '@demo/api', 'axios']),
+    manifest('apps/api/package.json', '@demo/api', 'fastify', ['fastify', 'pg']),
   ],
 };
 
@@ -45,10 +54,7 @@ test('produces stable output regardless of manifest order', () => {
 test('does not infer edges from ambiguous names', () => {
   const graph = buildArchitectureGraph({
     ...sample,
-    manifests: [
-      ...sample.manifests,
-      { path: 'other/api/package.json', name: '@demo/api', framework: null, dependencies: [] },
-    ],
+    manifests: [...sample.manifests, manifest('other/api/package.json', '@demo/api', null, [])],
   });
   expect(graph.edges).toHaveLength(0);
   expect(graph.diagnostics.some((item) => item.startsWith('Ambiguous package name'))).toBe(true);
@@ -58,4 +64,10 @@ test('does not invent infrastructure from external libraries', () => {
   const graph = buildArchitectureGraph({ ...sample, manifests: [sample.manifests[1]!] });
   expect(graph.nodes).toHaveLength(1);
   expect(graph.edges).toHaveLength(0);
+});
+
+test('a truncated scan is visible as a graph diagnostic', () => {
+  const graph = buildArchitectureGraph({ ...sample, truncated: 'time' });
+  expect(graph.diagnostics).toContain('Scan truncated: time budget reached. Results are partial.');
+  expect(graph.inspectedEntries).toBe(10);
 });

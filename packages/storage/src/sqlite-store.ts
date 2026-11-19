@@ -2,6 +2,7 @@ import type {
   SessionChanges,
   Store,
   StoredRevision,
+  StoredScan,
   StoredSession,
   Workspace,
 } from '@archwise/application';
@@ -17,7 +18,7 @@ import {
   statSync,
 } from 'node:fs';
 import { join } from 'node:path';
-import { backup, DatabaseSync } from 'node:sqlite';
+import { backup, DatabaseSync, type StatementSync } from 'node:sqlite';
 import { MIGRATIONS, type Migration } from './migrations.js';
 
 export type StoreUnavailableReason = 'newer-schema' | 'migration-failed' | 'unwritable';
@@ -261,6 +262,32 @@ function toSession(row: SessionRow | undefined): StoredSession | null {
   };
 }
 
+interface ScanRow {
+  id: string;
+  workspace_id: string;
+  revision_id: string;
+  started_at: string;
+  finished_at: string;
+  summary: string;
+}
+type ScanSummary = Omit<
+  StoredScan,
+  'id' | 'workspaceId' | 'revisionId' | 'startedAt' | 'finishedAt'
+>;
+
+function toScan(row: ScanRow | undefined): StoredScan | null {
+  if (!row) return null;
+  const summary = JSON.parse(row.summary) as ScanSummary;
+  return {
+    id: row.id,
+    workspaceId: row.workspace_id,
+    revisionId: row.revision_id,
+    startedAt: row.started_at,
+    finishedAt: row.finished_at,
+    ...summary,
+  };
+}
+
 function createSqliteStore(
   db: DatabaseSync,
   path: string,
@@ -293,6 +320,18 @@ function createSqliteStore(
     ),
     deleteSession: db.prepare('DELETE FROM sessions WHERE workspace_id = ? AND id = ?'),
   };
+
+  // Prepared on first use, so a store opened at an older schema (tests) still opens.
+  let scanStatements: { insert: StatementSync; latest: StatementSync } | null = null;
+  const scanQueries = () =>
+    (scanStatements ??= {
+      insert: db.prepare(
+        'INSERT INTO scans (id, workspace_id, revision_id, started_at, finished_at, summary) VALUES (?, ?, ?, ?, ?, ?)',
+      ),
+      latest: db.prepare(
+        'SELECT * FROM scans WHERE workspace_id = ? ORDER BY finished_at DESC, id DESC LIMIT 1',
+      ),
+    });
 
   return {
     path,
@@ -353,6 +392,26 @@ function createSqliteStore(
         return Number(result.changes) > 0;
       },
       delete: (workspaceId, id) => Number(q.deleteSession.run(workspaceId, id).changes) > 0,
+    },
+    scans: {
+      record(scan) {
+        const summary: ScanSummary = {
+          listedEntries: scan.listedEntries,
+          bytesRead: scan.bytesRead,
+          skipped: scan.skipped,
+          truncated: scan.truncated,
+          analyzers: scan.analyzers,
+        };
+        scanQueries().insert.run(
+          scan.id,
+          scan.workspaceId,
+          scan.revisionId,
+          scan.startedAt,
+          scan.finishedAt,
+          JSON.stringify(summary),
+        );
+      },
+      latest: (workspaceId) => toScan(scanQueries().latest.get(workspaceId) as ScanRow | undefined),
     },
   };
 }
