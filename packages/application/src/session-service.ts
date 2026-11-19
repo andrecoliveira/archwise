@@ -6,7 +6,15 @@ import {
   type ValidationIssue,
 } from '@archwise/domain';
 import { serializeGraphRevision } from '@archwise/schemas';
-import type { Clock, Digest, IdGenerator, Store, StoredRevision, StoredSession } from './ports.js';
+import type {
+  Clock,
+  Digest,
+  IdGenerator,
+  Store,
+  StoredRevision,
+  StoredScan,
+  StoredSession,
+} from './ports.js';
 import { inspectSandboxText } from './sandbox-text.js';
 
 export interface SessionSummary {
@@ -44,6 +52,8 @@ export interface DiscoveryInput {
    */
   readonly viewIdentity: string;
   readonly build: (ids: RevisionIds) => GraphRevision;
+  /** The scan that produced this discovery; recorded against the resolved revision. */
+  readonly scan?: Omit<StoredScan, 'id' | 'workspaceId' | 'revisionId'>;
 }
 
 export interface SessionServiceDeps {
@@ -129,7 +139,20 @@ export class SessionService {
         view: discovery.view,
       });
     }
+    if (discovery.scan) {
+      store.scans.record({
+        ...discovery.scan,
+        id: ids.next('scan'),
+        workspaceId: workspace.id,
+        revisionId,
+      });
+    }
     return { ok: true, value: new SessionService(deps, workspace.id, revisionId) };
+  }
+
+  /** The most recent recorded scan of this workspace, or null. */
+  lastScan(): StoredScan | null {
+    return this.#deps.store.scans.latest(this.workspaceId);
   }
 
   current(): { readonly id: string; readonly persisted: boolean } {

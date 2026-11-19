@@ -1,5 +1,5 @@
 import type { GraphRevision } from '@archwise/domain';
-import type { Store, StoredRevision, StoredSession } from '../ports.js';
+import type { Store, StoredRevision, StoredScan, StoredSession } from '../ports.js';
 
 /** Minimal injected test API so the contract does not depend on a test framework. */
 export interface ContractHarness {
@@ -48,6 +48,19 @@ const session = (
   updatedAt,
   label: `Label ${id}`,
   sandbox: '{"format":"archwise-sandbox","version":1,"nodes":[],"draft":{}}',
+});
+
+const scan = (id: string, workspaceId: string, finishedAt: string): StoredScan => ({
+  id,
+  workspaceId,
+  revisionId: 'rev-1',
+  startedAt: '2026-11-16T00:00:00.000Z',
+  finishedAt,
+  listedEntries: 42,
+  bytesRead: 1024,
+  skipped: { 'ignored-builtin': 3, symlink: 1 },
+  truncated: null,
+  analyzers: [{ id: 'node-manifest', version: '1.0.0' }],
 });
 
 /** Behavioral contract every Store adapter must satisfy. */
@@ -122,5 +135,28 @@ export function defineStoreContract(
     t.expect(store.sessions.delete('ws-a', 'ses-1')).toBe(true);
     t.expect(store.sessions.delete('ws-a', 'ses-1')).toBe(false);
     t.expect(store.sessions.get('ws-a', 'ses-1')).toBeNull();
+  });
+
+  run('records scans and returns the newest per workspace', (store) => {
+    store.workspaces.resolve('/root/a', 'ws-a', '2026-11-16T00:00:00.000Z');
+    store.workspaces.resolve('/root/b', 'ws-b', '2026-11-16T00:00:00.000Z');
+    store.revisions.insert(storedRevision('rev-1', 'ws-a', '2026-11-16T00:00:01.000Z'));
+    store.revisions.insert(storedRevision('rev-2', 'ws-b', '2026-11-16T00:00:01.000Z'));
+    t.expect(store.scans.latest('ws-a')).toBeNull();
+    store.scans.record(scan('scan-1', 'ws-a', '2026-11-16T00:00:02.000Z'));
+    store.scans.record({
+      ...scan('scan-3', 'ws-a', '2026-11-16T00:00:09.000Z'),
+      truncated: 'time',
+    });
+    store.scans.record(scan('scan-2', 'ws-a', '2026-11-16T00:00:09.000Z'));
+    store.scans.record({
+      ...scan('scan-9', 'ws-b', '2026-11-17T00:00:00.000Z'),
+      revisionId: 'rev-2',
+    });
+    t.expect(store.scans.latest('ws-a')).toEqual({
+      ...scan('scan-3', 'ws-a', '2026-11-16T00:00:09.000Z'),
+      truncated: 'time',
+    });
+    t.expect(store.scans.latest('ws-b')?.id).toBe('scan-9');
   });
 }

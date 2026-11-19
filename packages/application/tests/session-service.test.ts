@@ -202,3 +202,33 @@ test('resuming discards the reserved, never-persisted session id', () => {
   service.resume(saved);
   expect(service.saveSandbox(reserved, sandboxDoc(1))).toEqual({ ok: false, error: 'not-found' });
 });
+
+const scanInput = {
+  startedAt: '2026-11-16T00:00:00.000Z',
+  finishedAt: '2026-11-16T00:00:01.000Z',
+  listedEntries: 12,
+  bytesRead: 300,
+  skipped: { 'ignored-builtin': 2 },
+  truncated: null,
+  analyzers: [{ id: 'node-manifest', version: '1.0.0' }],
+} as const;
+
+test('a scan is recorded against the resolved revision, new or reused', () => {
+  const d = deps();
+  expect(open(d).lastScan()).toBeNull();
+  const opened = SessionService.open(d, {
+    rootPath: '/fixture/root',
+    view: '{"version":1}',
+    viewIdentity: 'v1',
+    build: buildRevision(1),
+    scan: scanInput,
+  });
+  if (!opened.ok) throw new Error(opened.error);
+  const service = opened.value;
+  expect(service.lastScan()).toEqual({
+    ...scanInput,
+    id: expect.stringMatching(/^scan-/),
+    workspaceId: service.workspaceId,
+    revisionId: service.currentRevisionId,
+  });
+});

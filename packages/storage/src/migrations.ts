@@ -34,6 +34,20 @@ export const MIGRATIONS: readonly Migration[] = [
       CREATE INDEX sessions_by_workspace ON sessions(workspace_id, updated_at);
     `,
   },
+  {
+    version: 2,
+    sql: `
+      CREATE TABLE scans (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL REFERENCES workspaces(id),
+        revision_id TEXT NOT NULL REFERENCES revisions(id),
+        started_at TEXT NOT NULL,
+        finished_at TEXT NOT NULL,
+        summary TEXT NOT NULL
+      );
+      CREATE INDEX scans_by_workspace ON scans(workspace_id, finished_at);
+    `,
+  },
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.version;

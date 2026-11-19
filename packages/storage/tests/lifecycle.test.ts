@@ -9,7 +9,13 @@ import {
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { afterEach, expect, test } from 'vitest';
-import { openStore, pruneBackups, SCHEMA_VERSION, StoreUnavailableError } from '../src/index.js';
+import {
+  MIGRATIONS,
+  openStore,
+  pruneBackups,
+  SCHEMA_VERSION,
+  StoreUnavailableError,
+} from '../src/index.js';
 import { tempDir } from './helpers.js';
 
 const cleanups: (() => void)[] = [];
@@ -75,6 +81,23 @@ test('migrating an older database writes a backup first', async () => {
     backup.close();
   }
   expect(versionOf(dbPath(d))).toBe(SCHEMA_VERSION);
+});
+
+test('a version 1 store migrates to version 2 with a backup and keeps its sessions', async () => {
+  const d = dir();
+  const v1 = await openStore(d, { migrations: MIGRATIONS.slice(0, 1) });
+  v1.workspaces.resolve('/root/a', 'ws-a', '2026-11-16T00:00:00.000Z');
+  v1.close();
+  expect(versionOf(dbPath(d))).toBe(1);
+  const v2 = await openStore(d);
+  try {
+    expect(v2.backupPath).toMatch(/archwise\.db\.backup-v1-/);
+    expect(versionOf(dbPath(d))).toBe(2);
+    expect(v2.workspaces.resolve('/root/a', 'ws-new', '2026-11-17T00:00:00.000Z').id).toBe('ws-a');
+    expect(v2.scans.latest('ws-a')).toBeNull();
+  } finally {
+    v2.close();
+  }
 });
 
 test('a database from a newer Archwise is refused untouched', async () => {

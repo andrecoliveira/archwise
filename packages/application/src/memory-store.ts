@@ -1,4 +1,11 @@
-import type { SessionChanges, Store, StoredRevision, StoredSession, Workspace } from './ports.js';
+import type {
+  SessionChanges,
+  Store,
+  StoredRevision,
+  StoredScan,
+  StoredSession,
+  Workspace,
+} from './ports.js';
 
 const byUpdatedDesc = (a: StoredSession, b: StoredSession): number =>
   a.updatedAt < b.updatedAt ? 1 : a.updatedAt > b.updatedAt ? -1 : a.id < b.id ? -1 : 1;
@@ -8,6 +15,7 @@ export function createMemoryStore(): Store {
   const workspaces = new Map<string, Workspace>();
   const revisions = new Map<string, StoredRevision>();
   const sessions = new Map<string, StoredSession>();
+  const scans = new Map<string, StoredScan>();
   const inWorkspace = <T extends { workspaceId: string }>(value: T | undefined, ws: string) =>
     value && value.workspaceId === ws ? value : null;
 
@@ -59,6 +67,26 @@ export function createMemoryStore(): Store {
       delete(workspaceId, id) {
         if (!inWorkspace(sessions.get(id), workspaceId)) return false;
         return sessions.delete(id);
+      },
+    },
+    scans: {
+      record(scan) {
+        if (scans.has(scan.id)) throw new Error('Duplicate scan');
+        scans.set(scan.id, Object.freeze({ ...scan }));
+      },
+      latest(workspaceId) {
+        let best: StoredScan | null = null;
+        for (const scan of scans.values()) {
+          if (scan.workspaceId !== workspaceId) continue;
+          if (
+            !best ||
+            scan.finishedAt > best.finishedAt ||
+            (scan.finishedAt === best.finishedAt && scan.id > best.id)
+          ) {
+            best = scan;
+          }
+        }
+        return best;
       },
     },
   };
