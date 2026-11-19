@@ -2,7 +2,7 @@ import { expect, test } from 'vitest';
 import { mkdtemp, mkdir, writeFile, rm, symlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { inspectWorkspace } from '../src/inventory.js';
+import { inspectWorkspace } from '../src/index.js';
 
 test('inspects package manifests without following ignored directories or symlinks', async () => {
   const root = await mkdtemp(join(tmpdir(), 'archwise-inventory-'));

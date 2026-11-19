@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { basename, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { resolveDataDir, StoreUnavailableError } from '@archwise/storage';
-import { inspectWorkspace } from './inventory.js';
+import { inspectWorkspace } from '@archwise/discovery';
 import { buildArchitectureGraph } from './graph.js';
 import { parseCli } from './index.js';
 import { startLocalGraphServer } from './local-server.js';

@@ -107,3 +107,20 @@ test('allows storage to use Node built-ins', async () => {
   });
   assert.equal(result.status, 0, result.stdout + result.stderr);
 });
+
+test('rejects discovery imports of app code', async () => {
+  const result = await inspect({
+    'packages/discovery/src/index.ts': "export { value } from '../../../apps/cli/src/index.js';",
+    'apps/cli/src/index.ts': 'export const value = 1;',
+  });
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(result.stdout + result.stderr, /discovery-inward-only/);
+});
+
+test('allows discovery to use Node built-ins', async () => {
+  const result = await inspect({
+    'packages/discovery/src/index.ts':
+      "import { join } from 'node:path'; export const p = join('a');",
+  });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+});

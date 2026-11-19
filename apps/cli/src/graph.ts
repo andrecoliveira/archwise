@@ -1,4 +1,4 @@
-import type { InventoryResult, ManifestEvidence } from './inventory.js';
+import type { InventoryResult, ManifestEvidence } from '@archwise/discovery';
 
 export interface ArchitectureNode {
   readonly id: string;

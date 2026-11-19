@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import { buildArchitectureGraph } from '../src/graph.js';
-import type { InventoryResult } from '../src/inventory.js';
+import type { InventoryResult } from '@archwise/discovery';
 
 const sample: InventoryResult = {
   version: 1,
