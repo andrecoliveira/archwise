@@ -99,6 +99,7 @@ export async function walkWorkspace(request: InventoryRequest): Promise<Inventor
   let listedEntries = 0;
   let bytesRead = 0;
   let truncated: BudgetName | null = null;
+  let depthReached = false;
 
   const skip = (reason: SkipReason, path: string): void => {
     const entry = skips.get(reason) ?? { count: 0, examples: [] };
@@ -147,16 +148,24 @@ export async function walkWorkspace(request: InventoryRequest): Promise<Inventor
     let ignores = frame.ignores;
     const ignoreFile = entries.find((entry) => entry.name === GITIGNORE && entry.isFile());
     if (ignoreFile) {
-      const path = join(absolute, GITIGNORE);
-      const size = (await lstat(path)).size;
-      if (size <= budgets.bytesPerFile) {
-        try {
+      const ignorePath = join2(rootPath, GITIGNORE);
+      try {
+        const path = join(absolute, GITIGNORE);
+        const size = (await lstat(path)).size;
+        if (size > budgets.bytesPerFile) {
+          skip('too-large', ignorePath);
+          diagnostics.add(`Ignore file exceeds size limit: ${ignorePath}`);
+        } else {
           const text = (await readBounded(path, size)).toString('utf8');
           ignores = [...ignores, parseGitignore(text, frame.repoPath)];
-        } catch (error) {
-          if (error instanceof Truncated || (error as Error).name === 'AbortError') throw error;
-          diagnostics.add(`Unreadable ignore file: ${join2(rootPath, GITIGNORE)}`);
         }
+      } catch (error) {
+        if (error instanceof Truncated) {
+          for (const entry of entries) skip('budget-exhausted', join2(rootPath, entry.name));
+          throw error;
+        }
+        if ((error as Error).name === 'AbortError') throw error;
+        diagnostics.add(`Unreadable ignore file: ${ignorePath}`);
       }
     }
 
@@ -195,6 +204,8 @@ export async function walkWorkspace(request: InventoryRequest): Promise<Inventor
         const stats = entry.isDirectory() || entry.isFile() ? null : await lstat(childAbsolute);
         if (entry.isDirectory() || stats?.isDirectory()) {
           if (depth + 1 > budgets.depth) {
+            // Depth truncates without stopping: shallower directories are still scanned.
+            depthReached = true;
             skip('too-deep', childRoot);
             continue;
           }
@@ -229,6 +240,7 @@ export async function walkWorkspace(request: InventoryRequest): Promise<Inventor
           const size = (await lstat(childAbsolute)).size;
           if (size > budgets.bytesPerFile) {
             skip('too-large', childRoot);
+            diagnostics.add(`Manifest exceeds size limit: ${childRoot}`);
             continue;
           }
           let bytes: Buffer;
@@ -255,7 +267,12 @@ export async function walkWorkspace(request: InventoryRequest): Promise<Inventor
         }
         skip('special-file', childRoot);
       } catch (error) {
-        if (!(error instanceof Truncated)) throw error;
+        if (!(error instanceof Truncated)) {
+          // An entry that vanished or cannot be stat-ed is skipped; the scan goes on.
+          if ((error as Error).name === 'AbortError' || entered) throw error;
+          skip('unreadable', childRoot);
+          continue;
+        }
         for (const rest of entries.slice(entered ? index + 1 : index))
           skip('budget-exhausted', join2(rootPath, rest.name));
         throw error;
@@ -284,7 +301,7 @@ export async function walkWorkspace(request: InventoryRequest): Promise<Inventor
     listedEntries,
     bytesRead,
     skipped,
-    truncated,
+    truncated: truncated ?? (depthReached ? 'depth' : null),
     diagnostics: [...diagnostics].sort(compareCodeUnits),
     durationMs: Math.max(0, now() - started),
   };

@@ -11,12 +11,12 @@ Paths are canonicalized once, deduplicated, checked for readability, and assigne
 
 ## Safe inventory (implemented for a single root)
 
-`archwise` and `archwise --path <directory>` scan one root through `@archwise/discovery`. `--repo` and `--workspace` are not implemented yet; they arrive in the next Phase 3 change. The scan lists files without reading them, and reads only `package.json` manifests.
+`archwise` and `archwise --path <directory>` scan one root through `@archwise/discovery`. `--repo` and `--workspace` are not implemented yet; they arrive in the next Phase 3 change. The scan lists files without reading them. It reads only `package.json` manifests and `.gitignore` files, both within the byte budgets.
 
 **Ignore precedence,** highest first:
 
 1. Built-in exclusions: `.git`, `.next`, `.turbo`, `node_modules`, `dist`, `build`, `coverage`, `.venv`, `vendor`, `.cache`, `.output`, `target` and `__pycache__`.
-2. The repository's `.gitignore` files, root and nested, with Git semantics. A `!` negation can re-include a path a `.gitignore` excluded, but never one a built-in rule excluded.
+2. The repository's `.gitignore` files, root and nested, with Git semantics. A `!` negation can re-include a path a `.gitignore` excluded, but never one a built-in rule excluded. An invalid pattern matches nothing; the file's other rules still apply. `.gitignore` files above the scanned root and `.git/info/exclude` are not read.
 3. Everything else is listed.
 
 **Symlinks and special files** are listed but never followed or opened.
@@ -33,7 +33,7 @@ Paths are canonicalized once, deduplicated, checked for readability, and assigne
 | Total bytes read | 64 MiB |
 | Wall-clock time | 60 s |
 
-When a budget runs out, the scan keeps what it found and marks itself truncated with the budget's name. The CLI prints `Scan truncated: <budget> budget reached. Results are partial.` The Studio shows the same line as a diagnostic, and the graph revision is `partial`. A time-truncated scan may differ from run to run. Any other scan of unchanged files gives the same result.
+When a budget runs out, the scan keeps what it found and marks itself truncated with the budget's name. The depth budget skips only the directories below it, and the scan continues elsewhere. The CLI prints `Scan truncated: <budget> budget reached. Results are partial.` The Studio shows the same line as a diagnostic, and the graph revision is `partial`. A time-truncated scan may differ from run to run. Any other scan of unchanged files gives the same result.
 
 **Every path the scan does not inspect has a reason.** The CLI summary and `--json` report a count per reason, and `--json` adds up to 20 example paths per reason:
 
@@ -45,9 +45,9 @@ When a budget runs out, the scan keeps what it found and marks itself truncated 
 | `outside-root` | a symlink that leaves the root, or a dangling one |
 | `nested-repository` | a nested repository, scanned as its own repository |
 | `too-deep` | below the depth budget |
-| `too-large` | a manifest over the per-file byte limit |
+| `too-large` | a manifest or `.gitignore` over the per-file byte limit, also reported as a diagnostic |
 | `binary` | a manifest with a NUL byte in its first 8 KiB |
-| `unreadable` | a directory or manifest that could not be read or parsed |
+| `unreadable` | an entry that could not be read, inspected or parsed |
 | `special-file` | a socket, FIFO or device |
 | `budget-exhausted` | not reached because a budget ran out |
 | `unsupported-name` | a name that cannot be a portable relative path, such as a backslash in a POSIX name |

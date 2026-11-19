@@ -27,7 +27,7 @@ It never contains source file contents. It is not synchronized or exported, and 
 
 ## Safe scanning
 
-The inventory lists files with `lstat`. It never follows symlinks, so a link cannot lead it outside a root or into a cycle. It never opens sockets, FIFOs or devices, and it reads only `package.json` manifests, with a per-file and a total byte budget. See [Discovery](discovery.md#safe-inventory-implemented-for-a-single-root).
+The inventory lists files with `lstat`. It never follows symlinks, so a link cannot lead it outside a root or into a cycle. It never opens sockets, FIFOs or devices, and it reads only `package.json` manifests and `.gitignore` files, with a per-file and a total byte budget. Ignore patterns are matched without regular expressions, so a hostile `.gitignore` cannot stall a scan. See [Discovery](discovery.md#safe-inventory-implemented-for-a-single-root).
 
 ## Redaction at the discovery boundary
 

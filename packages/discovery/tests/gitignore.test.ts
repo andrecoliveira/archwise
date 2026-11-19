@@ -61,3 +61,33 @@ test('adversarial patterns stay linear', () => {
   isIgnored(doubled, `${'d/'.repeat(2_000)}y`, false);
   expect(performance.now() - started).toBeLessThan(50);
 });
+
+describe('review fixes', () => {
+  test('alternating wildcards and literals match in bounded time', () => {
+    const name = 'a'.repeat(60);
+    const deep = Array.from({ length: 40 }, () => 'a').join('/');
+    const started = performance.now();
+    expect(isIgnored([parseGitignore('*a*a*a*a*a*a*a*ab', '')], name, false)).toBe(false);
+    expect(isIgnored([parseGitignore(`${'*a'.repeat(8)}b`, '')], name, false)).toBe(false);
+    expect(isIgnored([parseGitignore(`${'**/a/'.repeat(10)}b`, '')], deep, false)).toBe(false);
+    expect(isIgnored([parseGitignore(`${'*a'.repeat(8)}`, '')], name, false)).toBe(true);
+    expect(performance.now() - started).toBeLessThan(200);
+  });
+
+  test('an invalid range matches nothing without discarding the other rules', () => {
+    const stack = [parseGitignore('[z-a]\n*.log\n', '')];
+    expect(isIgnored(stack, 'z', false)).toBe(false);
+    expect(isIgnored(stack, 'x.log', false)).toBe(true);
+  });
+
+  test('a UTF-8 byte order mark is ignored', () => {
+    expect(isIgnored([parseGitignore('﻿dist\n', '')], 'dist', true)).toBe(true);
+  });
+
+  test('a ** segment in the middle matches zero or more directories', () => {
+    const stack = [parseGitignore('a/**/b', '')];
+    expect(isIgnored(stack, 'a/b', false)).toBe(true);
+    expect(isIgnored(stack, 'a/x/y/b', false)).toBe(true);
+    expect(isIgnored(stack, 'a/x/y/c', false)).toBe(false);
+  });
+});

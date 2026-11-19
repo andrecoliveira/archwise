@@ -201,7 +201,7 @@ describe('budgets', () => {
     const result = await scan(root, { budgets: { depth: 2 } });
     expect(result.manifests.map((m) => m.path)).toEqual(['a/package.json']);
     expect(skipped(result, 'too-deep').examples).toEqual(['a/b/c']);
-    expect(result.truncated).toBeNull();
+    expect(result.truncated).toBe('depth');
   });
 
   test('entries', async () => {
@@ -291,5 +291,48 @@ describe('root errors', () => {
       name: 'InventoryRootError',
       reason,
     });
+  });
+});
+
+describe('review fixes', () => {
+  test('hitting the depth budget marks the scan truncated but keeps scanning', async () => {
+    const root = await tree({ 'packages/a/package.json': pkg('a'), 'z/package.json': pkg('z') });
+    const result = await scan(root, { budgets: { depth: 1 } });
+    expect(result.truncated).toBe('depth');
+    expect(skipped(result, 'too-deep').examples).toEqual(['packages/a']);
+    expect(result.manifests.map((m) => m.path)).toEqual(['z/package.json']);
+  });
+
+  test('an oversized manifest leaves a diagnostic', async () => {
+    const root = await tree({ 'package.json': ' '.repeat(1_048_577) });
+    const result = await scan(root);
+    expect(result.diagnostics).toContain('Manifest exceeds size limit: package.json');
+  });
+
+  test.skipIf(!posix || isRoot)(
+    'an entry that cannot be stat-ed is skipped, not fatal',
+    async () => {
+      const root = await tree({ 'ro/package.json': pkg('ro'), 'ok/package.json': pkg('ok') });
+      await chmod(join(root, 'ro'), 0o444);
+      cleanups.unshift(join(root, 'ro'));
+      const result = await scan(root);
+      expect(result.manifests.map((m) => m.path)).toEqual(['ok/package.json']);
+      expect(skipped(result, 'unreadable').examples).toEqual(['ro/package.json']);
+      expect(JSON.stringify(result.diagnostics)).not.toContain(root);
+    },
+  );
+
+  test('an oversized .gitignore is reported instead of silently ignored', async () => {
+    const root = await tree({ '.gitignore': 'ignored/\n', 'ignored/package.json': pkg('i') });
+    const result = await scan(root, { budgets: { bytesPerFile: 5 } });
+    expect(result.diagnostics).toContain('Ignore file exceeds size limit: .gitignore');
+    expect(skipped(result, 'too-large').examples).toContain('.gitignore');
+  });
+
+  test('a budget that runs out while reading a .gitignore still accounts for the entries', async () => {
+    const root = await tree({ '.gitignore': `${'x'.repeat(80)}\n`, 'a.txt': 'a', 'b.txt': 'b' });
+    const result = await scan(root, { budgets: { bytesTotal: 60 } });
+    expect(result.truncated).toBe('bytes-total');
+    expect(skipped(result, 'budget-exhausted').count).toBe(3);
   });
 });
