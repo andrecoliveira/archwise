@@ -34,14 +34,14 @@ Finalization does not mean development stops. It establishes a reliable open-sou
 
 ## Current state
 
-Snapshot as of 2026-11-16, after PRs #5 to #12 and the Phase 2 redaction change. Issues and milestones remain the live tracker.
+Snapshot as of 2026-11-19, after PRs #5 to #13 and the first Phase 3 change. Issues and milestones remain the live tracker.
 
 | Phase | State on `main` | What is missing for the exit gate |
 |---|---|---|
 | 0 | Complete (2026-11-15) | — |
 | 1 | Complete (2026-11-15) | — |
 | 2 | Complete (2026-11-16) | — |
-| 3 | Alpha only: manifest-only inventory in `apps/cli` | Budgets, ignore rules, symlink and nested-repository handling, `--repo` / `--workspace`, persisted scan metadata |
+| 3 | In progress: safe single-root inventory in `@archwise/discovery` (budgets, ignore rules, symlinks, nested repositories, skip reasons, scan records) | `--repo` / `--workspace`, cross-repository edges, Studio repository labels and scan summary |
 | 4 | Alpha only: Node package manifests | Analyzer SDK, TS imports, HTTP/DB/queue detectors, Compose, golden graphs |
 | 5 | Alpha only: protected loopback server and Svelte Flow Studio | SSE progress, evidence navigation from domain revisions, accessibility, large-graph strategy |
 | 6 | Not started | — |
@@ -74,11 +74,13 @@ Alpha slices were delivered ahead of the phase order. Their placement in apps is
 ## Phase 0 — Governance and irreversible decisions
 
 Status: complete. The following are in place:
+
 - contribution guidelines, issue forms, a PR template and initial code ownership;
 - Apache-2.0, DCO and the security policy, with GitHub Private Vulnerability Reporting enabled and verified;
 - accepted ADRs 0001–0005.
 
 The repository is public. Completed 2026-11-15:
+
 - [Code of Conduct](../CODE_OF_CONDUCT.md) (Contributor Covenant 2.1) with a private enforcement contact;
 - `main` is protected by required PRs, required checks and resolved conversations.
 
@@ -107,6 +109,7 @@ Make legal, contribution, compatibility, and architectural expectations explicit
 ## Phase 1 — Monorepo and quality foundation
 
 Status: complete. The foundation from PR #4 is on `main`:
+
 - seven private packages with strict TypeScript, lint, tested import boundaries and Changesets;
 - component and process tests;
 - cross-platform CI, dependency auditing and redacted secret scanning.
@@ -140,6 +143,7 @@ Detailed execution plan: [`superpowers/plans/2026-11-08-archwise-foundation.md`]
 ## Phase 2 — Domain contracts and local persistence
 
 Status: complete (2026-11-16). The graph-contracts slice is implemented in `@archwise/domain` and `@archwise/schemas`. It covers the validated, immutable and canonically serialized `archwise.graph` v1 revision, strict import, and sandbox base references; see the [spec](superpowers/specs/2026-11-11-graph-contracts-design.md). The sessions slice adds the following (see [Sessions](sessions.md) and [ADR 0006](decisions/0006-local-store-node-sqlite.md)):
+
 - application store ports and a `SessionService`;
 - the `@archwise/storage` SQLite adapter, with transactional migrations, pre-migration backup, corruption quarantine and refusal of newer schemas;
 - revision recording from discovery;
@@ -191,6 +195,18 @@ Implement the stable vocabulary and revision model used by every later capabilit
 ---
 
 ## Phase 3 — Safe workspace inventory
+
+Status: in progress ([spec](superpowers/specs/2026-11-19-safe-workspace-inventory-design.md)). The single-root safe inventory is implemented in `@archwise/discovery`:
+
+- gitignore and built-in ignore rules;
+- symlinks that are never followed;
+- nested repositories;
+- budgets, with a reason category for every skipped path;
+- manifest hashing and cancellation;
+- the CLI summary and `--json` v2;
+- scan records in the store (schema v2).
+
+Still open: `--repo` and `--workspace` for several repositories, cross-repository edges, and repository labels and a scan summary in the Studio.
 
 ### Goal
 

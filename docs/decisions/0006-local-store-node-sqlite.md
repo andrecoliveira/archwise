@@ -22,6 +22,7 @@ Archwise must persist discovered graph revisions and Sandbox sessions so a user 
   - Revisions are stored as canonical `archwise.graph` JSON.
   - The Studio's view graph is stored next to each revision.
   - Sessions store `archwise-sandbox` v1 text.
+  - Scan records (schema v2) store counts and codes only.
   - Absolute workspace root paths exist only in this local file. They are never returned by the API or exported.
 
 ## Consequences

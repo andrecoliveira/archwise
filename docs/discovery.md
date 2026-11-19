@@ -9,6 +9,69 @@
 
 Paths are canonicalized once, deduplicated, checked for readability, and assigned stable workspace-relative identifiers. Symlinks are not followed outside declared roots by default.
 
+## Safe inventory (implemented for a single root)
+
+`archwise` and `archwise --path <directory>` scan one root through `@archwise/discovery`. `--repo` and `--workspace` are not implemented yet; they arrive in the next Phase 3 change. The scan lists files without reading them, and reads only `package.json` manifests.
+
+**Ignore precedence,** highest first:
+
+1. Built-in exclusions: `.git`, `.next`, `.turbo`, `node_modules`, `dist`, `build`, `coverage`, `.venv`, `vendor`, `.cache`, `.output`, `target` and `__pycache__`.
+2. The repository's `.gitignore` files, root and nested, with Git semantics. A `!` negation can re-include a path a `.gitignore` excluded, but never one a built-in rule excluded.
+3. Everything else is listed.
+
+**Symlinks and special files** are listed but never followed or opened.
+
+**Nested repositories:** a directory containing `.git` (a directory, or a file for worktrees and submodules) is its own repository with a stable `repo-…` ID. Its `.gitignore` rules start fresh. It does not change node IDs or the workspace identity: a project with submodules is still a single-root workspace.
+
+**Budgets** are fixed defaults, totals for the whole scan:
+
+| Budget | Default |
+|---|---|
+| Listed entries | 200,000 |
+| Directory depth | 32 |
+| Bytes per read file | 1 MiB |
+| Total bytes read | 64 MiB |
+| Wall-clock time | 60 s |
+
+When a budget runs out, the scan keeps what it found and marks itself truncated with the budget's name. The CLI prints `Scan truncated: <budget> budget reached. Results are partial.` The Studio shows the same line as a diagnostic, and the graph revision is `partial`. A time-truncated scan may differ from run to run. Any other scan of unchanged files gives the same result.
+
+**Every path the scan does not inspect has a reason.** The CLI summary and `--json` report a count per reason, and `--json` adds up to 20 example paths per reason:
+
+| Reason | Meaning |
+|---|---|
+| `ignored-builtin` | excluded by the built-in list |
+| `ignored-gitignore` | excluded by a `.gitignore` rule |
+| `symlink` | a symlink inside the root, not followed |
+| `outside-root` | a symlink that leaves the root, or a dangling one |
+| `nested-repository` | a nested repository, scanned as its own repository |
+| `too-deep` | below the depth budget |
+| `too-large` | a manifest over the per-file byte limit |
+| `binary` | a manifest with a NUL byte in its first 8 KiB |
+| `unreadable` | a directory or manifest that could not be read or parsed |
+| `special-file` | a socket, FIFO or device |
+| `budget-exhausted` | not reached because a budget ran out |
+| `unsupported-name` | a name that cannot be a portable relative path, such as a backslash in a POSIX name |
+
+**Manifests** carry a SHA-256 of their bytes in `--json`. Package and dependency names are redacted ([Security](security.md#redaction-at-the-discovery-boundary)).
+
+**Cancellation:** Ctrl+C during a scan prints `Scan cancelled.` and exits with code 130. No server starts and no scan is recorded.
+
+**Root errors** exit with code 2:
+
+- `Workspace root not found: <path>. Pass an existing directory with --path.`
+- `Workspace root is not a directory: <path>. Pass a directory with --path.`
+- `Workspace root is not readable: <path>. Check its permissions.`
+
+**Performance:** `pnpm bench:inventory` scans generated trees. On an Apple Silicon Mac with Node 26.4:
+
+| Tree | Files | Listed entries | Manifests | Scan |
+|---|---|---|---|---|
+| small | 1,000 | 1,062 | 10 | 14 ms |
+| medium | 20,000 | 20,452 | 200 | 80 ms |
+| large | 200,000 | 202,252 | 2,000 | 979 ms |
+
+The large tree exceeds the default entries budget, so the benchmark raises that budget.
+
 ## Repository detection
 
 The resolver searches from each input root for VCS boundaries and ecosystem/workspace manifests, including `package.json`, npm/pnpm/yarn workspaces, Turborepo/Nx configuration, Maven/Gradle, Go workspaces/modules, Cargo, Python project files, Docker Compose, Kubernetes manifests, Terraform, and CI definitions. Support is analyzer-based and incremental; unsupported ecosystems produce coverage diagnostics rather than invented relationships.

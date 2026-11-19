@@ -18,15 +18,21 @@ Archwise analyzes untrusted repositories that may contain malicious files, overs
 ## Local store
 
 The local SQLite store ([ADR 0006](decisions/0006-local-store-node-sqlite.md)) lives in the user's application-data directory, which is created with mode `0700` on POSIX. It holds:
+
 - absolute workspace root paths;
 - discovered package names and manifest-relative paths;
 - Sandbox documents.
 
 It never contains source file contents. It is not synchronized or exported, and the API never returns root paths. Session routes require the local session capability. Mutations also require a same-origin `Origin` header, a JSON content type and a body under 300,000 bytes. Users can delete the directory to remove all stored data.
 
+## Safe scanning
+
+The inventory lists files with `lstat`. It never follows symlinks, so a link cannot lead it outside a root or into a cycle. It never opens sockets, FIFOs or devices, and it reads only `package.json` manifests, with a per-file and a total byte budget. See [Discovery](discovery.md#safe-inventory-implemented-for-a-single-root).
+
 ## Redaction at the discovery boundary
 
 Text read from analyzed manifests (package and dependency names) is untrusted. Before it reaches the graph, the store, the API or any output, the CLI inventory:
+
 - replaces known secret shapes with `[redacted]`, removing the whole token (a private-key block up to its end marker, a JWT including its signature);
 - replaces home directories with `~`: the running user's real home directory, plus the generic `/Users/<name>` and `X:\Users\<name>` shapes;
 - repeats until nothing changes, so removing one piece cannot reassemble another.
