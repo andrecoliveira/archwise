@@ -8,6 +8,13 @@ import { homedir } from 'node:os';
 import { resolveDataDir, StoreUnavailableError } from '@archwise/storage';
 import { filesystemInventory } from '@archwise/discovery';
 import { buildArchitectureGraph } from './graph.js';
+import {
+  formatInventorySummary,
+  portableInventory,
+  rootErrorMessage,
+  runScan,
+  scanRecord,
+} from './inventory-output.js';
 import { parseCli } from './index.js';
 import { startLocalGraphServer } from './local-server.js';
 import {
@@ -54,7 +61,31 @@ if (command.kind === 'output') {
   try {
     const home = homedir();
     const knownHomes = [home, await realpath(home).catch(() => home)];
-    const result = await filesystemInventory.inspect({ root: command.path, knownHomes });
+    const startedAt = new Date().toISOString();
+    const controller = new AbortController();
+    const cancel = (): void => controller.abort();
+    process.once('SIGINT', cancel);
+    const progress = process.stderr.isTTY
+      ? (listed: number) => process.stderr.write(`\rScanning… ${listed} entries`)
+      : undefined;
+    let outcome;
+    try {
+      outcome = await runScan(filesystemInventory, {
+        root: command.path,
+        knownHomes,
+        signal: controller.signal,
+        ...(progress ? { onProgress: progress } : {}),
+      });
+    } finally {
+      process.off('SIGINT', cancel);
+      if (progress) process.stderr.write('\r\x1b[K');
+    }
+    if (outcome.kind === 'cancelled') {
+      process.stderr.write('Scan cancelled.\n');
+      process.exit(130);
+    }
+    const result = outcome.result;
+    const record = scanRecord(result, startedAt, new Date().toISOString());
     const graph = buildArchitectureGraph(result);
     const prepareRuntime = async (enabled: boolean) => {
       const runtime = await prepareStore({
@@ -62,6 +93,7 @@ if (command.kind === 'output') {
         dataDir,
         rootPath: result.root,
         scan: result,
+        scanRecord: record,
         graph,
       });
       for (const notice of runtime.notices) process.stderr.write(`${notice}\n`);
@@ -70,7 +102,7 @@ if (command.kind === 'output') {
     if (command.sessions) {
       const runtime = await prepareRuntime(true);
       if (runtime.kind === 'ready') {
-        process.stdout.write(formatSessionList(runtime.service.list()));
+        process.stdout.write(formatSessionList(runtime.service.list(), runtime.service.lastScan()));
         runtime.store.close();
       } else {
         process.exitCode = 1;
@@ -109,31 +141,21 @@ if (command.kind === 'output') {
     } else if (command.graph) {
       process.stdout.write(`${JSON.stringify(graph, null, 2)}\n`);
     } else if (command.json) {
-      // Allowlist: the absolute root identifies the user and machine, so it is never printed.
-      const portable = {
-        version: result.version,
-        repositories: result.repositories,
-        manifests: result.manifests,
-        listedEntries: result.listedEntries,
-        skipped: result.skipped,
-        truncated: result.truncated,
-        diagnostics: result.diagnostics,
-      };
+      const portable = portableInventory(result);
       process.stdout.write(`${JSON.stringify(portable, null, 2)}\n`);
     } else {
-      process.stdout.write(`Archwise — local inventory (${result.manifests.length} manifests)\n`);
-      for (const item of result.manifests) {
-        process.stdout.write(
-          `- ${item.path}: ${item.name} [${item.framework ?? 'unknown framework'}]\n`,
-        );
-      }
+      process.stdout.write(formatInventorySummary(result));
       for (const warning of result.diagnostics) process.stderr.write(`Warning: ${warning}\n`);
       process.stdout.write(
         'Run with --graph for graph JSON, --serve to open the local Studio, or --sessions to list saved sessions.\n',
       );
     }
   } catch (error) {
-    if (error instanceof StoreUnavailableError) {
+    const rootError = rootErrorMessage(error, command.path);
+    if (rootError !== null) {
+      process.stderr.write(`${rootError}\n`);
+      process.exitCode = 2;
+    } else if (error instanceof StoreUnavailableError) {
       process.stderr.write(`${storeUnavailableMessage(error.reason, dataDir)}\n`);
       process.exitCode = 2;
     } else {

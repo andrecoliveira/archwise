@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { mkdtemp, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { test } from 'node:test';
@@ -14,7 +14,11 @@ async function snapshot(root) {
     for (const entry of await readdir(dir, { withFileTypes: true })) {
       const full = join(dir, entry.name);
       if (entry.isDirectory()) await walk(full);
-      else entries[relative(root, full).split('\\').join('/')] = await readFile(full, 'base64');
+      else {
+        const key = relative(root, full).split('\\').join('/');
+        const { mtimeMs } = await stat(full);
+        entries[key] = { content: await readFile(full, 'base64'), mtimeMs };
+      }
     }
   }
   await walk(root);
@@ -109,6 +113,9 @@ test('sessions persist across launches without touching the analyzed tree', asyn
     assert.match(listed.stdout, /Sandbox · 2 components/);
     assert.match(listed.stdout, /A\/B/);
     assert.match(listed.stdout, new RegExp(current.id));
+    assert.match(listed.stdout, /^Last scan: \d{4}-\d{2}-\d{2}T/m);
+    for (const flag of ['--json', '--graph'])
+      assert.equal(run([flag, '--path', root], env).status, 0);
 
     assert.deepEqual(await snapshot(root), before);
     assert.ok(existsSync(join(dataDir, 'archwise.db')));
