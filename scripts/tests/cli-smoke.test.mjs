@@ -158,3 +158,28 @@ test('--workspace errors exit with code 2 and a stable message', async () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('--workspace prints the resolved repository labels before scanning', async () => {
+  const { mkdtempSync, mkdirSync, writeFileSync, rmSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const { tmpdir } = await import('node:os');
+  const dir = mkdtempSync(join(tmpdir(), 'archwise-wslabels-'));
+  try {
+    mkdirSync(join(dir, 'services/api'), { recursive: true });
+    mkdirSync(join(dir, 'web/api'), { recursive: true });
+    const file = join(dir, 'w.json');
+    writeFileSync(
+      file,
+      JSON.stringify({
+        format: 'archwise.workspace',
+        version: 1,
+        repositories: [{ path: 'services/api' }, { path: 'web/api' }],
+      }),
+    );
+    const run = spawnSync(process.execPath, [entry, '--workspace', file], { encoding: 'utf8' });
+    assert.equal(run.status, 0, run.stderr);
+    assert.equal(run.stderr.split('\n')[0], 'Workspace: services/api, web/api');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

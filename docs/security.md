@@ -29,7 +29,7 @@ It never contains source file contents. It is not synchronized or exported, and 
 
 The inventory lists files with `lstat`. It never follows symlinks, so a link cannot lead it outside a root or into a cycle. It never opens sockets, FIFOs or devices, and it reads only `package.json` manifests and `.gitignore` files, with a per-file and a total byte budget. Ignore patterns are matched without regular expressions, so a hostile `.gitignore` cannot stall a scan. See [Discovery](discovery.md#safe-inventory).
 
-A workspace file may point at any directory the user chooses, including outside its own folder. Safety does not depend on where roots point: the scan never reads outside its roots and never writes in them, and a path that resolves to a filesystem root is rejected. Archwise never creates or changes a workspace file.
+A workspace file may point at any directory the user chooses, including outside its own folder. Safety does not depend on where roots point: the scan never reads outside its roots and never writes in them, and a workspace-file entry that resolves to a filesystem root is rejected. Archwise never creates or changes a workspace file.
 
 ## Redaction at the discovery boundary
 

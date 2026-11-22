@@ -145,3 +145,13 @@ describe('resolveRoots', () => {
     expect(error).toMatchObject({ reason: 'not-directory', index: 0 });
   });
 });
+
+test('pinned labels are reserved, so an unpinned duplicate never takes one', () => {
+  expect(
+    makeLabelsUnique([
+      { label: 'api', parent: 'svc' },
+      { label: 'svc/api', parent: '', pinned: true },
+      { label: 'api', parent: 'web' },
+    ]),
+  ).toEqual(['svc/api #2', 'svc/api', 'web/api']);
+});

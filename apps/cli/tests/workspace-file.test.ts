@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, parse } from 'node:path';
 import { afterEach, expect, test } from 'vitest';
@@ -91,3 +91,19 @@ test('each file and entry problem has its own message', async () => {
     `Workspace file is not readable: ${join(root, 'dir')}. Check its permissions.`,
   );
 });
+
+test.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
+  'an entry behind an unreadable directory says so, not "not found"',
+  async () => {
+    const root = await base('locked/repo');
+    const file = await workspace(root, [{ path: 'locked/repo' }]);
+    await chmod(join(root, 'locked'), 0o000);
+    try {
+      expect(await failure(file)).toBe(
+        'Workspace entry 0 is not readable: locked/repo. Check its permissions.',
+      );
+    } finally {
+      await chmod(join(root, 'locked'), 0o755);
+    }
+  },
+);

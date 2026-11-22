@@ -453,3 +453,45 @@ describe('several roots', () => {
     });
   });
 });
+
+describe('final review fixes', () => {
+  test('a root the time budget stops before listing anything is not scanned', async () => {
+    const base = await tree({ 'a/x.txt': 'x', 'b/y.txt': 'y', 'c/z.txt': 'z' });
+    const order = ['a', 'b', 'c'].sort((p, q) => (repoId(p) < repoId(q) ? -1 : 1));
+    let clock = 0;
+    const result = await scanRoots(
+      order.map((name) => join(base, name)),
+      {
+        budgets: { timeMs: 10 },
+        // Time passes only once the first root has been listed.
+        now: () => clock,
+        onProgress: (progress) => {
+          if (progress.repository !== order[0]) clock = 100;
+        },
+      },
+    );
+    expect(result.truncated).toBe('time');
+    for (const name of order.slice(1)) {
+      expect(result.repositories.find((r) => r.label === name)).toMatchObject({
+        reached: false,
+        listedEntries: 0,
+      });
+      expect(result.diagnostics).toContain(
+        `Repository not scanned: ${name}. A budget ran out first.`,
+      );
+    }
+  });
+
+  test('a root reached when the entries budget is already spent is not scanned', async () => {
+    const order = ['a', 'b'].sort((p, q) => (repoId(p) < repoId(q) ? -1 : 1));
+    const base = await tree({ [`${order[0]}/x.txt`]: 'x', [`${order[1]}/y.txt`]: 'y' });
+    const result = await scanRoots(
+      order.map((name) => join(base, name)),
+      { budgets: { entries: 1 } },
+    );
+    expect(result.repositories.find((r) => r.label === order[1])).toMatchObject({
+      reached: false,
+      listedEntries: 0,
+    });
+  });
+});

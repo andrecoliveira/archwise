@@ -68,6 +68,7 @@ When a budget runs out, the scan keeps what it found and marks itself truncated 
 - `Workspace file is too large: <file>. The limit is 1 MiB.`
 - `Workspace file is not valid: <file>: <problem>.`, where `<problem>` names the field, for example `repositories[0].path must be a non-empty string`.
 - `Workspace entry <n> not found: <path>. Fix repositories[<n>].path in <file>.`
+- `Workspace entry <n> is not readable: <path>. Check its permissions.`
 - `Workspace entry <n> is not a directory: <path>. Fix repositories[<n>].path in <file>.`
 - `Workspace entry <n> is a filesystem root: <path>. Point it at a repository directory.`
 

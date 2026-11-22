@@ -96,13 +96,15 @@ export function makeLabelsUnique(
       ? truncate(`${parent}/${label}`, LIMITS.label)
       : label,
   );
-  const seen = new Map<string, number>();
-  const taken = new Set(prefixed);
-  return prefixed.map((label) => {
-    const occurrence = (seen.get(label) ?? 0) + 1;
-    seen.set(label, occurrence);
-    if (occurrence === 1) return label;
-    for (let n = occurrence; ; n++) {
+  // Pinned labels are reserved first: an unpinned duplicate never takes one.
+  const taken = new Set(items.flatMap((item, i) => (item.pinned ? [prefixed[i]!] : [])));
+  return prefixed.map((label, index) => {
+    if (items[index]!.pinned) return label;
+    if (!taken.has(label)) {
+      taken.add(label);
+      return label;
+    }
+    for (let n = 2; ; n++) {
       const suffix = ` #${n}`;
       const candidate = `${truncate(label, LIMITS.label - suffix.length)}${suffix}`;
       if (!taken.has(candidate)) {

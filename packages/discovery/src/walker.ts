@@ -311,13 +311,16 @@ export async function walkWorkspace(request: InventoryRequest): Promise<Inventor
       nested: false,
     });
     if (truncated !== null) continue;
-    repository.reached = true;
     progress(root.label);
+    let completed = false;
     try {
       await visit(root.absolute, '', 0, { root, repository, repoPath: '', ignores: [] });
+      completed = true;
     } catch (error) {
       if (!(error instanceof Truncated)) throw error;
     }
+    // A root counts as scanned once it listed something, or finished (an empty root).
+    repository.reached = completed || repository.listedEntries > 0;
   }
   for (const repository of repositories) {
     if (!repository.reached) {

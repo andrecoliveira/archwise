@@ -52,17 +52,24 @@ export async function loadWorkspaceFile(file: string): Promise<readonly RootRequ
   for (const [index, entry] of parsed.value.repositories.entries()) {
     const fix = `Fix repositories[${index}].path in ${file}.`;
     let path: string;
+    const unreadable = `Workspace entry ${index} is not readable: ${entry.path}. Check its permissions.`;
     try {
       path = await realpath(resolve(base, entry.path));
-    } catch {
-      throw new WorkspaceFileError(`Workspace entry ${index} not found: ${entry.path}. ${fix}`);
+    } catch (error) {
+      throw new WorkspaceFileError(
+        code(error) === 'ENOENT'
+          ? `Workspace entry ${index} not found: ${entry.path}. ${fix}`
+          : unreadable,
+      );
     }
     if (parse(path).root === path) {
       throw new WorkspaceFileError(
         `Workspace entry ${index} is a filesystem root: ${entry.path}. Point it at a repository directory.`,
       );
     }
-    if (!(await stat(path)).isDirectory()) {
+    const info = await stat(path).catch(() => null);
+    if (info === null) throw new WorkspaceFileError(unreadable);
+    if (!info.isDirectory()) {
       throw new WorkspaceFileError(
         `Workspace entry ${index} is not a directory: ${entry.path}. ${fix}`,
       );

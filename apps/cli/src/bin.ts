@@ -3,12 +3,11 @@ import { readFileSync } from 'node:fs';
 import { realpath } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { basename, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { resolveDataDir, StoreUnavailableError } from '@archwise/storage';
-import { filesystemInventory } from '@archwise/discovery';
+import { filesystemInventory, resolveRoots } from '@archwise/discovery';
 import type { InventoryProgress, RootRequest } from '@archwise/application';
-import { redactSensitiveText } from '@archwise/domain';
 import { buildArchitectureGraph } from './graph.js';
 import {
   formatInventorySummary,
@@ -71,10 +70,12 @@ if (command.kind === 'output') {
     if (command.workspace !== null) {
       roots = await loadWorkspaceFile(command.workspace);
       rootInputs = roots.map(({ path }) => ({ path, flag: '--workspace' }));
-      const labels = roots.map(
-        ({ path, label }) => label ?? redactSensitiveText(basename(path), knownHomes),
+      // The labels the scan will use (redacted, unique, `home` for the home directory).
+      const resolved = new Map(
+        (await resolveRoots(roots, knownHomes)).map((root) => [root.absolute, root.label]),
       );
-      process.stderr.write(`Workspace: ${labels.join(', ')}\n`);
+      const labels = new Set(roots.map(({ path }) => resolved.get(path) ?? ''));
+      process.stderr.write(`Workspace: ${[...labels].join(', ')}\n`);
     }
     const startedAt = new Date().toISOString();
     const controller = new AbortController();
