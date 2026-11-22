@@ -3,11 +3,12 @@ import { readFileSync } from 'node:fs';
 import { realpath } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { resolve } from 'node:path';
+import { basename, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { resolveDataDir, StoreUnavailableError } from '@archwise/storage';
 import { filesystemInventory } from '@archwise/discovery';
-import type { InventoryProgress } from '@archwise/application';
+import type { InventoryProgress, RootRequest } from '@archwise/application';
+import { redactSensitiveText } from '@archwise/domain';
 import { buildArchitectureGraph } from './graph.js';
 import {
   formatInventorySummary,
@@ -17,6 +18,7 @@ import {
   scanRecord,
 } from './inventory-output.js';
 import { parseCli } from './index.js';
+import { WorkspaceFileError, loadWorkspaceFile } from './workspace-file.js';
 import { startLocalGraphServer } from './local-server.js';
 import {
   applyResume,
@@ -59,21 +61,35 @@ if (command.kind === 'output') {
   process.exitCode = command.result.exitCode;
 } else {
   const dataDir = resolveDataDir(process.env, process.platform, homedir());
+  // Inputs as typed, for error messages; workspace-file entries name the file's flag.
+  let rootInputs: readonly { readonly path: string; readonly flag: string }[] = command.roots;
   try {
     const home = homedir();
     const knownHomes = [home, await realpath(home).catch(() => home)];
+    let roots: readonly RootRequest[] = command.roots.map(({ path }) => ({ path }));
+    if (command.workspace !== null) {
+      roots = await loadWorkspaceFile(command.workspace);
+      rootInputs = roots.map(({ path }) => ({ path, flag: '--workspace' }));
+      const labels = roots.map(
+        ({ path, label }) => label ?? redactSensitiveText(basename(path), knownHomes),
+      );
+      process.stderr.write(`Workspace: ${labels.join(', ')}\n`);
+    }
     const startedAt = new Date().toISOString();
     const controller = new AbortController();
     const cancel = (): void => controller.abort();
     process.once('SIGINT', cancel);
     const progress = process.stderr.isTTY
       ? (progress: InventoryProgress) =>
-          process.stderr.write(`\rScanning… ${progress.listedEntries} entries`)
+          process.stderr.write(
+            `\rScanning ${progress.repository}… ${progress.listedEntries} entries, ` +
+              `${Math.floor(progress.elapsedMs / 1000)} s\x1b[K`,
+          )
       : undefined;
     let outcome;
     try {
       outcome = await runScan(filesystemInventory, {
-        roots: [{ path: command.path }],
+        roots,
         knownHomes,
         signal: controller.signal,
         ...(progress ? { onProgress: progress } : {}),
@@ -93,7 +109,7 @@ if (command.kind === 'output') {
       const runtime = await prepareStore({
         enabled,
         dataDir,
-        rootPath: result.roots[0]!,
+        rootPaths: result.roots,
         scan: result,
         scanRecord: record,
         graph,
@@ -153,8 +169,11 @@ if (command.kind === 'output') {
       );
     }
   } catch (error) {
-    const rootError = rootErrorMessage(error, command.path);
-    if (rootError !== null) {
+    const rootError = rootErrorMessage(error, rootInputs);
+    if (error instanceof WorkspaceFileError) {
+      process.stderr.write(`${error.message}\n`);
+      process.exitCode = 2;
+    } else if (rootError !== null) {
       process.stderr.write(`${rootError}\n`);
       process.exitCode = 2;
     } else if (error instanceof StoreUnavailableError) {

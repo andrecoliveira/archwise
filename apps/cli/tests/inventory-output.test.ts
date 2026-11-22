@@ -1,4 +1,4 @@
-import { expect, test } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import {
   InventoryRootError,
   type InventoryResult,
@@ -10,6 +10,7 @@ import {
   rootErrorMessage,
   runScan,
   scanRecord,
+  scanSummary,
 } from '../src/inventory-output.js';
 import { formatSessionList } from '../src/store-runtime.js';
 import { repository } from './inventory-fixture.js';
@@ -43,11 +44,25 @@ const result: InventoryResult = {
   durationMs: 12.5,
 };
 
+test('a single repository keeps the flat manifest list', () => {
+  const single = { ...result, repositories: [result.repositories[0]!] };
+  expect(formatInventorySummary(single)).toBe(
+    [
+      'Archwise — local inventory (1 manifest, 120 entries, 1 repository)',
+      '- apps/api/package.json: @shop/api [fastify]',
+      'Skipped: ignored-builtin 3, symlink 1',
+      '',
+    ].join('\n'),
+  );
+});
+
 test('the summary lists counts, manifests and skip reasons in a stable order', () => {
   expect(formatInventorySummary(result)).toBe(
     [
       'Archwise — local inventory (1 manifest, 120 entries, 2 repositories)',
+      'Repository shop: 0 manifests, 0 entries',
       '- apps/api/package.json: @shop/api [fastify]',
+      'Repository sub: 0 manifests, 0 entries',
       'Skipped: ignored-builtin 3, symlink 1',
       '',
     ].join('\n'),
@@ -82,11 +97,23 @@ test.each([
   ['not-directory', 'Workspace root is not a directory: ./x. Pass a directory with --path.'],
   ['unreadable', 'Workspace root is not readable: ./x. Check its permissions.'],
 ] as const)('root error %s has a stable message', (reason, message) => {
-  expect(rootErrorMessage(new InventoryRootError(reason), './x')).toBe(message);
+  expect(rootErrorMessage(new InventoryRootError(reason), [{ path: './x', flag: '--path' }])).toBe(
+    message,
+  );
+});
+
+test('a root error names the failing input and its flag', () => {
+  const roots = [
+    { path: './a', flag: '--repo' },
+    { path: './b', flag: '--repo' },
+  ];
+  expect(rootErrorMessage(new InventoryRootError('not-found', 1), roots)).toBe(
+    'Workspace root not found: ./b. Pass an existing directory with --repo.',
+  );
 });
 
 test('other errors are not root errors', () => {
-  expect(rootErrorMessage(new Error('boom'), './x')).toBeNull();
+  expect(rootErrorMessage(new Error('boom'), [{ path: './x', flag: '--path' }])).toBeNull();
 });
 
 test('runScan reports cancellation instead of throwing', async () => {
@@ -133,4 +160,99 @@ test('the session list shows the last scan', () => {
     ...scanRecord(result, '2026-11-19T00:00:00.000Z', '2026-11-19T00:00:01.000Z'),
   });
   expect(text).toBe('No saved sessions for this project.\nLast scan: 2026-11-19T00:00:01.000Z\n');
+});
+
+describe('several repositories', () => {
+  const apiId = 'repo-1111111111111111';
+  const webId = 'repo-2222222222222222';
+  const multi: InventoryResult = {
+    ...result,
+    roots: ['/Users/alex/api', '/Users/alex/web'],
+    repositories: [
+      repository({
+        id: apiId,
+        rootId: apiId,
+        label: 'api',
+        path: '',
+        nested: false,
+        listedEntries: 80,
+        manifests: 1,
+        skipped: { 'ignored-builtin': 3 },
+      }),
+      repository({
+        id: webId,
+        rootId: webId,
+        label: 'web',
+        path: '',
+        nested: false,
+        reached: false,
+      }),
+    ],
+    manifests: [
+      { ...result.manifests[0]!, repositoryId: apiId, rootId: apiId, path: 'package.json' },
+    ],
+    skipped: { 'ignored-builtin': { count: 3, examples: ['api/node_modules'] } },
+    truncated: 'entries',
+  };
+
+  test('the summary lists each repository with its counts and manifests', () => {
+    expect(formatInventorySummary(multi)).toBe(
+      [
+        'Archwise — local inventory (1 manifest, 120 entries, 2 repositories)',
+        'Repository api: 1 manifest, 80 entries, skipped ignored-builtin 3',
+        '- package.json: @shop/api [fastify]',
+        'Repository web: not scanned, a budget ran out first.',
+        'Skipped: ignored-builtin 3',
+        'Scan truncated: entries budget reached. Results are partial.',
+        '',
+      ].join('\n'),
+    );
+  });
+
+  test('portable JSON repositories carry counts and the root ID', () => {
+    const portable = portableInventory(multi) as { repositories: Record<string, unknown>[] };
+    expect(portable.repositories[0]).toEqual({
+      id: apiId,
+      rootId: apiId,
+      label: 'api',
+      path: '',
+      nested: false,
+      reached: true,
+      listedEntries: 80,
+      manifests: 1,
+      skipped: { 'ignored-builtin': 3 },
+    });
+    expect(JSON.stringify(portable)).not.toContain('/Users/alex');
+  });
+
+  test('the scan summary has counts only', () => {
+    const summary = scanSummary(multi);
+    expect(summary).toEqual({
+      version: 1,
+      listedEntries: 120,
+      skipped: { 'ignored-builtin': 3 },
+      truncated: 'entries',
+      repositories: [
+        {
+          id: apiId,
+          label: 'api',
+          nested: false,
+          reached: true,
+          listedEntries: 80,
+          manifests: 1,
+          skipped: { 'ignored-builtin': 3 },
+        },
+        {
+          id: webId,
+          label: 'web',
+          nested: false,
+          reached: false,
+          listedEntries: 0,
+          manifests: 0,
+          skipped: {},
+        },
+      ],
+    });
+    expect(JSON.stringify(summary)).not.toContain('/');
+  });
 });

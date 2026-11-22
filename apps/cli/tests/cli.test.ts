@@ -4,7 +4,8 @@ import { parseCli, runCli } from '../src/index.js';
 test('defaults to read-only inspection of current directory', () => {
   expect(parseCli([])).toEqual({
     kind: 'inspect',
-    path: '.',
+    roots: [{ path: '.', flag: '--path' }],
+    workspace: null,
     json: false,
     graph: false,
     serve: false,
@@ -18,7 +19,8 @@ test('defaults to read-only inspection of current directory', () => {
 test('accepts a workspace path and graph output', () => {
   expect(parseCli(['--path', './fixtures', '--graph'])).toEqual({
     kind: 'inspect',
-    path: './fixtures',
+    roots: [{ path: './fixtures', flag: '--path' }],
+    workspace: null,
     json: false,
     graph: true,
     serve: false,
@@ -35,14 +37,15 @@ test('prints supplied executable version', () => {
 
 test('prints help and rejects unsupported or contradictory options', () => {
   expect(runCli(['--help']).stdout).toContain('--graph');
-  expect(runCli(['--repo', '.']).exitCode).toBe(2);
+  expect(runCli(['--repo']).exitCode).toBe(2);
   expect(runCli(['--json', '--graph']).exitCode).toBe(2);
   expect(runCli(['--path']).exitCode).toBe(2);
   expect(runCli(['--no-open']).exitCode).toBe(2);
   expect(runCli(['--serve', '--graph']).exitCode).toBe(2);
   expect(parseCli(['--serve', '--no-open'])).toEqual({
     kind: 'inspect',
-    path: '.',
+    roots: [{ path: '.', flag: '--path' }],
+    workspace: null,
     json: false,
     graph: false,
     serve: true,
@@ -83,4 +86,54 @@ test('--resume requires --serve, the store, and latest or a session id', () => {
   expect(runCli(['--serve', '--resume']).exitCode).toBe(2);
   expect(runCli(['--serve', '--resume', 'latest', '--no-store']).exitCode).toBe(2);
   expect(runCli(['--help']).stdout).toContain('--resume');
+});
+
+test('--repo repeats and mixes with --path', () => {
+  expect(parseCli(['--repo', 'a', '--repo', 'b'])).toMatchObject({
+    roots: [
+      { path: 'a', flag: '--repo' },
+      { path: 'b', flag: '--repo' },
+    ],
+    workspace: null,
+  });
+  expect(parseCli(['--path', 'a', '--repo', 'b', '--json'])).toMatchObject({
+    roots: [
+      { path: 'a', flag: '--path' },
+      { path: 'b', flag: '--repo' },
+    ],
+    json: true,
+  });
+});
+
+test('--workspace loads a file and cannot be combined with roots', () => {
+  expect(parseCli(['--workspace', 'w.json', '--serve'])).toMatchObject({
+    roots: [],
+    workspace: 'w.json',
+    serve: true,
+  });
+  for (const args of [
+    ['--workspace', 'w.json', '--repo', 'a'],
+    ['--path', 'a', '--workspace', 'w.json'],
+  ]) {
+    expect(runCli(args)).toEqual({
+      exitCode: 2,
+      stdout: '',
+      stderr: '--workspace cannot be combined with --repo or --path.\n',
+    });
+  }
+});
+
+test.each([
+  [['--repo'], '--repo expects a directory.\n'],
+  [['--repo', '--json'], '--repo expects a directory.\n'],
+  [['--path'], '--path expects a directory.\n'],
+  [['--workspace'], '--workspace expects a file.\n'],
+])('%j has a stable error', (args, stderr) => {
+  expect(runCli(args)).toEqual({ exitCode: 2, stdout: '', stderr });
+});
+
+test('help documents --repo and --workspace', () => {
+  const help = runCli(['--help']).stdout;
+  expect(help).toContain('--repo DIRECTORY');
+  expect(help).toContain('--workspace FILE');
 });

@@ -34,7 +34,7 @@ test('a data directory inside the analyzed root disables the store without writi
   const runtime = await prepareStore({
     enabled: true,
     dataDir: join(root, '.archwise-data'),
-    rootPath: root,
+    rootPaths: [root],
     scan: scanLabelled('root'),
     graph,
   });
@@ -48,7 +48,7 @@ test('the analyzed root itself is also refused as a data directory', async () =>
   const runtime = await prepareStore({
     enabled: true,
     dataDir: root,
-    rootPath: root,
+    rootPaths: [root],
     scan: scanLabelled('r'),
     graph,
   });
@@ -62,7 +62,7 @@ test('a data directory outside the root opens the store', async () => {
   const runtime = await prepareStore({
     enabled: true,
     dataDir: data,
-    rootPath: root,
+    rootPaths: [root],
     scan: scanLabelled('r'),
     graph,
   });
@@ -77,7 +77,7 @@ test('resumeTarget resolves latest and known ids only', async () => {
   const runtime = await prepareStore({
     enabled: true,
     dataDir: data,
-    rootPath: root,
+    rootPaths: [root],
     scan: scanLabelled('r'),
     graph,
   });
@@ -95,4 +95,42 @@ test('resumeTarget resolves latest and known ids only', async () => {
   } finally {
     runtime.store.close();
   }
+});
+
+test('several roots share one workspace keyed by all of them', async () => {
+  const { workspaceKey } = await import('@archwise/application');
+  const first = temp('archwise-root-');
+  const second = temp('archwise-root-');
+  const data = temp('archwise-data-');
+  const runtime = await prepareStore({
+    enabled: true,
+    dataDir: data,
+    rootPaths: [first, second],
+    scan: scanLabelled('r'),
+    graph,
+  });
+  if (runtime.kind !== 'ready') throw new Error('store expected');
+  try {
+    const key = workspaceKey([first, second]);
+    expect(runtime.store.workspaces.resolve(key, 'ws-other', 'now').id).toBe(
+      runtime.service.workspaceId,
+    );
+    expect(runtime.store.workspaces.resolve(first, 'ws-single', 'now').id).toBe('ws-single');
+  } finally {
+    runtime.store.close();
+  }
+});
+
+test('a data directory inside any of several roots disables the store', async () => {
+  const first = temp('archwise-root-');
+  const second = temp('archwise-root-');
+  const runtime = await prepareStore({
+    enabled: true,
+    dataDir: join(second, '.archwise-data'),
+    rootPaths: [first, second],
+    scan: scanLabelled('r'),
+    graph,
+  });
+  expect(runtime.kind).toBe('disabled');
+  expect(readdirSync(second)).toEqual([]);
 });
