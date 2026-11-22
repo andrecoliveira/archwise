@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest';
 import { buildArchitectureGraph } from '../src/graph.js';
 import type { InventoryManifest, InventoryResult } from '@archwise/application';
+import { repository } from './inventory-fixture.js';
 
 const manifest = (
   path: string,
@@ -9,6 +10,7 @@ const manifest = (
   dependencies: string[],
 ): InventoryManifest => ({
   repositoryId: 'repo-root',
+  rootId: 'repo-root',
   path,
   name,
   framework,
@@ -18,8 +20,8 @@ const manifest = (
 
 const sample: InventoryResult = {
   version: 2,
-  root: '/private/home/developer',
-  repositories: [{ id: 'repo-root', label: 'developer', path: '', nested: false }],
+  roots: ['/private/home/developer'],
+  repositories: [repository({ id: 'repo-root', label: 'developer', path: '', nested: false })],
   listedEntries: 10,
   bytesRead: 0,
   skipped: {},
@@ -42,7 +44,7 @@ test('creates evidence-backed nodes and only verified internal dependencies', ()
   expect(graph.edges[0]?.source).toBe('package:apps/web/package.json');
   expect(graph.edges[0]?.target).toBe('package:apps/api/package.json');
   expect(graph.nodes[0]?.evidence[0]?.path).toBe('apps/api/package.json');
-  expect(JSON.stringify(graph)).not.toContain(sample.root);
+  expect(JSON.stringify(graph)).not.toContain(sample.roots[0]);
 });
 
 test('produces stable output regardless of manifest order', () => {

@@ -12,6 +12,8 @@ export interface ResolvedRoot {
   readonly absolute: string;
   /** Path from the workspace's common ancestor; hash input for repository IDs ('' when single). */
   readonly idBase: string;
+  /** Index of the first request that named this root. */
+  readonly requestIndex: number;
 }
 
 export const ROOT_REPOSITORY_ID = 'repo-root';
@@ -120,14 +122,14 @@ export async function resolveRoots(
   knownHomes: readonly string[],
 ): Promise<ResolvedRoot[]> {
   const homes = await resolvedHomes(knownHomes);
-  const unique: { absolute: string; request: RootRequest }[] = [];
+  const unique: { absolute: string; request: RootRequest; index: number }[] = [];
   const seen = new Set<string>();
   for (const [index, request] of requests.entries()) {
     const absolute = await resolveRoot(request.path, index);
     const key = process.platform === 'darwin' ? absolute.normalize('NFC') : absolute;
     if (seen.has(key)) continue;
     seen.add(key);
-    unique.push({ absolute, request });
+    unique.push({ absolute, request, index });
   }
   const bases = unique.length === 1 ? [''] : rootIdBases(unique.map((u) => u.absolute));
   const labels = makeLabelsUnique(
@@ -141,11 +143,12 @@ export async function resolveRoots(
     })),
   );
   return unique
-    .map(({ absolute }, index) => ({
+    .map(({ absolute, index: requestIndex }, index) => ({
       id: unique.length === 1 ? ROOT_REPOSITORY_ID : repositoryId(bases[index]!),
       label: labels[index]!,
       absolute,
       idBase: bases[index]!,
+      requestIndex,
     }))
     .sort((a, b) => compareCodeUnits(a.id, b.id));
 }

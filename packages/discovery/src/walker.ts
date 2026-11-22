@@ -1,7 +1,6 @@
-import { createHash } from 'node:crypto';
 import type { Dirent } from 'node:fs';
 import { lstat, readFile, readdir, realpath } from 'node:fs/promises';
-import { basename, isAbsolute, join, relative, resolve } from 'node:path';
+import { isAbsolute, join, relative } from 'node:path';
 import {
   DEFAULT_BUDGETS,
   InventoryRootError,
@@ -14,10 +13,17 @@ import {
   type SkipReason,
   type SkipSummary,
 } from '@archwise/application';
-import { LIMITS, checkRelativePath, compareCodeUnits, redactSensitiveText } from '@archwise/domain';
+import { checkRelativePath, compareCodeUnits } from '@archwise/domain';
 import { isIgnored, parseGitignore, type IgnoreRules } from './gitignore.js';
 import { parseManifest } from './manifest.js';
-import { labelOf, resolveRoot, resolvedHomes } from './roots.js';
+import {
+  labelOf,
+  makeLabelsUnique,
+  repositoryId,
+  resolveRoots,
+  resolvedHomes,
+  type ResolvedRoot,
+} from './roots.js';
 
 export const BUILTIN_EXCLUSIONS: ReadonlySet<string> = new Set([
   '.git',
@@ -42,32 +48,50 @@ const GITIGNORE = '.gitignore';
 
 class Truncated extends Error {}
 
-const code = (error: unknown): string | undefined =>
-  (error as NodeJS.ErrnoException | undefined)?.code;
-
 function isWithin(root: string, target: string): boolean {
   const rel = relative(root, target);
   return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
 }
 
+/** A repository while it is being scanned; counts are filled in as entries are listed. */
+interface RepositoryState {
+  readonly id: string;
+  label: string;
+  readonly rootId: string;
+  readonly path: string;
+  readonly nested: boolean;
+  reached: boolean;
+  listedEntries: number;
+  manifests: number;
+  readonly skipped: Map<SkipReason, number>;
+}
+
 interface Frame {
-  readonly repository: InventoryRepository;
+  readonly root: ResolvedRoot;
+  readonly repository: RepositoryState;
   /** Path of the current directory relative to its repository root. */
   readonly repoPath: string;
   readonly ignores: readonly IgnoreRules[];
 }
 
-/** Lists a single user root safely. Never executes, follows links out of the root, or writes. */
+const join2 = (base: string, name: string): string => (base === '' ? name : `${base}/${name}`);
+
+/**
+ * Lists user roots safely, in ID order, with workspace-wide budgets. Never executes, follows
+ * links, or writes. Another user root inside a root is skipped there and scanned on its own.
+ */
 export async function walkWorkspace(request: InventoryRequest): Promise<InventoryResult> {
   const budgets: InventoryBudgets = { ...DEFAULT_BUDGETS, ...request.budgets };
   const now = request.now ?? (() => performance.now());
   const signal = request.signal;
   signal?.throwIfAborted();
   const started = now();
-  const root = await resolveRoot(request.root);
+  const roots = await resolveRoots(request.roots, request.knownHomes);
   const homes = await resolvedHomes(request.knownHomes);
+  const multiRoot = roots.length > 1;
+  const userRoots = new Set(roots.map((root) => root.absolute));
 
-  const repositories: InventoryRepository[] = [];
+  const repositories: RepositoryState[] = [];
   const manifests: InventoryManifest[] = [];
   const diagnostics = new Set<string>();
   const skips = new Map<SkipReason, { count: number; examples: string[] }>();
@@ -76,11 +100,18 @@ export async function walkWorkspace(request: InventoryRequest): Promise<Inventor
   let truncated: BudgetName | null = null;
   let depthReached = false;
 
-  const skip = (reason: SkipReason, path: string): void => {
-    const entry = skips.get(reason) ?? { count: 0, examples: [] };
-    entry.count += 1;
-    entry.examples.push(path);
-    skips.set(reason, entry);
+  const newRepository = (
+    fields: Pick<RepositoryState, 'id' | 'label' | 'rootId' | 'path' | 'nested'>,
+  ): RepositoryState => {
+    const state: RepositoryState = {
+      ...fields,
+      reached: false,
+      listedEntries: 0,
+      manifests: 0,
+      skipped: new Map(),
+    };
+    repositories.push(state);
+    return state;
   };
   const stop = (budget: BudgetName): never => {
     truncated ??= budget;
@@ -97,28 +128,31 @@ export async function walkWorkspace(request: InventoryRequest): Promise<Inventor
     bytesRead += bytes.byteLength;
     return bytes;
   };
-
-  const rootRepository: InventoryRepository = {
-    id: 'repo-root',
-    label: homes.includes(root) ? 'home' : labelOf(basename(root), homes, 'workspace'),
-    path: '',
-    nested: false,
-  };
-  repositories.push(rootRepository);
+  const progress = (repository: string): void =>
+    request.onProgress?.({ listedEntries, repository, elapsedMs: Math.max(0, now() - started) });
 
   const visit = async (absolute: string, rootPath: string, depth: number, frame: Frame) => {
     checkClock();
+    /** Multi-root output names the user root first, so equal relative paths stay distinct. */
+    const shown = (path: string): string => (multiRoot ? `${frame.root.label}/${path}` : path);
+    const skip = (reason: SkipReason, path: string): void => {
+      const entry = skips.get(reason) ?? { count: 0, examples: [] };
+      entry.count += 1;
+      entry.examples.push(shown(path));
+      skips.set(reason, entry);
+      const counts = frame.repository.skipped;
+      counts.set(reason, (counts.get(reason) ?? 0) + 1);
+    };
     let entries: Dirent[];
     try {
       entries = await readdir(absolute, { withFileTypes: true });
     } catch {
-      if (rootPath === '') throw new InventoryRootError('unreadable');
+      if (rootPath === '') throw new InventoryRootError('unreadable', frame.root.requestIndex);
       skip('unreadable', rootPath);
-      diagnostics.add(`Unreadable directory: ${rootPath}`);
+      diagnostics.add(`Unreadable directory: ${shown(rootPath)}`);
       return;
     }
     entries.sort((a, b) => compareCodeUnits(a.name, b.name));
-    const join2 = (base: string, name: string) => (base === '' ? name : `${base}/${name}`);
 
     let ignores = frame.ignores;
     const ignoreFile = entries.find((entry) => entry.name === GITIGNORE && entry.isFile());
@@ -129,7 +163,7 @@ export async function walkWorkspace(request: InventoryRequest): Promise<Inventor
         const size = (await lstat(path)).size;
         if (size > budgets.bytesPerFile) {
           skip('too-large', ignorePath);
-          diagnostics.add(`Ignore file exceeds size limit: ${ignorePath}`);
+          diagnostics.add(`Ignore file exceeds size limit: ${shown(ignorePath)}`);
         } else {
           const text = (await readBounded(path, size)).toString('utf8');
           ignores = [...ignores, parseGitignore(text, frame.repoPath)];
@@ -140,7 +174,7 @@ export async function walkWorkspace(request: InventoryRequest): Promise<Inventor
           throw error;
         }
         if ((error as Error).name === 'AbortError') throw error;
-        diagnostics.add(`Unreadable ignore file: ${ignorePath}`);
+        diagnostics.add(`Unreadable ignore file: ${shown(ignorePath)}`);
       }
     }
 
@@ -155,8 +189,9 @@ export async function walkWorkspace(request: InventoryRequest): Promise<Inventor
         if (truncated !== null) throw new Truncated();
         if (listedEntries >= budgets.entries) stop('entries');
         listedEntries += 1;
+        frame.repository.listedEntries += 1;
         if (listedEntries % PROGRESS_INTERVAL === 0) {
-          request.onProgress?.(listedEntries);
+          progress(frame.repository.label);
           signal?.throwIfAborted();
         }
         if (checkRelativePath(childRoot) !== null) {
@@ -173,7 +208,10 @@ export async function walkWorkspace(request: InventoryRequest): Promise<Inventor
         }
         if (entry.isSymbolicLink()) {
           const target = await realpath(childAbsolute).catch(() => null);
-          skip(target !== null && isWithin(root, target) ? 'symlink' : 'outside-root', childRoot);
+          skip(
+            target !== null && isWithin(frame.root.absolute, target) ? 'symlink' : 'outside-root',
+            childRoot,
+          );
           continue;
         }
         const stats = entry.isDirectory() || entry.isFile() ? null : await lstat(childAbsolute);
@@ -184,18 +222,25 @@ export async function walkWorkspace(request: InventoryRequest): Promise<Inventor
             skip('too-deep', childRoot);
             continue;
           }
+          if (userRoots.has(childAbsolute)) {
+            // Another user root: scanned on its own, never twice.
+            skip('nested-repository', childRoot);
+            continue;
+          }
           const marker = await lstat(join(childAbsolute, '.git')).catch(() => null);
           if (marker !== null && (marker.isDirectory() || marker.isFile())) {
             skip('nested-repository', childRoot);
-            const repository: InventoryRepository = {
-              id: `repo-${createHash('sha256').update(childRoot).digest('hex').slice(0, 16)}`,
+            const repository = newRepository({
+              id: repositoryId(join2(frame.root.idBase, childRoot)),
               label: labelOf(entry.name, homes, 'repository'),
+              rootId: frame.root.id,
               path: childRoot,
               nested: true,
-            };
-            repositories.push(repository);
+            });
+            repository.reached = true;
             entered = true;
             await visit(childAbsolute, childRoot, depth + 1, {
+              root: frame.root,
               repository,
               repoPath: '',
               ignores: [],
@@ -215,7 +260,7 @@ export async function walkWorkspace(request: InventoryRequest): Promise<Inventor
           const size = (await lstat(childAbsolute)).size;
           if (size > budgets.bytesPerFile) {
             skip('too-large', childRoot);
-            diagnostics.add(`Manifest exceeds size limit: ${childRoot}`);
+            diagnostics.add(`Manifest exceeds size limit: ${shown(childRoot)}`);
             continue;
           }
           let bytes: Buffer;
@@ -230,10 +275,12 @@ export async function walkWorkspace(request: InventoryRequest): Promise<Inventor
           if (outcome.kind === 'binary') skip('binary', childRoot);
           else if (outcome.kind === 'invalid') {
             skip('unreadable', childRoot);
-            diagnostics.add(`Invalid or unreadable manifest: ${childRoot}`);
+            diagnostics.add(`Invalid or unreadable manifest: ${shown(childRoot)}`);
           } else {
+            frame.repository.manifests += 1;
             manifests.push({
               repositoryId: frame.repository.id,
+              rootId: frame.root.id,
               path: childRoot,
               ...outcome.manifest,
             });
@@ -255,11 +302,41 @@ export async function walkWorkspace(request: InventoryRequest): Promise<Inventor
     }
   };
 
-  try {
-    await visit(root, '', 0, { repository: rootRepository, repoPath: '', ignores: [] });
-  } catch (error) {
-    if (!(error instanceof Truncated)) throw error;
+  for (const root of roots) {
+    const repository = newRepository({
+      id: root.id,
+      label: root.label,
+      rootId: root.id,
+      path: '',
+      nested: false,
+    });
+    if (truncated !== null) continue;
+    repository.reached = true;
+    progress(root.label);
+    try {
+      await visit(root.absolute, '', 0, { root, repository, repoPath: '', ignores: [] });
+    } catch (error) {
+      if (!(error instanceof Truncated)) throw error;
+    }
   }
+  for (const repository of repositories) {
+    if (!repository.reached) {
+      diagnostics.add(`Repository not scanned: ${repository.label}. A budget ran out first.`);
+    }
+  }
+
+  const labels = makeLabelsUnique(
+    repositories.map((repository) => {
+      const parts = repository.path.split('/');
+      const rootLabel = repositories.find((r) => r.id === repository.rootId)?.label ?? '';
+      return {
+        label: repository.label,
+        parent: parts.length > 1 ? parts[parts.length - 2]! : rootLabel,
+        pinned: !repository.nested,
+      };
+    }),
+  );
+  repositories.forEach((repository, index) => (repository.label = labels[index]!));
 
   const skipped: Partial<Record<SkipReason, SkipSummary>> = {};
   for (const [reason, entry] of [...skips].sort(([a], [b]) => compareCodeUnits(a, b))) {
@@ -268,11 +345,27 @@ export async function walkWorkspace(request: InventoryRequest): Promise<Inventor
       examples: [...entry.examples].sort(compareCodeUnits).slice(0, MAX_EXAMPLES),
     };
   }
+  const byRootThenPath = (
+    a: { rootId: string; path: string },
+    b: { rootId: string; path: string },
+  ): number => compareCodeUnits(a.rootId, b.rootId) || compareCodeUnits(a.path, b.path);
   return {
     version: 2,
-    root,
-    repositories: repositories.sort((a, b) => compareCodeUnits(a.path, b.path)),
-    manifests: manifests.sort((a, b) => compareCodeUnits(a.path, b.path)),
+    roots: roots.map((root) => root.absolute),
+    repositories: repositories
+      .map((state): InventoryRepository => ({
+        id: state.id,
+        label: state.label,
+        rootId: state.rootId,
+        path: state.path,
+        nested: state.nested,
+        reached: state.reached,
+        listedEntries: state.listedEntries,
+        manifests: state.manifests,
+        skipped: Object.fromEntries([...state.skipped].sort(([a], [b]) => compareCodeUnits(a, b))),
+      }))
+      .sort(byRootThenPath),
+    manifests: manifests.sort(byRootThenPath),
     listedEntries,
     bytesRead,
     skipped,

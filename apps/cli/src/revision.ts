@@ -1,11 +1,11 @@
 import { createHash } from 'node:crypto';
 import { LIMITS, type Diagnostic, type Evidence, type GraphRevision } from '@archwise/domain';
-import type { InventoryResult, RevisionIds } from '@archwise/application';
+import type { InventoryRepository, InventoryResult, RevisionIds } from '@archwise/application';
 import type { ArchitectureGraph } from './graph.js';
 
 /** What the revision needs from the inventory: repositories, manifest ownership and truncation. */
 export interface RevisionScan {
-  readonly repositories: InventoryResult['repositories'];
+  readonly repositories: readonly Pick<InventoryRepository, 'id' | 'label' | 'path' | 'nested'>[];
   readonly manifests: readonly { readonly repositoryId: string; readonly path: string }[];
   readonly truncated: InventoryResult['truncated'];
 }

@@ -31,7 +31,7 @@ afterAll(async () => {
 });
 
 test('an unchanged single-root project keeps its view and revision identifiers', async () => {
-  const inventory = await filesystemInventory.inspect({ root, knownHomes: [] });
+  const inventory = await filesystemInventory.inspect({ roots: [{ path: root }], knownHomes: [] });
   const graph = buildArchitectureGraph(inventory);
   expect({ ...graph, inspectedEntries: 0 }).toEqual(baseline.view);
   const revision = buildGraphRevision(graph, inventory, {

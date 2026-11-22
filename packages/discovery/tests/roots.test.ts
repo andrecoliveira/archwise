@@ -82,6 +82,7 @@ describe('resolveRoots', () => {
       label: 'shop',
       absolute: join(root, 'shop'),
       idBase: '',
+      requestIndex: 0,
     });
   });
 

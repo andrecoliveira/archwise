@@ -34,7 +34,7 @@ for (const [label, files] of SIZES) {
     await generate(root, files);
     const started = performance.now();
     const result = await filesystemInventory.inspect({
-      root,
+      roots: [{ path: root }],
       knownHomes: [],
       budgets: { entries: files * 2 },
     });

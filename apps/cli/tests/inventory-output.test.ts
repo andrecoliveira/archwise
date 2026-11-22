@@ -12,17 +12,19 @@ import {
   scanRecord,
 } from '../src/inventory-output.js';
 import { formatSessionList } from '../src/store-runtime.js';
+import { repository } from './inventory-fixture.js';
 
 const result: InventoryResult = {
   version: 2,
-  root: '/Users/alex/work/shop',
+  roots: ['/Users/alex/work/shop'],
   repositories: [
-    { id: 'repo-root', label: 'shop', path: '', nested: false },
-    { id: 'repo-0123456789abcdef', label: 'sub', path: 'libs/sub', nested: true },
+    repository({ id: 'repo-root', label: 'shop', path: '', nested: false }),
+    repository({ id: 'repo-0123456789abcdef', label: 'sub', path: 'libs/sub', nested: true }),
   ],
   manifests: [
     {
       repositoryId: 'repo-root',
+      rootId: 'repo-root',
       path: 'apps/api/package.json',
       name: '@shop/api',
       framework: 'fastify',
@@ -70,7 +72,7 @@ test('portable JSON is an allowlist without the root or timing', () => {
     'diagnostics',
   ]);
   const text = JSON.stringify(portable);
-  expect(text).not.toContain(result.root);
+  expect(text).not.toContain(result.roots[0]);
   expect(text).not.toContain('durationMs');
   expect(text).toContain('a'.repeat(64));
 });
@@ -91,11 +93,18 @@ test('runScan reports cancellation instead of throwing', async () => {
   const aborting: WorkspaceInventory = {
     inspect: () => Promise.reject(new DOMException('Aborted', 'AbortError')),
   };
-  expect(await runScan(aborting, { root: '.', knownHomes: [] })).toEqual({ kind: 'cancelled' });
+  expect(await runScan(aborting, { roots: [{ path: '.' }], knownHomes: [] })).toEqual({
+    kind: 'cancelled',
+  });
   const working: WorkspaceInventory = { inspect: () => Promise.resolve(result) };
-  expect(await runScan(working, { root: '.', knownHomes: [] })).toEqual({ kind: 'done', result });
+  expect(await runScan(working, { roots: [{ path: '.' }], knownHomes: [] })).toEqual({
+    kind: 'done',
+    result,
+  });
   const failing: WorkspaceInventory = { inspect: () => Promise.reject(new Error('boom')) };
-  await expect(runScan(failing, { root: '.', knownHomes: [] })).rejects.toThrow('boom');
+  await expect(runScan(failing, { roots: [{ path: '.' }], knownHomes: [] })).rejects.toThrow(
+    'boom',
+  );
 });
 
 test('the scan record carries counts and codes only', () => {

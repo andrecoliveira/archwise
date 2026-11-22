@@ -7,6 +7,7 @@ import { resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { resolveDataDir, StoreUnavailableError } from '@archwise/storage';
 import { filesystemInventory } from '@archwise/discovery';
+import type { InventoryProgress } from '@archwise/application';
 import { buildArchitectureGraph } from './graph.js';
 import {
   formatInventorySummary,
@@ -66,12 +67,13 @@ if (command.kind === 'output') {
     const cancel = (): void => controller.abort();
     process.once('SIGINT', cancel);
     const progress = process.stderr.isTTY
-      ? (listed: number) => process.stderr.write(`\rScanning… ${listed} entries`)
+      ? (progress: InventoryProgress) =>
+          process.stderr.write(`\rScanning… ${progress.listedEntries} entries`)
       : undefined;
     let outcome;
     try {
       outcome = await runScan(filesystemInventory, {
-        root: command.path,
+        roots: [{ path: command.path }],
         knownHomes,
         signal: controller.signal,
         ...(progress ? { onProgress: progress } : {}),
@@ -91,7 +93,7 @@ if (command.kind === 'output') {
       const runtime = await prepareStore({
         enabled,
         dataDir,
-        rootPath: result.root,
+        rootPath: result.roots[0]!,
         scan: result,
         scanRecord: record,
         graph,
