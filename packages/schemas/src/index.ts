@@ -5,3 +5,4 @@ export type SnapshotEnvelope = z.infer<typeof snapshotEnvelopeSchema>;
 export * from './graph-schema.js';
 export * from './parse-graph.js';
 export * from './graph-json.js';
+export * from './workspace-file.js';
