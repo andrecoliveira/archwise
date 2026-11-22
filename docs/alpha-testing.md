@@ -30,14 +30,16 @@ The CLI starts a server bound to `127.0.0.1` on an available port. If the browse
 node apps/cli/dist/bin.js --path /absolute/path/to/your/project --graph
 ```
 
-Without a flag, the CLI prints a summary: manifests, entries and repositories, a count per skip reason, and a warning if a budget truncated the scan. Ctrl+C cancels a scan with exit code 130. See [Discovery](discovery.md#safe-inventory-implemented-for-a-single-root) for the skip reasons and budgets.
+Without a flag, the CLI prints a summary: manifests, entries and repositories, a count per skip reason, and a warning if a budget truncated the scan. Ctrl+C cancels a scan with exit code 130. See [Discovery](discovery.md#safe-inventory) for the skip reasons and budgets.
+
+To see several repositories as one system, pass `--repo` once per repository, for example `--repo /work/api --repo /work/web`, or list them in a workspace file and pass `--workspace <file>` ([Discovery](discovery.md#several-repositories)).
 
 Use `--json` for the inventory instead of the graph, or `--serve --no-open` to avoid automatic browser launch. Both JSON outputs use repository-relative paths and omit the absolute project root. They still contain your package names, so review them before sharing.
 
 ## What to verify
 
 1. The browser opens to the Architecture Studio with discovered packages and their declared internal dependencies.
-2. Selecting a component shows the relative-path manifest evidence in the inspector.
+2. Selecting a component shows the relative-path manifest evidence in the inspector. With several repositories, each package shows its repository label, the inspector shows the repository, and the header's **Scan** summary lists each repository's counts.
 3. The search filter narrows visible packages and edges.
 4. Zoom, pan and automatic layout work on the Svelte Flow canvas.
 5. Switching to Sandbox permits proposed nodes and connections, visibly distinct from discovered items.

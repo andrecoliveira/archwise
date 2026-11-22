@@ -34,15 +34,15 @@ Finalization does not mean development stops. It establishes a reliable open-sou
 
 ## Current state
 
-Snapshot as of 2026-11-19, after PRs #5 to #13 and the first Phase 3 change. Issues and milestones remain the live tracker.
+Snapshot as of 2026-11-22, after PRs #5 to #15. Issues and milestones remain the live tracker.
 
 | Phase | State on `main` | What is missing for the exit gate |
 |---|---|---|
 | 0 | Complete (2026-11-15) | — |
 | 1 | Complete (2026-11-15) | — |
 | 2 | Complete (2026-11-16) | — |
-| 3 | In progress: safe single-root inventory in `@archwise/discovery` (budgets, ignore rules, symlinks, nested repositories, skip reasons, scan records) | `--repo` / `--workspace`, cross-repository edges, Studio repository labels and scan summary |
-| 4 | Alpha only: Node package manifests | Analyzer SDK, TS imports, HTTP/DB/queue detectors, Compose, golden graphs |
+| 3 | Complete (2026-11-22) | — |
+| 4 | Next. Alpha only: Node package manifests, across several repositories | Analyzer SDK, TS imports, HTTP/DB/queue detectors, Compose, golden graphs |
 | 5 | Alpha only: protected loopback server and Svelte Flow Studio | SSE progress, evidence navigation from domain revisions, accessibility, large-graph strategy |
 | 6 | Not started | — |
 | 7 | Alpha only: Sandbox JSON v1 snapshots autosaved per session | Revision-based operation log, undo/redo, rebase, checksummed exports |
@@ -196,17 +196,28 @@ Implement the stable vocabulary and revision model used by every later capabilit
 
 ## Phase 3 — Safe workspace inventory
 
-Status: in progress ([spec](superpowers/specs/2026-11-19-safe-workspace-inventory-design.md)). The single-root safe inventory is implemented in `@archwise/discovery`:
+Status: complete (2026-11-22, PRs #14 and #15; [spec](superpowers/specs/2026-11-19-safe-workspace-inventory-design.md)). The safe inventory is implemented in `@archwise/discovery`:
 
+- one or several user roots (`--path`, repeated `--repo`, or a reviewed `--workspace` file), resolved, deduplicated and given stable IDs and unique labels;
 - gitignore and built-in ignore rules;
 - symlinks that are never followed;
-- nested repositories;
-- budgets, with a reason category for every skipped path;
+- nested repositories and overlapping roots;
+- budgets shared across repositories, with a reason category for every skipped path;
 - manifest hashing and cancellation;
-- the CLI summary and `--json` v2;
-- scan records in the store (schema v2).
+- the per-repository CLI summary and `--json` v2;
+- scan records in the store (schema v2), and a multi-repository workspace identity without a schema change.
 
-Still open: `--repo` and `--workspace` for several repositories, cross-repository edges, and repository labels and a scan summary in the Studio.
+The Studio shows one graph across repositories, with cross-repository dependency edges, each node's repository label, and a scan summary in the header ([Discovery](discovery.md#several-repositories)).
+
+Exit-gate evidence:
+
+| Exit criterion | Evidence |
+|---|---|
+| Default scan performs no project execution, network access, or writes inside roots | `@archwise/discovery` imports only `node:fs`, `node:path` and `node:crypto` among Node built-ins, and the boundary rule `discovery-inward-only` keeps app code out of it; `scripts/tests/session-store-integration.test.mjs` proves fixtures byte-identical, including file modification times: a single root after `--serve`, `--sessions`, `--json` and `--graph`, and two roots after `--sessions`, `--json` and `--graph` |
+| Every skipped path has a reason category | `packages/discovery/tests/walker.test.ts` asserts the reason of each skipped fixture path, including budgets, nested repositories, overlapping roots and repositories a budget left unscanned |
+| Inventory results are deterministic for unchanged files and analyzer versions | The determinism test in `walker.test.ts`, and `apps/cli/tests/compat.test.ts`, which pins single-root view, revision and evidence IDs to the pre-Phase-3 baseline, also with a submodule |
+| CLI errors are actionable and stable enough for documentation | Every root and workspace-file message is listed in [Discovery](discovery.md#safe-inventory) and asserted in `apps/cli/tests/` and `scripts/tests/cli-smoke.test.mjs` |
+| Required tests | Fixture tests for unreadable roots, nested repositories, symlink cycles and escapes, workspace-file traversal to a filesystem root, huge and binary manifests, Unicode and Windows paths, cancellation and ignore precedence; the benchmark in [Discovery](discovery.md#safe-inventory); the browser smoke with two repositories |
 
 ### Goal
 

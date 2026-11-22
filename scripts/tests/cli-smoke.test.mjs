@@ -17,10 +17,13 @@ test('built CLI exposes help and version with correct exit codes', () => {
     readFileSync(new URL('../../apps/cli/package.json', import.meta.url), 'utf8'),
   );
   assert.equal(version.stdout, `${manifest.version}\n`);
-  const unsupported = spawnSync(process.execPath, [entry, '--repo', '.'], { encoding: 'utf8' });
+  const unsupported = spawnSync(process.execPath, [entry, '--bogus'], { encoding: 'utf8' });
   assert.equal(unsupported.status, 2);
   assert.equal(unsupported.stdout, '');
   assert.match(unsupported.stderr, /Unsupported/);
+  const missingValue = spawnSync(process.execPath, [entry, '--repo'], { encoding: 'utf8' });
+  assert.equal(missingValue.status, 2);
+  assert.equal(missingValue.stderr, '--repo expects a directory.\n');
 });
 
 test('--json and --graph never print the absolute root, home directories or secret shapes', async () => {
@@ -92,5 +95,66 @@ test('--json is inventory version 2 with skip counts and manifest hashes', async
     assert.equal(parsed.truncated, null);
   } finally {
     rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('--repo composes repositories into one graph without printing machine paths', async () => {
+  const { mkdtempSync, mkdirSync, writeFileSync, realpathSync, rmSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const { tmpdir, homedir } = await import('node:os');
+  const base = realpathSync(mkdtempSync(join(tmpdir(), 'archwise-multi-')));
+  try {
+    for (const name of ['api', 'web']) mkdirSync(join(base, name));
+    writeFileSync(join(base, 'api', 'package.json'), JSON.stringify({ name: '@m/api' }));
+    writeFileSync(
+      join(base, 'web', 'package.json'),
+      JSON.stringify({ name: '@m/web', dependencies: { '@m/api': '1' } }),
+    );
+    const args = ['--repo', join(base, 'api'), '--repo', join(base, 'web')];
+    const json = spawnSync(process.execPath, [entry, ...args, '--json'], { encoding: 'utf8' });
+    assert.equal(json.status, 0, json.stderr);
+    const inventory = JSON.parse(json.stdout);
+    assert.deepEqual(inventory.repositories.map((r) => r.label).sort(), ['api', 'web']);
+    const graphRun = spawnSync(process.execPath, [entry, ...args, '--graph'], { encoding: 'utf8' });
+    assert.equal(graphRun.status, 0, graphRun.stderr);
+    const graph = JSON.parse(graphRun.stdout);
+    const byLabel = new Map(graph.nodes.map((n) => [n.label, n]));
+    assert.equal(graph.edges.length, 1);
+    assert.equal(graph.edges[0].source, byLabel.get('@m/web').id);
+    assert.equal(graph.edges[0].target, byLabel.get('@m/api').id);
+    assert.equal(byLabel.get('@m/web').repository.label, 'web');
+    for (const output of [json.stdout, graphRun.stdout]) {
+      assert.ok(!output.includes(base), 'printed an absolute root');
+      assert.ok(!output.includes(JSON.stringify(homedir()).slice(1, -1)), 'printed home');
+    }
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test('--workspace errors exit with code 2 and a stable message', async () => {
+  const { mkdtempSync, writeFileSync, rmSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const { tmpdir } = await import('node:os');
+  const dir = mkdtempSync(join(tmpdir(), 'archwise-wsfile-'));
+  try {
+    const file = join(dir, 'w.json');
+    writeFileSync(
+      file,
+      JSON.stringify({ format: 'archwise.workspace', version: 1, repositories: [] }),
+    );
+    const bad = spawnSync(process.execPath, [entry, '--workspace', file], { encoding: 'utf8' });
+    assert.equal(bad.status, 2);
+    assert.equal(
+      bad.stderr,
+      `Workspace file is not valid: ${file}: repositories must list 1 to 64 entries.\n`,
+    );
+    const both = spawnSync(process.execPath, [entry, '--workspace', file, '--repo', dir], {
+      encoding: 'utf8',
+    });
+    assert.equal(both.status, 2);
+    assert.equal(both.stderr, '--workspace cannot be combined with --repo or --path.\n');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 });

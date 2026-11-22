@@ -13,6 +13,7 @@ const { chromium } = await import(pathToFileURL(modulePath).href);
 // Analyze a synthetic project and an isolated store; never the repository itself.
 const fixtureRoot = await mkdtemp(join(tmpdir(), 'archwise-smoke-project-'));
 const dataDir = await mkdtemp(join(tmpdir(), 'archwise-smoke-store-'));
+const multiRoot = await mkdtemp(join(tmpdir(), 'archwise-smoke-multi-'));
 async function writeManifest(path, manifest) {
   await mkdir(dirname(join(fixtureRoot, path)), { recursive: true });
   await writeFile(join(fixtureRoot, path), JSON.stringify(manifest));
@@ -24,16 +25,12 @@ await writeManifest('apps/web/package.json', {
 await writeManifest('apps/api/package.json', { name: '@smoke/api' });
 
 let runner;
-function startServer() {
-  runner = spawn(
-    process.execPath,
-    ['apps/cli/dist/bin.js', '--serve', '--no-open', '--path', fixtureRoot],
-    {
-      cwd: process.cwd(),
-      env: { ...process.env, ARCHWISE_DATA_DIR: dataDir },
-      stdio: ['ignore', 'pipe', 'pipe'],
-    },
-  );
+function startServer(roots = ['--path', fixtureRoot]) {
+  runner = spawn(process.execPath, ['apps/cli/dist/bin.js', '--serve', '--no-open', ...roots], {
+    cwd: process.cwd(),
+    env: { ...process.env, ARCHWISE_DATA_DIR: dataDir },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
   let output = '';
   const urlReady = new Promise((resolve, reject) => {
     runner.stdout.setEncoding('utf8');
@@ -426,13 +423,48 @@ try {
     'An unrestorable session must not be overwritten',
   );
 
+  // Several repositories: one graph, repository labels on nodes, and the header scan summary.
+  for (const [name, manifest] of [
+    ['api', { name: '@smoke/api' }],
+    ['web', { name: '@smoke/web', dependencies: { '@smoke/api': 'workspace:*' } }],
+  ]) {
+    await mkdir(join(multiRoot, name), { recursive: true });
+    await writeFile(join(multiRoot, name, 'package.json'), JSON.stringify(manifest));
+  }
+  await stopServer();
+  const multiUrl = await startServer([
+    '--repo',
+    join(multiRoot, 'api'),
+    '--repo',
+    join(multiRoot, 'web'),
+    '--no-store',
+  ]);
+  const multiPage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  multiPage.on('pageerror', (error) => errors.push(error.message));
+  await multiPage.goto(multiUrl, { waitUntil: 'networkidle' });
+  await multiPage.getByRole('button', { name: 'Explore · Inspect' }).click();
+  for (const label of ['@smoke/api · Package · api', '@smoke/web · Package · web']) {
+    await multiPage.locator('.svelte-flow__node').filter({ hasText: label }).waitFor();
+  }
+  await multiPage.waitForFunction(
+    () => globalThis.document.querySelectorAll('.svelte-flow__edge').length >= 1,
+  );
+  await multiPage.getByText('Scan · 2 repositories').click();
+  const scanPanel = multiPage.getByLabel('Scan summary');
+  await scanPanel.getByText('api: 1 manifest').waitFor();
+  await scanPanel.getByText('web: 1 manifest').waitFor();
+  if (process.env.ARCHWISE_SMOKE_SCREENSHOT) {
+    await multiPage.screenshot({ path: process.env.ARCHWISE_SMOKE_SCREENSHOT });
+  }
+
   assert.deepEqual(errors, [], 'Browser runtime errors must not occur');
   console.log(
-    'Browser smoke passed: components, handles, edge intent, replica scaling, A/B, autosave, drag positions, JSON export/import, reload, cross-launch resume, rename, delete, no catalog replay, edit-before-refresh, keyboard panel and unrestorable-session protection.',
+    'Browser smoke passed: components, handles, edge intent, replica scaling, A/B, autosave, drag positions, JSON export/import, reload, cross-launch resume, rename, delete, no catalog replay, edit-before-refresh, keyboard panel, unrestorable-session protection, and a two-repository workspace with repository labels and the scan summary.',
   );
 } finally {
   await browser?.close();
   runner?.kill('SIGTERM');
   await rm(fixtureRoot, { recursive: true, force: true });
   await rm(dataDir, { recursive: true, force: true });
+  await rm(multiRoot, { recursive: true, force: true });
 }

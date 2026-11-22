@@ -185,3 +185,55 @@ test('--resume latest fails clearly on an empty store and resumes the newest ses
     await rm(dataDir, { recursive: true, force: true });
   }
 });
+
+const count = async (dataDir, table) => {
+  const { DatabaseSync } = await import('node:sqlite');
+  const db = new DatabaseSync(join(dataDir, 'archwise.db'), { readOnly: true });
+  try {
+    return db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get().n;
+  } finally {
+    db.close();
+  }
+};
+
+test('a single root with a submodule records one revision across runs', async () => {
+  const root = await fixture();
+  await writeFile(join(root, 'packages/core/.git'), 'gitdir: ../../.git/modules/core');
+  const dataDir = await mkdtemp(join(tmpdir(), 'archwise-session-data-'));
+  const env = { ARCHWISE_DATA_DIR: dataDir };
+  try {
+    for (let i = 0; i < 2; i++) assert.equal(run(['--sessions', '--path', root], env).status, 0);
+    assert.equal(await count(dataDir, 'revisions'), 1);
+    assert.equal(await count(dataDir, 'workspaces'), 1);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+    await rm(dataDir, { recursive: true, force: true });
+  }
+});
+
+test('several repositories are their own workspace and stay byte-identical', async () => {
+  const first = await fixture();
+  const second = await fixture();
+  await writeFile(
+    join(second, 'package.json'),
+    JSON.stringify({ name: 'other-root', dependencies: { '@demo/core': '*' } }),
+  );
+  const dataDir = await mkdtemp(join(tmpdir(), 'archwise-session-data-'));
+  const env = { ARCHWISE_DATA_DIR: dataDir };
+  try {
+    const before = [await snapshot(first), await snapshot(second)];
+    const both = ['--repo', first, '--repo', second];
+    for (const flag of ['--sessions', '--json', '--graph']) {
+      const result = run([...both, flag], env);
+      assert.equal(result.status, 0, result.stderr);
+    }
+    assert.equal(run(['--sessions', '--repo', first], env).status, 0);
+    assert.equal(run(['--sessions', '--repo', second, '--repo', first], env).status, 0);
+    assert.equal(await count(dataDir, 'workspaces'), 2);
+    assert.deepEqual([await snapshot(first), await snapshot(second)], before);
+  } finally {
+    await rm(first, { recursive: true, force: true });
+    await rm(second, { recursive: true, force: true });
+    await rm(dataDir, { recursive: true, force: true });
+  }
+});

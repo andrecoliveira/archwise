@@ -89,7 +89,9 @@
   async function loadScan(signal: AbortSignal): Promise<void> {
     try {
       const response = await fetch('/api/v1/scan', { credentials: 'same-origin', signal });
-      const payload: unknown = response.ok ? await response.json() : null;
+      // Always read the body, so a 404 from an older server does not leave the request open.
+      const body: unknown = await response.json().catch(() => null);
+      const payload = response.ok ? body : null;
       if (!signal.aborted) scan = isScanSummary(payload) ? payload : null;
     } catch {
       if (!signal.aborted) scan = null;
