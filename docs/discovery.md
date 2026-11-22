@@ -4,14 +4,14 @@
 
 - `archwise`: analyze the current working directory.
 - `archwise --path <directory>`: analyze an explicit root.
-- `archwise --repo <directory> --repo <directory>`: compose multiple roots.
-- `archwise --workspace <file>`: load a reviewed workspace manifest with repositories, labels, and optional relations.
+- `archwise --repo <directory> --repo <directory>`: compose several repositories into one workspace. `--path` is an alias for one `--repo`, and the two may be mixed.
+- `archwise --workspace <file>`: load a reviewed workspace file that lists the repositories and optional labels. It cannot be combined with `--repo` or `--path`.
 
-Paths are canonicalized once, deduplicated, checked for readability, and assigned stable workspace-relative identifiers. Symlinks are not followed outside declared roots by default.
+Every entry point works with `--json`, `--graph`, `--sessions` and `--serve`. Each root is resolved with `realpath` once and must be a readable directory. Duplicate roots, after resolution, are merged silently; the first one keeps its label.
 
-## Safe inventory (implemented for a single root)
+## Safe inventory
 
-`archwise` and `archwise --path <directory>` scan one root through `@archwise/discovery`. `--repo` and `--workspace` are not implemented yet; they arrive in the next Phase 3 change. The scan lists files without reading them. It reads only `package.json` manifests and `.gitignore` files, both within the byte budgets.
+The scan runs through `@archwise/discovery`. It lists files without reading them. It reads only `package.json` manifests and `.gitignore` files, both within the byte budgets.
 
 **Ignore precedence,** highest first:
 
@@ -23,7 +23,7 @@ Paths are canonicalized once, deduplicated, checked for readability, and assigne
 
 **Nested repositories:** a directory containing `.git` (a directory, or a file for worktrees and submodules) is its own repository with a stable `repo-…` ID. Its `.gitignore` rules start fresh. It does not change node IDs or the workspace identity: a project with submodules is still a single-root workspace.
 
-**Budgets** are fixed defaults, totals for the whole scan:
+**Budgets** are fixed defaults, totals for the whole scan across all repositories:
 
 | Budget | Default |
 |---|---|
@@ -56,11 +56,65 @@ When a budget runs out, the scan keeps what it found and marks itself truncated 
 
 **Cancellation:** Ctrl+C during a scan prints `Scan cancelled.` and exits with code 130. No server starts and no scan is recorded.
 
-**Root errors** exit with code 2:
+**Errors** exit with code 2 and a stable message. `<flag>` is the flag that named the root (`--path`, `--repo`, or `--workspace` for an entry of a workspace file), and paths are echoed as typed:
 
-- `Workspace root not found: <path>. Pass an existing directory with --path.`
-- `Workspace root is not a directory: <path>. Pass a directory with --path.`
+- `Workspace root not found: <path>. Pass an existing directory with <flag>.`
+- `Workspace root is not a directory: <path>. Pass a directory with <flag>.`
 - `Workspace root is not readable: <path>. Check its permissions.`
+- `--repo expects a directory.`, `--path expects a directory.`, `--workspace expects a file.`
+- `--workspace cannot be combined with --repo or --path.`
+- `Workspace file not found: <file>. Pass an existing file with --workspace.`
+- `Workspace file is not readable: <file>. Check its permissions.`
+- `Workspace file is too large: <file>. The limit is 1 MiB.`
+- `Workspace file is not valid: <file>: <problem>.`, where `<problem>` names the field, for example `repositories[0].path must be a non-empty string`.
+- `Workspace entry <n> not found: <path>. Fix repositories[<n>].path in <file>.`
+- `Workspace entry <n> is not readable: <path>. Check its permissions.`
+- `Workspace entry <n> is not a directory: <path>. Fix repositories[<n>].path in <file>.`
+- `Workspace entry <n> is a filesystem root: <path>. Point it at a repository directory.`
+
+`<n>` counts from 0.
+
+## Several repositories
+
+Pass `--repo` more than once, or a workspace file, to see one system across repositories. The Studio shows the packages of every repository in one graph.
+
+**Workspace file** (`archwise.workspace` v1). Archwise reads it and never creates or changes it:
+
+```json
+{
+  "format": "archwise.workspace",
+  "version": 1,
+  "repositories": [
+    { "path": "../api", "label": "API" },
+    { "path": "../web" }
+  ]
+}
+```
+
+- `path` is relative to the file's directory (after resolving the file's own symlinks), or absolute. `..` is allowed, because you review the file; a path that resolves to a filesystem root is rejected.
+- `label` is optional. It must be a valid label (1 to 256 characters, no control characters, no home-directory or secret shapes). Without it, the directory name is used.
+- Unknown fields are rejected. A file lists 1 to 64 repositories and is at most 1 MiB.
+- Before scanning, the CLI prints `Workspace: <label>, <label>…` to stderr.
+
+**Repository IDs and labels:**
+
+- One user root keeps the ID `repo-root`. With several, each user root's ID is `repo-` plus the first 16 hex characters of SHA-256 over its path relative to the roots' common ancestor. Roots with no common ancestor, such as Windows roots on different drives, hash their full path with a lowercased drive letter. IDs never contain the path itself.
+- A nested Git repository hashes its path relative to the same common ancestor.
+- Equal labels are made unique by prefixing the parent directory name, as in `services/api` and `web/api`, then by a ` #2` suffix if needed. A root that is the home directory is labelled `home`.
+
+**Scan order:** user roots are scanned in the code-unit order of their IDs, and the budgets are shared. If a budget runs out, every later repository is still listed with its label, zero counts and the diagnostic `Repository not scanned: <label>. A budget ran out first.` The revision is then `partial`.
+
+**Overlapping roots:** a root inside another root is skipped there as `nested-repository` and scanned once, as its own repository.
+
+**Paths in output:** with several roots, skip examples and diagnostics start with the root label, as in `web/node_modules`. Manifest paths stay relative to their own root.
+
+**Graph IDs:** with several roots, view node IDs are `package:<root ID>/<path>` and revision node IDs hash `<root ID>/<path>`. Each node carries a `repository` with its ID and label. A single root keeps `package:<path>` and has no `repository` field, even with nested repositories, so existing sessions and Sandbox exports keep working.
+
+**Cross-repository edges:** a declared dependency resolves by exact package name across all repositories. Two packages with the same name produce the `Ambiguous package name` diagnostic, and no edge is drawn.
+
+**Output:** the summary lists each repository with its manifests, entries and skipped paths. `--json` repositories carry `id`, `rootId`, `label`, `path`, `nested`, `reached`, `listedEntries`, `manifests` and `skipped` counts. The Studio header shows a scan summary from `GET /api/v1/scan`: repositories, entries, skipped paths by reason and truncation, counts only.
+
+**Sessions:** a set of repositories is its own project in the store. Adding or removing a repository starts a different session history ([Sessions](sessions.md)).
 
 **Performance:** `pnpm bench:inventory` scans generated trees. On an Apple Silicon Mac with Node 26.4:
 

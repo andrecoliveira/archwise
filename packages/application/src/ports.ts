@@ -8,6 +8,7 @@ import type { BudgetName, SkipReason } from './inventory.js';
 
 export interface Workspace {
   readonly id: string;
+  /** The workspace key (see `workspaceKey`): one canonical root path, or a JSON array of them. */
   readonly rootPath: string;
   readonly createdAt: string;
 }

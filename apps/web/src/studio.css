@@ -969,3 +969,34 @@ li {
   gap: 10px;
   flex-wrap: wrap;
 }
+
+/* Scan summary: repositories, entries and skipped paths of the scan behind the graph. */
+.scan-summary {
+  position: relative;
+  font-size: 12px;
+}
+.scan-summary > summary {
+  cursor: pointer;
+  color: #7dd3fc;
+}
+.scan-summary-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 40;
+  width: max-content;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 12px 16px;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  box-shadow: 0 16px 40px rgb(0 0 0 / 45%);
+}
+.scan-summary-panel ul {
+  margin: 0;
+  padding-left: 16px;
+}
+.scan-summary-panel p {
+  margin: 8px 0 0;
+  color: #94a3b8;
+}

@@ -19,7 +19,7 @@ Archwise analyzes untrusted repositories that may contain malicious files, overs
 
 The local SQLite store ([ADR 0006](decisions/0006-local-store-node-sqlite.md)) lives in the user's application-data directory, which is created with mode `0700` on POSIX. It holds:
 
-- absolute workspace root paths;
+- absolute workspace root paths (several, for a multi-repository workspace);
 - discovered package names and manifest-relative paths;
 - Sandbox documents.
 
@@ -27,7 +27,9 @@ It never contains source file contents. It is not synchronized or exported, and 
 
 ## Safe scanning
 
-The inventory lists files with `lstat`. It never follows symlinks, so a link cannot lead it outside a root or into a cycle. It never opens sockets, FIFOs or devices, and it reads only `package.json` manifests and `.gitignore` files, with a per-file and a total byte budget. Ignore patterns are matched without regular expressions, so a hostile `.gitignore` cannot stall a scan. See [Discovery](discovery.md#safe-inventory-implemented-for-a-single-root).
+The inventory lists files with `lstat`. It never follows symlinks, so a link cannot lead it outside a root or into a cycle. It never opens sockets, FIFOs or devices, and it reads only `package.json` manifests and `.gitignore` files, with a per-file and a total byte budget. Ignore patterns are matched without regular expressions, so a hostile `.gitignore` cannot stall a scan. See [Discovery](discovery.md#safe-inventory).
+
+A workspace file may point at any directory the user chooses, including outside its own folder. Safety does not depend on where roots point: the scan never reads outside its roots and never writes in them, and a workspace-file entry that resolves to a filesystem root is rejected. Archwise never creates or changes a workspace file.
 
 ## Redaction at the discovery boundary
 

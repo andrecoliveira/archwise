@@ -34,7 +34,10 @@ test('CLI discovery to authenticated browser Studio serves a traced graph withou
     await writeFile(webPath, webManifest);
     await writeFile(apiPath, apiManifest);
 
-    const inventory = await filesystemInventory.inspect({ root, knownHomes: [] });
+    const inventory = await filesystemInventory.inspect({
+      roots: [{ path: root }],
+      knownHomes: [],
+    });
     const graph = buildArchitectureGraph(inventory);
     assert.equal(graph.nodes.length, 2);
     assert.equal(graph.edges.length, 1);

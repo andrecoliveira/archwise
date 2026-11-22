@@ -4,6 +4,7 @@ import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import {
   RevisionInvalidError,
   SessionService,
+  workspaceKey,
   type DiscoveryInput,
   type SessionSummary,
   type StoredScan,
@@ -24,7 +25,8 @@ export type StoreRuntime =
 export interface PrepareStoreOptions {
   readonly enabled: boolean;
   readonly dataDir: string;
-  readonly rootPath: string;
+  /** Canonical user roots; the workspace identity is `workspaceKey(rootPaths)`. */
+  readonly rootPaths: readonly string[];
   /** Repositories, manifest ownership and truncation from the inventory. */
   readonly scan: RevisionScan;
   /** Scan metadata to record with the revision (counts and codes only). */
@@ -55,7 +57,7 @@ export function isWithin(child: string, parent: string): boolean {
 
 export async function prepareStore(options: PrepareStoreOptions): Promise<StoreRuntime> {
   if (!options.enabled) return { kind: 'disabled', notices: [] };
-  if (isWithin(options.dataDir, options.rootPath)) {
+  if (options.rootPaths.some((root) => isWithin(options.dataDir, root))) {
     return {
       kind: 'disabled',
       notices: [
@@ -80,7 +82,7 @@ export async function prepareStore(options: PrepareStoreOptions): Promise<StoreR
         digest: { sha256Hex: (text) => createHash('sha256').update(text, 'utf8').digest('hex') },
       },
       {
-        rootPath: options.rootPath,
+        rootPath: workspaceKey(options.rootPaths),
         view: JSON.stringify(options.graph),
         viewIdentity: JSON.stringify({ ...options.graph, inspectedEntries: 0 }),
         build: (ids) => buildGraphRevision(options.graph, options.scan, ids),

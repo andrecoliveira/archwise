@@ -21,6 +21,7 @@
   } from './sandbox-persistence.js';
   import type { SimulatedKind } from './simulation.js';
   import type { Graph } from './graph-types.js';
+  import { nodeDisplayLabel } from './scan-summary.js';
   import {
     CONNECTION_INTENTS,
     CONNECTION_STYLES,
@@ -268,7 +269,7 @@
       .map((item) => ({
         id: item.id,
         position: { x: 0, y: 0 },
-        data: { label: `${item.label} · ${item.framework ?? 'Package'}` },
+        data: { label: nodeDisplayLabel(item) },
         type: 'default',
         draggable: true,
         style: 'border:1px solid #3b82f6;background:#13233c;color:#eaf2ff;border-radius:8px;',

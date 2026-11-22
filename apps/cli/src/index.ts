@@ -4,11 +4,24 @@ export interface CliResult {
   readonly stderr: string;
 }
 
+export interface CliRoot {
+  readonly path: string;
+  readonly flag: '--path' | '--repo';
+}
+
+const usageError = (stderr: string): CliCommand => ({
+  kind: 'output',
+  result: { exitCode: 2, stdout: '', stderr },
+});
+
 export type CliCommand =
   | { readonly kind: 'output'; readonly result: CliResult }
   | {
       readonly kind: 'inspect';
-      readonly path: string;
+      /** User roots from --path and --repo, in order; empty when --workspace is used. */
+      readonly roots: readonly CliRoot[];
+      /** Workspace file from --workspace, or null. */
+      readonly workspace: string | null;
       readonly json: boolean;
       readonly graph: boolean;
       readonly serve: boolean;
@@ -32,8 +45,10 @@ export function parseCli(args: readonly string[], version = 'development'): CliC
       result: {
         exitCode: 0,
         stdout:
-          'Usage: archwise [--path DIRECTORY] [--json | --graph | --sessions | --serve [--no-open] [--no-store | --resume latest|SESSION_ID]] [--help | --version]\n' +
+          'Usage: archwise [--path DIRECTORY | --repo DIRECTORY... | --workspace FILE] [--json | --graph | --sessions | --serve [--no-open] [--no-store | --resume latest|SESSION_ID]] [--help | --version]\n' +
           'Read-only inventory of local Node.js package manifests. --graph emits a deterministic evidence-backed graph.\n' +
+          '--repo may repeat to compose several repositories into one workspace (--path is an alias).\n' +
+          '--workspace reads a reviewed archwise.workspace JSON file that lists the repositories.\n' +
           '--sessions lists saved Sandbox sessions for this project. --serve opens the local Studio and records\n' +
           'the discovered graph in the local store outside the project; --no-store disables the store.\n' +
           '--resume continues the newest (latest) or a specific saved session instead of a fresh one.\n',
@@ -41,7 +56,8 @@ export function parseCli(args: readonly string[], version = 'development'): CliC
       },
     };
   }
-  let path = '.';
+  const roots: CliRoot[] = [];
+  let workspace: string | null = null;
   let json = false;
   let graph = false;
   let serve = false;
@@ -50,8 +66,17 @@ export function parseCli(args: readonly string[], version = 'development'): CliC
   let store = true;
   let resume: string | null = null;
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--path' && args[i + 1] && !args[i + 1]!.startsWith('--')) {
-      path = args[++i]!;
+    const flag = args[i];
+    if (flag === '--path' || flag === '--repo' || flag === '--workspace') {
+      const value = args[i + 1];
+      if (!value || value.startsWith('--')) {
+        return usageError(
+          `${flag} expects ${flag === '--workspace' ? 'a file' : 'a directory'}.\n`,
+        );
+      }
+      i += 1;
+      if (flag === '--workspace') workspace = value;
+      else roots.push({ path: value, flag });
     } else if (args[i] === '--json') {
       json = true;
     } else if (args[i] === '--graph') {
@@ -89,6 +114,9 @@ export function parseCli(args: readonly string[], version = 'development'): CliC
       };
     }
   }
+  if (workspace !== null && roots.length > 0) {
+    return usageError('--workspace cannot be combined with --repo or --path.\n');
+  }
   if (Number(json) + Number(graph) + Number(serve) + Number(sessions) > 1) {
     return {
       kind: 'output',
@@ -122,7 +150,18 @@ export function parseCli(args: readonly string[], version = 'development'): CliC
       },
     };
   }
-  return { kind: 'inspect', path, json, graph, serve, open, sessions, store, resume };
+  return {
+    kind: 'inspect',
+    roots: workspace === null && roots.length === 0 ? [{ path: '.', flag: '--path' }] : roots,
+    workspace,
+    json,
+    graph,
+    serve,
+    open,
+    sessions,
+    store,
+    resume,
+  };
 }
 
 /** Kept as a pure CLI helper for compatibility with the existing CLI tests. */
@@ -132,7 +171,7 @@ export function runCli(args: readonly string[], version = 'development'): CliRes
     ? command.result
     : {
         exitCode: 0,
-        stdout: `Workspace inspection configured for ${command.path}. Run the executable to inspect.\n`,
+        stdout: `Workspace inspection configured for ${command.workspace ?? command.roots.map((r) => r.path).join(', ')}. Run the executable to inspect.\n`,
         stderr: '',
       };
 }

@@ -6,7 +6,8 @@ import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { resolveDataDir, StoreUnavailableError } from '@archwise/storage';
-import { filesystemInventory } from '@archwise/discovery';
+import { filesystemInventory, resolveRoots } from '@archwise/discovery';
+import type { InventoryProgress, RootRequest } from '@archwise/application';
 import { buildArchitectureGraph } from './graph.js';
 import {
   formatInventorySummary,
@@ -14,8 +15,10 @@ import {
   rootErrorMessage,
   runScan,
   scanRecord,
+  scanSummary,
 } from './inventory-output.js';
 import { parseCli } from './index.js';
+import { WorkspaceFileError, loadWorkspaceFile } from './workspace-file.js';
 import { startLocalGraphServer } from './local-server.js';
 import {
   applyResume,
@@ -58,20 +61,37 @@ if (command.kind === 'output') {
   process.exitCode = command.result.exitCode;
 } else {
   const dataDir = resolveDataDir(process.env, process.platform, homedir());
+  // Inputs as typed, for error messages; workspace-file entries name the file's flag.
+  let rootInputs: readonly { readonly path: string; readonly flag: string }[] = command.roots;
   try {
     const home = homedir();
     const knownHomes = [home, await realpath(home).catch(() => home)];
+    let roots: readonly RootRequest[] = command.roots.map(({ path }) => ({ path }));
+    if (command.workspace !== null) {
+      roots = await loadWorkspaceFile(command.workspace);
+      rootInputs = roots.map(({ path }) => ({ path, flag: '--workspace' }));
+      // The labels the scan will use (redacted, unique, `home` for the home directory).
+      const resolved = new Map(
+        (await resolveRoots(roots, knownHomes)).map((root) => [root.absolute, root.label]),
+      );
+      const labels = new Set(roots.map(({ path }) => resolved.get(path) ?? ''));
+      process.stderr.write(`Workspace: ${[...labels].join(', ')}\n`);
+    }
     const startedAt = new Date().toISOString();
     const controller = new AbortController();
     const cancel = (): void => controller.abort();
     process.once('SIGINT', cancel);
     const progress = process.stderr.isTTY
-      ? (listed: number) => process.stderr.write(`\rScanning… ${listed} entries`)
+      ? (progress: InventoryProgress) =>
+          process.stderr.write(
+            `\rScanning ${progress.repository}… ${progress.listedEntries} entries, ` +
+              `${Math.floor(progress.elapsedMs / 1000)} s\x1b[K`,
+          )
       : undefined;
     let outcome;
     try {
       outcome = await runScan(filesystemInventory, {
-        root: command.path,
+        roots,
         knownHomes,
         signal: controller.signal,
         ...(progress ? { onProgress: progress } : {}),
@@ -91,7 +111,7 @@ if (command.kind === 'output') {
       const runtime = await prepareStore({
         enabled,
         dataDir,
-        rootPath: result.root,
+        rootPaths: result.roots,
         scan: result,
         scanRecord: record,
         graph,
@@ -127,6 +147,7 @@ if (command.kind === 'output') {
         const server = await startLocalGraphServer(graph, {
           ...(assets ? { webDistPath: assets } : {}),
           sessions: runtime.kind === 'ready' ? runtime.service : null,
+          scan: scanSummary(result),
         });
         process.stdout.write(`Archwise API listening at ${server.address}\n`);
         process.stdout.write(`Local session URL: ${server.bootstrapUrl}\n`);
@@ -151,8 +172,11 @@ if (command.kind === 'output') {
       );
     }
   } catch (error) {
-    const rootError = rootErrorMessage(error, command.path);
-    if (rootError !== null) {
+    const rootError = rootErrorMessage(error, rootInputs);
+    if (error instanceof WorkspaceFileError) {
+      process.stderr.write(`${error.message}\n`);
+      process.exitCode = 2;
+    } else if (rootError !== null) {
       process.stderr.write(`${rootError}\n`);
       process.exitCode = 2;
     } else if (error instanceof StoreUnavailableError) {

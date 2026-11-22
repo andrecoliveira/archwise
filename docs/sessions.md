@@ -32,7 +32,7 @@ The Studio no longer keeps Sandbox state in browser `localStorage`. A Sandbox th
 
 Set `ARCHWISE_DATA_DIR` to use another directory. The store is a single SQLite file, `archwise.db`, which holds the following:
 
-- **Workspaces:** the absolute project root path that identifies each project.
+- **Workspaces:** the identity of each project. For one root it is the absolute root path. For several repositories (`--repo` more than once, or `--workspace`) it is the sorted list of their absolute paths, so adding or removing a repository starts a different session history. No schema change was needed for this. Repository labels are now made unique, so a single-root project whose nested repositories share a name (for example two submodules called `lib`) records one new revision after the upgrade, and a resumed session shows the "architecture changed" notice once.
 - **Graph revisions:** the discovered package graph as an `archwise.graph` v1 revision, plus the Studio's view of it. An unchanged rescan reuses the previous revision instead of adding a new one. A rescan counts as changed when either the graph or its view differs, for example a new framework label.
 - **Sessions:** the Sandbox document, a label, and creation and update times. Each session records the revision it started from.
 - **Scans:** for each `--serve` or `--sessions` run, the start and finish times, counts per skip reason, truncation and analyzer versions. A scan record holds counts and codes only, never paths. `--json` and `--graph` never open the store. Schema version 2 added this table. Upgrading from version 1 takes a backup first.

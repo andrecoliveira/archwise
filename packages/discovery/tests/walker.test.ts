@@ -32,7 +32,16 @@ const pkg = (name: string, dependencies: Record<string, string> = {}) =>
   JSON.stringify({ name, dependencies });
 
 const scan = (root: string, extra: Partial<InventoryRequest> = {}): Promise<InventoryResult> =>
-  filesystemInventory.inspect({ root, knownHomes: [], ...extra });
+  scanRoots([root], extra);
+
+const scanRoots = (
+  paths: readonly string[],
+  extra: Partial<InventoryRequest> = {},
+): Promise<InventoryResult> =>
+  filesystemInventory.inspect({ roots: paths.map((path) => ({ path })), knownHomes: [], ...extra });
+
+const repoId = (base: string) =>
+  `repo-${createHash('sha256').update(base).digest('hex').slice(0, 16)}`;
 
 const skipped = (result: InventoryResult, reason: keyof InventoryResult['skipped']) =>
   result.skipped[reason] ?? { count: 0, examples: [] };
@@ -103,7 +112,9 @@ describe('nested repositories', () => {
     });
     const result = await scan(root);
     const nestedId = `repo-${createHash('sha256').update('libs/sub').digest('hex').slice(0, 16)}`;
-    expect(result.repositories).toEqual([
+    expect(
+      result.repositories.map(({ id, label, path, nested }) => ({ id, label, path, nested })),
+    ).toEqual([
       { id: 'repo-root', label: expect.any(String), path: '', nested: false },
       { id: nestedId, label: 'sub', path: 'libs/sub', nested: true },
     ]);
@@ -334,5 +345,153 @@ describe('review fixes', () => {
     const result = await scan(root, { budgets: { bytesTotal: 60 } });
     expect(result.truncated).toBe('bytes-total');
     expect(skipped(result, 'budget-exhausted').count).toBe(3);
+  });
+});
+
+describe('several roots', () => {
+  test('sibling roots share one result with per-repository counts', async () => {
+    const base = await tree({
+      'api/package.json': pkg('@shop/api'),
+      'api/src/a.ts': 'x',
+      'web/package.json': pkg('@shop/web', { '@shop/api': '1' }),
+    });
+    const result = await scanRoots([join(base, 'web'), join(base, 'api')]);
+    expect(result.roots).toHaveLength(2);
+    const ids = new Map(result.repositories.map((r) => [r.label, r.id]));
+    expect(ids.get('api')).toBe(repoId('api'));
+    expect(ids.get('web')).toBe(repoId('web'));
+    for (const manifest of result.manifests) {
+      expect(manifest.path).toBe('package.json');
+      expect(manifest.rootId).toBe(manifest.repositoryId);
+    }
+    expect(result.manifests.map((m) => m.name).sort()).toEqual(['@shop/api', '@shop/web']);
+    const sum = (key: 'listedEntries' | 'manifests') =>
+      result.repositories.reduce((total, r) => total + r[key], 0);
+    expect(sum('listedEntries')).toBe(result.listedEntries);
+    expect(sum('manifests')).toBe(result.manifests.length);
+    expect(result.repositories.every((r) => r.reached && r.rootId === r.id)).toBe(true);
+  });
+
+  test('an inner root is skipped in the outer root and scanned once on its own', async () => {
+    const base = await tree({
+      'w/package.json': pkg('outer'),
+      'w/libs/x/package.json': pkg('inner'),
+    });
+    const result = await scanRoots([join(base, 'w'), join(base, 'w/libs/x')]);
+    expect(skipped(result, 'nested-repository').examples).toEqual(['w/libs/x']);
+    const inner = result.manifests.filter((m) => m.name === 'inner');
+    expect(inner).toHaveLength(1);
+    expect(inner[0]).toMatchObject({ rootId: repoId('libs/x'), path: 'package.json' });
+  });
+
+  test('a budget that runs out in the first root leaves later roots listed, not scanned', async () => {
+    const files: Record<string, string> = {};
+    const [first, second] = ['one', 'two'].sort((a, b) => (repoId(a) < repoId(b) ? -1 : 1));
+    for (let i = 0; i < 10; i++) files[`${first}/f${i}.txt`] = 'x';
+    files[`${second}/package.json`] = pkg('late');
+    const base = await tree(files);
+    const result = await scanRoots([join(base, 'one'), join(base, 'two')], {
+      budgets: { entries: 3 },
+    });
+    expect(result.truncated).toBe('entries');
+    const late = result.repositories.find((r) => r.label === second)!;
+    expect(late).toMatchObject({ reached: false, listedEntries: 0, manifests: 0, skipped: {} });
+    expect(result.diagnostics).toContain(
+      `Repository not scanned: ${second}. A budget ran out first.`,
+    );
+    expect(result.manifests).toEqual([]);
+  });
+
+  test('examples and diagnostics carry the root label in a multi-root scan', async () => {
+    const base = await tree({
+      'web/node_modules/x/package.json': pkg('x'),
+      'web/package.json': '{',
+      'api/package.json': pkg('api'),
+    });
+    const result = await scanRoots([join(base, 'web'), join(base, 'api')]);
+    expect(skipped(result, 'ignored-builtin').examples).toEqual(['web/node_modules']);
+    expect(result.diagnostics).toContain('Invalid or unreadable manifest: web/package.json');
+    const web = result.repositories.find((r) => r.label === 'web')!;
+    expect(web.skipped).toEqual({ 'ignored-builtin': 1, unreadable: 1 });
+  });
+
+  test('a nested repository hashes its path from the common ancestor', async () => {
+    const base = await tree({
+      'api/libs/sub/.git': 'gitdir: x',
+      'api/libs/sub/package.json': pkg('sub'),
+      'web/package.json': pkg('web'),
+    });
+    const result = await scanRoots([join(base, 'api'), join(base, 'web')]);
+    const sub = result.repositories.find((r) => r.nested)!;
+    expect(sub).toMatchObject({
+      id: repoId('api/libs/sub'),
+      rootId: repoId('api'),
+      path: 'libs/sub',
+    });
+    expect(result.manifests.find((m) => m.name === 'sub')).toMatchObject({
+      repositoryId: repoId('api/libs/sub'),
+      rootId: repoId('api'),
+      path: 'libs/sub/package.json',
+    });
+  });
+
+  test('progress names the repository being scanned', async () => {
+    const base = await tree({ 'api/a.txt': 'x', 'web/b.txt': 'x' });
+    const seen = new Set<string>();
+    await scanRoots([join(base, 'api'), join(base, 'web')], {
+      onProgress: (progress) => seen.add(progress.repository),
+    });
+    expect([...seen].sort()).toEqual(['api', 'web']);
+  });
+
+  test('a failing second root reports its index', async () => {
+    const base = await tree({ 'api/a.txt': 'x' });
+    await expect(scanRoots([join(base, 'api'), join(base, 'missing')])).rejects.toMatchObject({
+      name: 'InventoryRootError',
+      reason: 'not-found',
+      index: 1,
+    });
+  });
+});
+
+describe('final review fixes', () => {
+  test('a root the time budget stops before listing anything is not scanned', async () => {
+    const base = await tree({ 'a/x.txt': 'x', 'b/y.txt': 'y', 'c/z.txt': 'z' });
+    const order = ['a', 'b', 'c'].sort((p, q) => (repoId(p) < repoId(q) ? -1 : 1));
+    let clock = 0;
+    const result = await scanRoots(
+      order.map((name) => join(base, name)),
+      {
+        budgets: { timeMs: 10 },
+        // Time passes only once the first root has been listed.
+        now: () => clock,
+        onProgress: (progress) => {
+          if (progress.repository !== order[0]) clock = 100;
+        },
+      },
+    );
+    expect(result.truncated).toBe('time');
+    for (const name of order.slice(1)) {
+      expect(result.repositories.find((r) => r.label === name)).toMatchObject({
+        reached: false,
+        listedEntries: 0,
+      });
+      expect(result.diagnostics).toContain(
+        `Repository not scanned: ${name}. A budget ran out first.`,
+      );
+    }
+  });
+
+  test('a root reached when the entries budget is already spent is not scanned', async () => {
+    const order = ['a', 'b'].sort((p, q) => (repoId(p) < repoId(q) ? -1 : 1));
+    const base = await tree({ [`${order[0]}/x.txt`]: 'x', [`${order[1]}/y.txt`]: 'y' });
+    const result = await scanRoots(
+      order.map((name) => join(base, name)),
+      { budgets: { entries: 1 } },
+    );
+    expect(result.repositories.find((r) => r.label === order[1])).toMatchObject({
+      reached: false,
+      listedEntries: 0,
+    });
   });
 });

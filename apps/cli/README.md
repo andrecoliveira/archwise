@@ -1,6 +1,6 @@
 # cli
 
-Argument parsing, composition of the read-only inventory from `@archwise/discovery` (summary, `--json` v2, progress and Ctrl+C cancellation), evidence-backed package graph construction and the protected loopback HTTP server that serves the Studio (`--json`, `--graph`, `--serve`, `--no-open`). It never executes or imports code from the inspected project.
+Argument parsing (`--path`, repeated `--repo`, `--workspace` files), composition of the read-only inventory from `@archwise/discovery` (per-repository summary, `--json` v2, progress and Ctrl+C cancellation), evidence-backed package graph construction and the protected loopback HTTP server that serves the Studio and the scan summary at `/api/v1/scan` (`--json`, `--graph`, `--serve`, `--no-open`). It never executes or imports code from the inspected project.
 
 With `--serve`, it also records the discovered graph as an `archwise.graph` revision and serves the protected session API (see `docs/sessions.md`). `--sessions` lists saved sessions, `--resume latest|SESSION_ID` continues one, and `--no-store` disables the local store.
 

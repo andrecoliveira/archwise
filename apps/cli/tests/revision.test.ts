@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { createRevision, isValidId } from '@archwise/domain';
 import { serializeGraphRevision } from '@archwise/schemas';
 import { expect, test } from 'vitest';
@@ -43,8 +44,13 @@ const graph: ArchitectureGraph = {
 
 /** A single-root scan whose manifests are the graph's nodes. */
 const scanOf = (view: ArchitectureGraph, label: string): RevisionScan => ({
+  roots: ['/r'],
   repositories: [{ id: 'repo-root', label, path: '', nested: false }],
-  manifests: view.nodes.map((n) => ({ repositoryId: 'repo-root', path: n.evidence[0].path })),
+  manifests: view.nodes.map((n) => ({
+    rootId: 'repo-root',
+    repositoryId: 'repo-root',
+    path: n.evidence[0].path,
+  })),
   truncated: null,
 });
 
@@ -129,13 +135,18 @@ test('a nested repository keeps root-relative node IDs and repository-relative e
     diagnostics: [],
   };
   const scan: RevisionScan = {
+    roots: ['/r'],
     repositories: [
       { id: 'repo-root', label: 'demo', path: '', nested: false },
       { id: 'repo-0123456789abcdef', label: 'sub', path: 'libs/sub', nested: true },
     ],
     manifests: [
-      { repositoryId: 'repo-root', path: 'package.json' },
-      { repositoryId: 'repo-0123456789abcdef', path: 'libs/sub/pkg/package.json' },
+      { rootId: 'repo-root', repositoryId: 'repo-root', path: 'package.json' },
+      {
+        rootId: 'repo-root',
+        repositoryId: 'repo-0123456789abcdef',
+        path: 'libs/sub/pkg/package.json',
+      },
     ],
     truncated: null,
   };
@@ -162,4 +173,66 @@ test('a truncated scan is a partial revision even without diagnostics', () => {
   const revision = buildGraphRevision(view, { ...scanOf(view, 'demo'), truncated: 'entries' }, ids);
   expect(revision.status).toBe('partial');
   expect(revision.coverage.every((c) => c.status === 'partial')).toBe(true);
+});
+
+test('several roots hash the user-root ID into node IDs and list unreached repositories', () => {
+  const apiId = 'repo-1111111111111111';
+  const webId = 'repo-2222222222222222';
+  const lateId = 'repo-3333333333333333';
+  const multiNode = (rootId: string, label: string) => ({
+    ...node('package.json', label),
+    id: `package:${rootId}/package.json`,
+  });
+  const view: ArchitectureGraph = {
+    version: 1,
+    nodes: [multiNode(apiId, '@shop/api'), multiNode(webId, '@shop/web')],
+    edges: [
+      {
+        id: `dependency:package:${webId}/package.json->package:${apiId}/package.json`,
+        type: 'declared-dependency',
+        source: `package:${webId}/package.json`,
+        target: `package:${apiId}/package.json`,
+        origin: 'discovered',
+        evidence: [{ path: 'package.json', kind: 'package-dependency' }],
+      },
+    ],
+    diagnostics: [],
+    inspectedEntries: 2,
+  };
+  const scan: RevisionScan = {
+    roots: ['/w/api', '/w/web', '/w/late'],
+    repositories: [
+      { id: apiId, label: 'api', path: '', nested: false },
+      { id: webId, label: 'web', path: '', nested: false },
+      { id: lateId, label: 'late', path: '', nested: false, reached: false },
+    ],
+    manifests: [
+      { rootId: apiId, repositoryId: apiId, path: 'package.json' },
+      { rootId: webId, repositoryId: webId, path: 'package.json' },
+    ],
+    truncated: null,
+  };
+  const revision = buildGraphRevision(view, scan, ids);
+  expect(createRevision(revision).ok).toBe(true);
+  const hash = (text: string) => createHash('sha256').update(text).digest('hex').slice(0, 16);
+  expect(revision.nodes.map((n) => [n.id, n.repositoryId])).toEqual([
+    [`mod-${hash(`${apiId}/package.json`)}`, apiId],
+    [`mod-${hash(`${webId}/package.json`)}`, webId],
+  ]);
+  expect(new Set(revision.evidence.map((e) => e.id)).size).toBe(revision.evidence.length);
+  expect(revision.edges[0]).toMatchObject({
+    sourceId: revision.nodes[1]!.id,
+    targetId: revision.nodes[0]!.id,
+  });
+  expect(revision.repositories.map((r) => r.id)).toEqual([apiId, webId, lateId]);
+  expect(revision.status).toBe('partial');
+});
+
+test('the not-scanned diagnostic maps to budget-exhausted', () => {
+  const view: ArchitectureGraph = {
+    ...graph,
+    diagnostics: ['Repository not scanned: late. A budget ran out first.'],
+  };
+  const revision = buildGraphRevision(view, scanOf(view, 'demo'), ids);
+  expect(revision.diagnostics.map((d) => d.code)).toEqual(['budget-exhausted']);
 });

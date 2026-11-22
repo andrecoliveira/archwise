@@ -5,6 +5,8 @@ export interface GraphNode {
   readonly framework: string | null;
   readonly origin: 'discovered';
   readonly evidence: readonly { readonly path: string; readonly kind: string }[];
+  /** The owning repository; present only in multi-root workspaces. */
+  readonly repository?: { readonly id: string; readonly label: string };
 }
 export interface GraphEdge {
   readonly id: string;
@@ -39,7 +41,11 @@ function isNode(value: unknown): boolean {
     (value.framework === null || typeof value.framework === 'string') &&
     value.origin === 'discovered' &&
     Array.isArray(value.evidence) &&
-    value.evidence.every((item: unknown) => isEvidence(item))
+    value.evidence.every((item: unknown) => isEvidence(item)) &&
+    (value.repository === undefined ||
+      (isRecord(value.repository) &&
+        typeof value.repository.id === 'string' &&
+        typeof value.repository.label === 'string'))
   );
 }
 

@@ -1,6 +1,6 @@
 /*
  * Workspace inventory port. Discovery adapters implement it; use cases depend only on these
- * types. `InventoryResult.root` is the canonical absolute root: it stays in the process and is
+ * types. `InventoryResult.roots` are canonical absolute paths: they stay in the process and are
  * never serialized to outputs, the API or a revision.
  */
 
@@ -41,13 +41,22 @@ export const DEFAULT_BUDGETS: InventoryBudgets = Object.freeze({
 export interface InventoryRepository {
   readonly id: string;
   readonly label: string;
-  /** Path relative to the user root ('' for the root itself), '/'-separated. */
+  /** ID of the user root that contains this repository; its own ID for a user root. */
+  readonly rootId: string;
+  /** Path relative to that user root ('' for the root itself), '/'-separated. */
   readonly path: string;
   readonly nested: boolean;
+  /** False only for a user root a budget left unscanned. */
+  readonly reached: boolean;
+  readonly listedEntries: number;
+  readonly manifests: number;
+  readonly skipped: Readonly<Partial<Record<SkipReason, number>>>;
 }
 
 export interface InventoryManifest {
   readonly repositoryId: string;
+  /** ID of the user root the path is relative to. */
+  readonly rootId: string;
   /** Path relative to the user root, '/'-separated. */
   readonly path: string;
   readonly name: string;
@@ -64,8 +73,8 @@ export interface SkipSummary {
 
 export interface InventoryResult {
   readonly version: 2;
-  /** Canonical absolute user root; process-local, never serialized to outputs. */
-  readonly root: string;
+  /** Canonical absolute user roots in scan (ID) order; process-local, never serialized. */
+  readonly roots: readonly string[];
   readonly repositories: readonly InventoryRepository[];
   readonly manifests: readonly InventoryManifest[];
   readonly listedEntries: number;
@@ -76,14 +85,27 @@ export interface InventoryResult {
   readonly durationMs: number;
 }
 
+/** One user root as requested on the command line or in a workspace file. */
+export interface RootRequest {
+  readonly path: string;
+  readonly label?: string;
+}
+
+export interface InventoryProgress {
+  readonly listedEntries: number;
+  /** Label of the repository being scanned. */
+  readonly repository: string;
+  readonly elapsedMs: number;
+}
+
 export interface InventoryRequest {
-  readonly root: string;
+  readonly roots: readonly RootRequest[];
   readonly knownHomes: readonly string[];
   readonly budgets?: Partial<InventoryBudgets>;
   readonly signal?: AbortSignal;
   /** Milliseconds clock, injectable for time-budget tests. */
   readonly now?: () => number;
-  readonly onProgress?: (listedEntries: number) => void;
+  readonly onProgress?: (progress: InventoryProgress) => void;
 }
 
 export interface WorkspaceInventory {
@@ -103,9 +125,12 @@ export type InventoryRootFailure = 'not-found' | 'not-directory' | 'unreadable';
 /** A user root that cannot be scanned. Carries no path, so it is safe to log. */
 export class InventoryRootError extends Error {
   readonly reason: InventoryRootFailure;
-  constructor(reason: InventoryRootFailure) {
+  /** Index of the failing root in the request. */
+  readonly index: number;
+  constructor(reason: InventoryRootFailure, index = 0) {
     super(`Workspace root ${reason}`);
     this.name = 'InventoryRootError';
     this.reason = reason;
+    this.index = index;
   }
 }

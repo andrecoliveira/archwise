@@ -31,7 +31,7 @@ afterAll(async () => {
 });
 
 test('an unchanged single-root project keeps its view and revision identifiers', async () => {
-  const inventory = await filesystemInventory.inspect({ root, knownHomes: [] });
+  const inventory = await filesystemInventory.inspect({ roots: [{ path: root }], knownHomes: [] });
   const graph = buildArchitectureGraph(inventory);
   expect({ ...graph, inspectedEntries: 0 }).toEqual(baseline.view);
   const revision = buildGraphRevision(graph, inventory, {
@@ -43,4 +43,29 @@ test('an unchanged single-root project keeps its view and revision identifiers',
   expect(revision.nodes.map((n) => n.id)).toEqual(baseline.nodes);
   expect(revision.edges.map((e) => e.id)).toEqual(baseline.edges);
   expect(revision.evidence.map((e) => e.id)).toEqual(baseline.evidence);
+});
+
+test('a single root whose package lives in a submodule keeps the same view and IDs', async () => {
+  const marker = join(root, 'packages/core/.git');
+  await writeFile(marker, 'gitdir: ../../.git/modules/core');
+  try {
+    const inventory = await filesystemInventory.inspect({
+      roots: [{ path: root }],
+      knownHomes: [],
+    });
+    expect(inventory.repositories.filter((r) => r.nested)).toHaveLength(1);
+    const graph = buildArchitectureGraph(inventory);
+    expect({ ...graph, inspectedEntries: 0 }).toEqual(baseline.view);
+    expect(graph.nodes.every((n) => !('repository' in n))).toBe(true);
+    const revision = buildGraphRevision(graph, inventory, {
+      revisionId: 'rev-1',
+      workspaceId: 'ws-1',
+      parentRevisionId: null,
+      createdAt: '2026-11-16T00:00:00.000Z',
+    });
+    expect(revision.nodes.map((n) => n.id)).toEqual(baseline.nodes);
+    expect(revision.evidence.map((e) => e.id)).toEqual(baseline.evidence);
+  } finally {
+    await rm(marker);
+  }
 });
