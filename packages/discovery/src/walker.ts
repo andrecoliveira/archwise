@@ -17,6 +17,7 @@ import {
 import { LIMITS, checkRelativePath, compareCodeUnits, redactSensitiveText } from '@archwise/domain';
 import { isIgnored, parseGitignore, type IgnoreRules } from './gitignore.js';
 import { parseManifest } from './manifest.js';
+import { labelOf, resolveRoot, resolvedHomes } from './roots.js';
 
 export const BUILTIN_EXCLUSIONS: ReadonlySet<string> = new Set([
   '.git',
@@ -47,32 +48,6 @@ const code = (error: unknown): string | undefined =>
 function isWithin(root: string, target: string): boolean {
   const rel = relative(root, target);
   return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
-}
-
-function labelOf(name: string, knownHomes: readonly string[], fallback: string): string {
-  const redacted = redactSensitiveText(name, knownHomes);
-  const trimmed = Array.from(redacted).slice(0, LIMITS.label).join('');
-  return trimmed.length > 0 ? trimmed : fallback;
-}
-
-async function resolveRoot(input: string): Promise<string> {
-  let root: string;
-  try {
-    root = await realpath(resolve(input));
-  } catch (error) {
-    throw new InventoryRootError(code(error) === 'ENOENT' ? 'not-found' : 'unreadable');
-  }
-  if (!(await lstat(root)).isDirectory()) throw new InventoryRootError('not-directory');
-  return root;
-}
-
-async function resolvedHomes(homes: readonly string[]): Promise<string[]> {
-  const all = new Set<string>();
-  for (const home of homes) {
-    all.add(home);
-    all.add(await realpath(home).catch(() => home));
-  }
-  return [...all];
 }
 
 interface Frame {

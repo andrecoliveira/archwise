@@ -9,3 +9,4 @@ export * from './sandbox-text.js';
 export * from './session-service.js';
 export * from './memory-store.js';
 export * from './inventory.js';
+export * from './workspace-key.js';

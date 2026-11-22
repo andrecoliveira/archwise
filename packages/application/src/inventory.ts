@@ -76,6 +76,19 @@ export interface InventoryResult {
   readonly durationMs: number;
 }
 
+/** One user root as requested on the command line or in a workspace file. */
+export interface RootRequest {
+  readonly path: string;
+  readonly label?: string;
+}
+
+export interface InventoryProgress {
+  readonly listedEntries: number;
+  /** Label of the repository being scanned. */
+  readonly repository: string;
+  readonly elapsedMs: number;
+}
+
 export interface InventoryRequest {
   readonly root: string;
   readonly knownHomes: readonly string[];
@@ -103,9 +116,12 @@ export type InventoryRootFailure = 'not-found' | 'not-directory' | 'unreadable';
 /** A user root that cannot be scanned. Carries no path, so it is safe to log. */
 export class InventoryRootError extends Error {
   readonly reason: InventoryRootFailure;
-  constructor(reason: InventoryRootFailure) {
+  /** Index of the failing root in the request. */
+  readonly index: number;
+  constructor(reason: InventoryRootFailure, index = 0) {
     super(`Workspace root ${reason}`);
     this.name = 'InventoryRootError';
     this.reason = reason;
+    this.index = index;
   }
 }
