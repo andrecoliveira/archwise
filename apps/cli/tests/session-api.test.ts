@@ -34,6 +34,7 @@ function service(): SessionService {
         buildGraphRevision(
           graph,
           {
+            roots: ['/secret/absolute/root'],
             repositories: [{ id: 'repo-root', label: 'root', path: '', nested: false }],
             manifests: [],
             truncated: null,

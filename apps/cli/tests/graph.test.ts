@@ -1,5 +1,5 @@
-import { expect, test } from 'vitest';
-import { buildArchitectureGraph } from '../src/graph.js';
+import { describe, expect, test } from 'vitest';
+import { buildArchitectureGraph, viewNodeId } from '../src/graph.js';
 import type { InventoryManifest, InventoryResult } from '@archwise/application';
 import { repository } from './inventory-fixture.js';
 
@@ -72,4 +72,84 @@ test('a truncated scan is visible as a graph diagnostic', () => {
   const graph = buildArchitectureGraph({ ...sample, truncated: 'time' });
   expect(graph.diagnostics).toContain('Scan truncated: time budget reached. Results are partial.');
   expect(graph.inspectedEntries).toBe(10);
+});
+
+describe('several roots', () => {
+  const apiId = 'repo-1111111111111111';
+  const webId = 'repo-2222222222222222';
+  const inRoot = (
+    rootId: string,
+    name: string,
+    dependencies: string[] = [],
+    path = 'package.json',
+  ): InventoryManifest => ({
+    ...manifest(path, name, null, dependencies),
+    repositoryId: rootId,
+    rootId,
+  });
+  const multi = (manifests: InventoryManifest[]): InventoryResult => ({
+    ...sample,
+    roots: ['/w/api', '/w/web'],
+    repositories: [
+      repository({ id: apiId, rootId: apiId, label: 'api', path: '', nested: false }),
+      repository({ id: webId, rootId: webId, label: 'web', path: '', nested: false }),
+    ],
+    manifests,
+  });
+
+  test('IDs carry the user-root ID and dependencies cross repositories', () => {
+    const graph = buildArchitectureGraph(
+      multi([inRoot(apiId, '@shop/api'), inRoot(webId, '@shop/web', ['@shop/api'])]),
+    );
+    expect(graph.nodes.map((n) => n.id)).toEqual([
+      `package:${apiId}/package.json`,
+      `package:${webId}/package.json`,
+    ]);
+    expect(graph.edges.map((e) => e.id)).toEqual([
+      `dependency:package:${webId}/package.json->package:${apiId}/package.json`,
+    ]);
+    expect(graph.nodes.map((n) => n.repository)).toEqual([
+      { id: apiId, label: 'api' },
+      { id: webId, label: 'web' },
+    ]);
+    expect(graph.nodes.map((n) => n.evidence[0].path)).toEqual(['package.json', 'package.json']);
+  });
+
+  test('the same package name in two repositories is ambiguous, with prefixed paths', () => {
+    const graph = buildArchitectureGraph(
+      multi([
+        inRoot(apiId, '@shop/x'),
+        inRoot(webId, '@shop/x'),
+        inRoot(webId, 'u', ['@shop/x'], 'u/package.json'),
+      ]),
+    );
+    expect(graph.nodes).toHaveLength(3);
+    expect(graph.edges).toEqual([]);
+    expect(graph.diagnostics).toContain(
+      'Ambiguous package name: @shop/x (api/package.json, web/package.json)',
+    );
+    expect(graph.diagnostics).toContain(
+      'Unresolved dependency @shop/x in web/u/package.json: multiple workspace matches',
+    );
+  });
+
+  test('viewNodeId keeps single-root IDs', () => {
+    expect(viewNodeId({ rootId: 'repo-root', path: 'a/package.json' }, false)).toBe(
+      'package:a/package.json',
+    );
+    expect(viewNodeId({ rootId: apiId, path: 'a/package.json' }, true)).toBe(
+      `package:${apiId}/a/package.json`,
+    );
+  });
+
+  test('a single root with nested repositories has no repository field', () => {
+    const graph = buildArchitectureGraph({
+      ...sample,
+      repositories: [
+        ...sample.repositories,
+        repository({ id: 'repo-3333333333333333', label: 'sub', path: 'libs/sub', nested: true }),
+      ],
+    });
+    expect(graph.nodes.every((n) => !('repository' in n))).toBe(true);
+  });
 });

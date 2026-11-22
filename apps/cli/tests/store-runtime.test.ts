@@ -23,6 +23,7 @@ const temp = (prefix: string) => {
 };
 
 const scanLabelled = (label: string) => ({
+  roots: ['/r'],
   repositories: [{ id: 'repo-root', label, path: '', nested: false }],
   manifests: [],
   truncated: null,
