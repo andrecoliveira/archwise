@@ -2,6 +2,7 @@ import { expect, test } from 'vitest';
 import { request } from 'node:http';
 import { startLocalGraphServer } from '../src/local-server.js';
 import type { ArchitectureGraph } from '../src/graph.js';
+import type { ScanSummary } from '../src/inventory-output.js';
 
 const graph: ArchitectureGraph = {
   version: 1,
@@ -93,4 +94,52 @@ test('rejects missing compiled browser assets with actionable error', async () =
   await expect(
     startLocalGraphServer(graph, { webDistPath: '/archwise/not-built' }),
   ).rejects.toThrow('Build @archwise/web');
+});
+
+const summary: ScanSummary = {
+  version: 1,
+  listedEntries: 120,
+  skipped: { 'ignored-builtin': 3 },
+  truncated: null,
+  repositories: [
+    {
+      id: 'repo-root',
+      label: 'shop',
+      nested: false,
+      reached: true,
+      listedEntries: 120,
+      manifests: 1,
+      skipped: { 'ignored-builtin': 3 },
+    },
+  ],
+};
+
+async function signIn(server: { bootstrapUrl: string }): Promise<string> {
+  const bootstrap = await fetch(server.bootstrapUrl, { redirect: 'manual' });
+  return bootstrap.headers.get('set-cookie')!.split(';')[0]!;
+}
+
+test('the scan summary is served behind the session like the graph', async () => {
+  const server = await startLocalGraphServer(graph, { scan: summary });
+  try {
+    expect((await fetch(`${server.address}/api/v1/scan`)).status).toBe(401);
+    const cookie = await signIn(server);
+    const response = await fetch(`${server.address}/api/v1/scan`, { headers: { cookie } });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(summary);
+  } finally {
+    await server.close();
+  }
+});
+
+test('without a scan summary the route is not found', async () => {
+  const server = await startLocalGraphServer(graph);
+  try {
+    const cookie = await signIn(server);
+    const response = await fetch(`${server.address}/api/v1/scan`, { headers: { cookie } });
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ error: 'Not found' });
+  } finally {
+    await server.close();
+  }
 });

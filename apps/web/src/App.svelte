@@ -16,9 +16,18 @@
   import { CATALOG_GROUPS, searchCatalog } from './component-catalog.js';
   import { getCoachQuestions } from './architecture-coach.js';
   import { isGraph, type Graph } from './graph-types.js';
+  import {
+    isScanSummary,
+    nodeDisplayLabel,
+    repositoryLines,
+    scanHeadline,
+    skippedLine,
+    type ScanSummaryView,
+  } from './scan-summary.js';
   import './studio.css';
 
   let graphData = $state<Graph | null>(null);
+  let scan = $state<ScanSummaryView | null>(null);
   let loading = $state(true);
   let loadError = $state<string | null>(null);
   let selectedId: string | null = $state(null);
@@ -76,6 +85,17 @@
     'Your latest changes are not saved yet. Retry saving, or export them as JSON, before switching.';
   let noticeError = $state('');
 
+  /** The scan summary is optional: an older server or a failed request just hides it. */
+  async function loadScan(signal: AbortSignal): Promise<void> {
+    try {
+      const response = await fetch('/api/v1/scan', { credentials: 'same-origin', signal });
+      const payload: unknown = response.ok ? await response.json() : null;
+      if (!signal.aborted) scan = isScanSummary(payload) ? payload : null;
+    } catch {
+      if (!signal.aborted) scan = null;
+    }
+  }
+
   async function loadGraph() {
     // Never drop an edit made just before a refresh or a session switch.
     if (autosave && !(await autosave.flush())) return;
@@ -98,6 +118,7 @@
       }
       const payload: unknown = await response.json();
       if (!isGraph(payload)) throw new Error('Unsupported graph format.');
+      void loadScan(signal);
       const current = await getCurrent();
       let detail: { baseIsCurrent: boolean; view: unknown; sandbox: string } | null = null;
       if (current.ok && current.value.storeEnabled && current.value.persisted && current.value.id) {
@@ -191,6 +212,18 @@
       {#if storeEnabled}
         <button type="button" onclick={() => (sessionsOpen = !sessionsOpen)} aria-expanded={sessionsOpen}>Sessions</button>
       {/if}
+      {#if scan}
+        <details class="scan-summary">
+          <summary>{scanHeadline(scan)}</summary>
+          <div class="scan-summary-panel" aria-label="Scan summary">
+            <ul>{#each repositoryLines(scan) as line, i (i)}<li>{line}</li>{/each}</ul>
+            {#if skippedLine(scan)}<p>{skippedLine(scan)}</p>{/if}
+            {#if scan.truncated}
+              <p role="status">Scan truncated: {scan.truncated} budget reached. Results are partial.</p>
+            {/if}
+          </div>
+        </details>
+      {/if}
       <small>● Local · Read-only project inspection</small>
     </div>
   </header>
@@ -236,7 +269,7 @@
         <nav aria-label="Discovered packages">
           {#each visible as node (node.id)}
             <button type="button" class="node-item" class:active={selectedId === node.id}
-              onclick={() => (selectedId = node.id)}>{node.label}</button>
+              onclick={() => (selectedId = node.id)}>{nodeDisplayLabel(node)}</button>
           {/each}
         </nav>
         <p class="sidebar-hint">Discovered dependencies are evidence-based, not measured runtime calls.</p>
@@ -287,6 +320,7 @@
         <h2>{selected.label}</h2>
         <p>Discovered · Manifest evidence</p>
         <p>Framework: {selected.framework ?? 'Not identified'}</p>
+        {#if selected.repository}<p>Repository: {selected.repository.label}</p>{/if}
         <p>Internal dependencies: {graph?.edges.filter((edge) => edge.source === selected.id).length ?? 0}</p>
         <h2>Evidence</h2>
         <ul>{#each selected.evidence as item (`${item.path}:${item.kind}`)}

@@ -5,6 +5,7 @@ import { extname, relative, resolve, sep } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import type { SessionService } from '@archwise/application';
 import type { ArchitectureGraph } from './graph.js';
+import type { ScanSummary } from './inventory-output.js';
 import { json } from './http.js';
 import { handleSessionRoute, isSessionRoute } from './session-routes.js';
 
@@ -33,6 +34,8 @@ export interface ServerOptions {
   readonly webDistPath?: string;
   /** Local session store; null or absent runs without persistence. */
   readonly sessions?: SessionService | null;
+  /** Counts of the scan that produced the graph, served at /api/v1/scan. */
+  readonly scan?: ScanSummary;
 }
 
 function equalSecret(value: string | undefined, secret: string): boolean {
@@ -197,6 +200,10 @@ export async function startLocalGraphServer(
       }
       if (url.pathname === '/api/v1/graph') {
         json(res, 200, graph, head);
+        return;
+      }
+      if (url.pathname === '/api/v1/scan' && options.scan) {
+        json(res, 200, options.scan, head);
         return;
       }
       if (url.pathname === '/api/v1/health') {
