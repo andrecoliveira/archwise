@@ -1416,3 +1416,35 @@ aside {
   padding: 0 6px;
   color: var(--ink-2);
 }
+
+/* Discovered relations: dashed when inferred; accent when focused; the rest dims during focus. */
+.relation {
+  fill: none;
+  stroke: var(--ink-2);
+  stroke-width: 1.8;
+}
+.relation.inferred {
+  stroke: var(--ink-3);
+}
+.relation.focused {
+  stroke: var(--accent);
+  stroke-width: 2.4;
+}
+.relation-arrow {
+  fill: var(--ink-2);
+}
+.relation-arrow.focused {
+  fill: var(--accent);
+}
+.relation-dot {
+  fill: var(--accent);
+  stroke: var(--stroke);
+  stroke-width: 1.2;
+}
+.relation-group.dimmed {
+  opacity: 0.25;
+}
+.iso-node.dimmed,
+.discovered-node.dimmed {
+  opacity: 0.35;
+}
