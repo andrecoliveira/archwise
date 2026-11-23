@@ -166,7 +166,7 @@ export function runAnalyzers(request: RunAnalyzersRequest): AnalysisResult {
       }
       if (output.status === 'partial') status = 'partial';
       coverage.push({ repositoryId, analyzerId, analyzerVersion, status });
-      for (const fact of output.facts as Fact[]) {
+      for (const fact of output.facts) {
         facts.push({ analyzerId, analyzerVersion, repositoryId, fact });
       }
       gaps.push(...own);
