@@ -465,7 +465,7 @@ A fresh reader planned from this document and raised eight questions. Seven are 
    - Excerpts work without the session store. The server gives each evidence item of its **latest scan** a deterministic identifier, a hash of root, path, rule and lines. The identifier lives in server memory only and is sent with the view graph.
    - In a historical session, Show lines is offered only for evidence whose identifier also exists in the latest scan. Any other evidence shows "Not available: this evidence is from an earlier scan."
 3. *(owner, §12.2)*
-4. **The revision chip** has no revision number. It shows "scanned <relative time> · complete | partial", taking the scan time from a new `scannedAt` field on `/api/v1/graph`. It adds "· not saved" when no revision was recorded (store off or disabled). The relative time updates every minute.
+4. **The revision chip** has no revision number. It shows "scanned <relative time> · complete | partial", taking the scan time from a new `scannedAt` field on `/api/v1/scan`. It adds "· not saved" when no revision was recorded (store off or disabled). The relative time updates every minute.
 5. **Unknown is render-only for now.** The dotted style and the `?` piece are built and tested with fixtures, but the view-graph contract is not widened. Widening happens in the PR that first emits `unknown` or a new kind.
 6. **Several chains through hidden libraries.** An indirect relation uses its **strongest** chain: the fewest Inferred steps, then the shortest. The inspector lists the other chains under "Also through …". Its confidence is that of the chain it uses.
 7. **Sandbox pieces.**

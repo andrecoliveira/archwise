@@ -105,6 +105,7 @@ test('rejects missing compiled browser assets with actionable error', async () =
 
 const summary: ScanSummary = {
   version: 1,
+  scannedAt: '2026-11-23T00:00:00.000Z',
   listedEntries: 120,
   skipped: { 'ignored-builtin': 3 },
   truncated: null,

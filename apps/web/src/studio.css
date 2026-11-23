@@ -878,3 +878,53 @@ aside {
 .studio > main.sandbox-workspace > .discovered-inspector {
   display: none;
 }
+
+/* Revision chip: when the scan ran and whether it is complete. */
+.revision-chip {
+  position: relative;
+  font-size: 12px;
+}
+.revision-chip > summary {
+  list-style: none;
+  cursor: pointer;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 10px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.revision-chip > summary::-webkit-details-marker {
+  display: none;
+}
+.revision-chip-status {
+  color: var(--ok);
+  margin-right: 4px;
+}
+.revision-chip[data-status='partial'] > summary {
+  border-color: var(--warn);
+}
+.revision-chip[data-status='partial'] .revision-chip-status {
+  color: var(--warn);
+}
+.revision-chip-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 40;
+  width: max-content;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 12px 16px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 3px 3px 0 var(--shadow);
+}
+.revision-chip-panel h2 {
+  margin: 0 0 6px;
+}
+.revision-chip-panel ul {
+  margin: 4px 0;
+}
+.revision-chip-panel p {
+  margin: 6px 0 0;
+}

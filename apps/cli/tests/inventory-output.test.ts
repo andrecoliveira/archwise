@@ -265,9 +265,10 @@ describe('several repositories', () => {
   });
 
   test('the scan summary has counts only', () => {
-    const summary = scanSummary(multi);
+    const summary = scanSummary(multi, '2026-11-23T00:00:00.000Z');
     expect(summary).toEqual({
       version: 1,
+      scannedAt: '2026-11-23T00:00:00.000Z',
       listedEntries: 120,
       skipped: { 'ignored-builtin': 3 },
       truncated: 'entries',

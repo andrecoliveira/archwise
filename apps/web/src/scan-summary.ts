@@ -31,6 +31,8 @@ export interface ScanRepositoryView {
 /** `/api/v1/scan`: counts of the scan that produced the graph, never paths. */
 export interface ScanSummaryView {
   readonly version: 1;
+  /** When the scan started (ISO 8601). Absent from servers older than the Studio redesign. */
+  readonly scannedAt?: string;
   readonly listedEntries: number;
   readonly skipped: Counts;
   readonly truncated: string | null;
@@ -64,6 +66,8 @@ export function isScanSummary(value: unknown): value is ScanSummaryView {
   return (
     isRecord(value) &&
     value.version === 1 &&
+    (value.scannedAt === undefined ||
+      (typeof value.scannedAt === 'string' && !Number.isNaN(Date.parse(value.scannedAt)))) &&
     isCount(value.listedEntries) &&
     isCounts(value.skipped) &&
     (value.truncated === null || typeof value.truncated === 'string') &&

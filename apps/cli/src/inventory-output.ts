@@ -162,6 +162,8 @@ export function scanRecord(
 /** What the Studio's scan summary shows: counts and codes per repository, never paths. */
 export interface ScanSummary {
   readonly version: 1;
+  /** When the scan started (ISO 8601), so the Studio can say how fresh it is. */
+  readonly scannedAt: string;
   readonly listedEntries: number;
   readonly skipped: Readonly<Partial<Record<SkipReason, number>>>;
   readonly truncated: BudgetName | null;
@@ -176,7 +178,7 @@ export interface ScanSummary {
   }[];
 }
 
-export function scanSummary(result: InventoryResult): ScanSummary {
+export function scanSummary(result: InventoryResult, scannedAt: string): ScanSummary {
   const skipped: Partial<Record<SkipReason, number>> = {};
   for (const reason of SKIP_REASONS) {
     const count = result.skipped[reason]?.count;
@@ -184,6 +186,7 @@ export function scanSummary(result: InventoryResult): ScanSummary {
   }
   return {
     version: 1,
+    scannedAt,
     listedEntries: result.listedEntries,
     skipped,
     truncated: result.truncated,
