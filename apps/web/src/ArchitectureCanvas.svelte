@@ -90,6 +90,16 @@
   const nodeTypes = { architecture: ArchitectureNode, discovered: DiscoveredNode, iso: IsoNode };
   const shown = $derived(view ?? graph);
   const edgeTypes = { semantic: ArchitectureEdge, discovered: DiscoveredEdge };
+  // Switching pieces/cards re-frames the view. Explore also re-lays out; Sandbox keeps positions.
+  let previousStyle = untrack(() => nodeStyle);
+  $effect(() => {
+    const style = nodeStyle;
+    untrack(() => {
+      if (style === previousStyle) return;
+      previousStyle = style;
+      if (mode === 'sandbox') fitTrigger += 1;
+    });
+  });
   let keys: CanvasKeys | null = $state(null);
   /** Canvas keys run in the capture phase so arrow keys pan the view and never move a node. */
   function onCanvasKey(event: KeyboardEvent): void {

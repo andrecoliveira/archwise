@@ -168,6 +168,60 @@ try {
       path: join(process.env.ARCHWISE_SMOKE_SCREENSHOT_DIR, 'sandbox-connections.png'),
     });
   }
+  // Sandbox in pieces: proposed components stand on hatched plinths with a Proposed tag.
+  await page
+    .getByRole('group', { name: 'Node style' })
+    .getByRole('button', { name: 'Pieces' })
+    .click();
+  await page.waitForFunction(
+    () => globalThis.document.querySelectorAll('.iso-node.proposed').length === 3,
+  );
+  assert.equal(
+    await page.locator('.proposed-tag').count(),
+    3,
+    'Every proposed piece says Proposed',
+  );
+  // Switching style re-frames the view (positions stay): every proposed piece is visible.
+  await page.waitForFunction(
+    () => {
+      const pane = globalThis.document.querySelector('.svelte-flow')?.getBoundingClientRect();
+      const pieces = [...globalThis.document.querySelectorAll('.iso-node.proposed')];
+      return (
+        pane !== undefined &&
+        pieces.length === 3 &&
+        pieces.every((n) => {
+          const b = n.getBoundingClientRect();
+          return (
+            b.top >= pane.top - 1 &&
+            b.bottom <= pane.bottom + 1 &&
+            b.left >= pane.left - 1 &&
+            b.right <= pane.right + 1
+          );
+        })
+      );
+    },
+    undefined,
+    { timeout: 5_000 },
+  );
+  assert.equal(
+    await page.locator('.pl .hatched').count(),
+    3,
+    'Proposed pieces stand on hatched plinths',
+  );
+  // Connections survive the style switch (they re-render with the new nodes).
+  await page.waitForFunction(
+    () => globalThis.document.querySelectorAll('.svelte-flow__edge').length === 2,
+  );
+  if (process.env.ARCHWISE_SMOKE_SCREENSHOT_DIR) {
+    await page.screenshot({
+      path: join(process.env.ARCHWISE_SMOKE_SCREENSHOT_DIR, 'sandbox-pieces.png'),
+    });
+  }
+  await page
+    .getByRole('group', { name: 'Node style' })
+    .getByRole('button', { name: 'Cards' })
+    .click();
+  await page.locator('.archwise-node-head').first().waitFor();
   if (dragFallbacks > 0) {
     console.warn(
       `${dragFallbacks} connections required click-to-connect; drag remains unverified.`,
@@ -602,8 +656,122 @@ try {
     });
     await discoveredInspector.getByText('Kind: Service').waitFor();
     await discoveredInspector.getByText('Compose services: api').waitFor();
+
+    // The System view draws pieces; the selection dims what is not connected to it.
+    assert.ok(
+      (await systemPage.locator('.iso-piece').count()) >= 7,
+      'The System view draws pieces',
+    );
+    await systemPage.waitForFunction(
+      () => globalThis.document.querySelectorAll('.iso-node.dimmed').length > 0,
+    );
+    // Focused relations carry a dot (r = 5) whose centre stays 22 units from the end, so it never
+    // covers the 16.8-unit arrowhead.
+    const closest = await systemPage.evaluate(async () => {
+      const doc = globalThis.document;
+      let min = Infinity;
+      for (let i = 0; i < 40; i += 1) {
+        for (const group of doc.querySelectorAll('.relation-group')) {
+          const line = group.querySelector('path.relation.focused');
+          const dot = group.querySelector('circle.relation-dot');
+          if (!line || !dot) continue;
+          const end = line.getPointAtLength(line.getTotalLength());
+          const m = line.getScreenCTM();
+          const ex = m.a * end.x + m.c * end.y + m.e;
+          const ey = m.b * end.x + m.d * end.y + m.f;
+          const box = dot.getBoundingClientRect();
+          const distance =
+            Math.hypot(box.x + box.width / 2 - ex, box.y + box.height / 2 - ey) / m.a;
+          min = Math.min(min, distance);
+        }
+        await new Promise((resolve) => globalThis.setTimeout(resolve, 50));
+      }
+      return min;
+    });
+    assert.ok(
+      closest !== Infinity && closest >= 21.5,
+      `The focus dot stays off the arrowhead (closest ${closest})`,
+    );
+
+    // Keyboard: + zooms, arrows pan without moving nodes, 0 fits, Enter selects.
+    const transform = () =>
+      systemPage.evaluate(
+        () =>
+          globalThis.getComputedStyle(globalThis.document.querySelector('.svelte-flow__viewport'))
+            .transform,
+      );
+    const firstNodeAt = () =>
+      systemPage.evaluate(
+        () => globalThis.document.querySelector('.svelte-flow__node').style.transform,
+      );
+    await systemPage.locator('.viewport').focus();
+    const zoomBefore = await transform();
+    await systemPage.keyboard.press('+');
+    assert.notEqual(await transform(), zoomBefore, '+ zooms in');
+    const nodeBefore = await firstNodeAt();
+    const panBefore = await transform();
+    await systemPage.keyboard.press('ArrowLeft');
+    assert.notEqual(await transform(), panBefore, 'An arrow key pans the view');
+    assert.equal(await firstNodeAt(), nodeBefore, 'An arrow key never moves a node');
+    await systemPage.keyboard.press('0');
+    await systemPage.waitForFunction(() => {
+      const pane = globalThis.document.querySelector('.svelte-flow')?.getBoundingClientRect();
+      return [...globalThis.document.querySelectorAll('.svelte-flow__node')].every((n) => {
+        const b = n.getBoundingClientRect();
+        return (
+          pane &&
+          b.left >= pane.left - 1 &&
+          b.right <= pane.right + 1 &&
+          b.top >= pane.top - 1 &&
+          b.bottom <= pane.bottom + 1
+        );
+      });
+    });
+    await canvasNodes.filter({ hasText: '@shop/worker' }).first().focus();
+    await systemPage.keyboard.press('Enter');
+    await discoveredInspector.getByRole('heading', { name: '@shop/worker' }).waitFor();
+
+    // Pieces or cards: the choice persists across a reload.
+    await systemPage
+      .getByRole('group', { name: 'Node style' })
+      .getByRole('button', { name: 'Cards' })
+      .click();
+    await systemPage.waitForFunction(
+      () => globalThis.document.querySelectorAll('.iso-piece').length === 0,
+    );
+    await systemPage.reload({ waitUntil: 'networkidle' });
+    await canvasNodes.first().waitFor();
+    assert.equal(await systemPage.locator('.iso-piece').count(), 0, 'Cards survive a reload');
+    await systemPage
+      .getByRole('group', { name: 'Node style' })
+      .getByRole('button', { name: 'Pieces' })
+      .click();
+    await systemPage.waitForFunction(
+      () => globalThis.document.querySelectorAll('.iso-piece').length >= 7,
+    );
+
+    // Reduced motion: nothing animates.
+    const calm = await browser.newContext({
+      reducedMotion: 'reduce',
+      viewport: { width: 1440, height: 900 },
+    });
+    await calm.addCookies(await systemPage.context().cookies());
+    const calmPage = await calm.newPage();
+    calmPage.on('pageerror', (error) => errors.push(error.message));
+    await calmPage.goto(origin + '/', { waitUntil: 'networkidle' });
+    await calmPage.locator('.iso-piece').first().waitFor();
+    await calmPage.locator('.svelte-flow__node').filter({ hasText: '@shop/api' }).first().click();
+    await calmPage.waitForTimeout(500);
+    assert.equal(
+      await calmPage.locator('animate, animateTransform, animateMotion').count(),
+      0,
+      'Reduced motion renders no animation',
+    );
+    await calm.close();
+
     await viewControl.getByRole('button', { name: 'All packages' }).click();
     await canvasNodes.filter({ hasText: '@shop/db' }).first().waitFor();
+    assert.equal(await systemPage.locator('.iso-piece').count(), 0, 'All packages opens in cards');
     const scanNotesPanel = systemPage.getByRole('region', { name: 'Scan notes' });
     await scanNotesPanel.getByText('1 file not analyzed').waitFor();
     await scanNotesPanel.getByText('compose.prod.yaml').waitFor();

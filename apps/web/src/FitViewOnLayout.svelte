@@ -7,8 +7,10 @@
 
   $effect(() => {
     if (trigger === 0) return;
-    // Wait one frame so the laid-out positions are measured before fitting.
-    const frame = requestAnimationFrame(() => void fitView({ padding: 0.15, maxZoom: 1 }));
+    // Wait two frames so new positions and node sizes are measured before fitting.
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => void fitView({ padding: 0.15, maxZoom: 1 }));
+    });
     return () => cancelAnimationFrame(frame);
   });
 </script>

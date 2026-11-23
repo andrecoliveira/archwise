@@ -78,3 +78,11 @@ test('dotStopFraction stops before the arrowhead', () => {
   expect(dotStopFraction(200)).toEqual({ from: 0.03, to: 0.89 });
   expect(dotStopFraction(20)).toEqual({ from: 0, to: 0 });
 });
+
+test('dotStopFraction never rounds the stop toward the arrowhead', () => {
+  for (const length of [150, 300, 377, 640, 1200]) {
+    const { from, to } = dotStopFraction(length);
+    expect(length * (1 - to), `length ${length}`).toBeGreaterThanOrEqual(22);
+    expect(length * from, `length ${length}`).toBeGreaterThanOrEqual(6);
+  }
+});

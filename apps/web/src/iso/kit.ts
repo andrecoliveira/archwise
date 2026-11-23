@@ -158,5 +158,8 @@ export function cylinderGeometry(c: {
  */
 export function dotStopFraction(length: number, head = 22, tail = 6): { from: number; to: number } {
   if (length <= head + tail) return { from: 0, to: 0 };
-  return { from: round(tail / length), to: round(1 - head / length) };
+  // Round away from both ends (3 decimals), so rounding never moves the dot onto the arrowhead.
+  const from = Math.ceil((tail / length) * 1000) / 1000;
+  const to = Math.floor((1 - head / length) * 1000) / 1000;
+  return { from, to };
 }

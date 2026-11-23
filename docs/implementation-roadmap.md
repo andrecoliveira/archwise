@@ -34,9 +34,9 @@ Finalization does not mean development stops. It establishes a reliable open-sou
 
 ## Current state
 
-Snapshot as of 2026-11-23, after PRs #5 to #15, Phase 4 PR 1 and the first Studio redesign PR. Issues and milestones remain the live tracker.
+Snapshot as of 2026-11-23, after PRs #5 to #15, Phase 4 PR 1 and the first two Studio redesign PRs. Issues and milestones remain the live tracker.
 
-**Studio redesign (interlude before Phase 4 PR 2), PR 1 of 3 done:** design tokens with dark and light themes, the bundled font, the three-column layout with a top bar, Explore and Sandbox tabs, the revision chip, Scan notes and flat component cards. The next two PRs add the isometric pieces and canvas interactions, then the comprehension rules (readable reasons, relation wording, evidence excerpts). See the [spec](superpowers/specs/2026-11-23-studio-redesign-design.md).
+**Studio redesign (interlude before Phase 4 PR 2), PR 2 of 3 done.** PR 2 added the isometric pieces with a pieces/cards toggle, focus and travelling relation dots, the canvas keyboard, and reduced-motion support. PR 1 had added design tokens with dark and light themes, the bundled font, the three-column layout with a top bar, Explore and Sandbox tabs, the revision chip, Scan notes and flat component cards. The last PR adds the comprehension rules: readable reasons, relation wording and evidence excerpts. See the [spec](superpowers/specs/2026-11-23-studio-redesign-design.md).
 
 | Phase | State on `main` | What is missing for the exit gate |
 |---|---|---|
