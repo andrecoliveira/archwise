@@ -1,0 +1,419 @@
+{
+  "format": "archwise.graph",
+  "version": 1,
+  "revision": {
+    "id": "rev-1",
+    "workspaceId": "ws-1",
+    "parentRevisionId": null,
+    "createdAt": "2026-11-23T00:00:00.000Z",
+    "status": "complete",
+    "repositories": [
+      {
+        "id": "repo-root",
+        "label": "system-fixture"
+      }
+    ],
+    "coverage": [
+      {
+        "repositoryId": "repo-root",
+        "analyzerId": "docker-compose",
+        "analyzerVersion": "1.0.0",
+        "status": "complete"
+      },
+      {
+        "repositoryId": "repo-root",
+        "analyzerId": "node-manifest",
+        "analyzerVersion": "1.0.0",
+        "status": "complete"
+      },
+      {
+        "repositoryId": "repo-root",
+        "analyzerId": "node-roles",
+        "analyzerVersion": "1.0.0",
+        "status": "complete"
+      },
+      {
+        "repositoryId": "repo-root",
+        "analyzerId": "node-workspace",
+        "analyzerVersion": "1.0.0",
+        "status": "complete"
+      },
+      {
+        "repositoryId": "repo-root",
+        "analyzerId": "prisma-schema",
+        "analyzerVersion": "1.0.0",
+        "status": "complete"
+      }
+    ],
+    "evidence": [
+      {
+        "id": "ev-1ab32e9147675916",
+        "repositoryId": "repo-root",
+        "analyzerId": "docker-compose",
+        "analyzerVersion": "1.0.0",
+        "ruleId": "compose-image",
+        "path": "compose.yaml",
+        "lines": null
+      },
+      {
+        "id": "ev-26eea040748bfcfb",
+        "repositoryId": "repo-root",
+        "analyzerId": "node-roles",
+        "analyzerVersion": "1.0.0",
+        "ruleId": "framework-dependency",
+        "path": "examples/demo/package.json",
+        "lines": null
+      },
+      {
+        "id": "ev-37f89fe25ee83d35",
+        "repositoryId": "repo-root",
+        "analyzerId": "node-roles",
+        "analyzerVersion": "1.0.0",
+        "ruleId": "framework-dependency",
+        "path": "apps/api/package.json",
+        "lines": null
+      },
+      {
+        "id": "ev-3a68163e814fce13",
+        "repositoryId": "repo-root",
+        "analyzerId": "node-manifest",
+        "analyzerVersion": "1.0.0",
+        "ruleId": "package-manifest",
+        "path": "apps/worker/package.json",
+        "lines": null
+      },
+      {
+        "id": "ev-3e8e4a34f2a263e2",
+        "repositoryId": "repo-root",
+        "analyzerId": "docker-compose",
+        "analyzerVersion": "1.0.0",
+        "ruleId": "compose-depends-on",
+        "path": "compose.yaml",
+        "lines": null
+      },
+      {
+        "id": "ev-6d887993cf333fd0",
+        "repositoryId": "repo-root",
+        "analyzerId": "docker-compose",
+        "analyzerVersion": "1.0.0",
+        "ruleId": "compose-build",
+        "path": "compose.yaml",
+        "lines": null
+      },
+      {
+        "id": "ev-7ffdc9bcf7702bf4",
+        "repositoryId": "repo-root",
+        "analyzerId": "node-roles",
+        "analyzerVersion": "1.0.0",
+        "ruleId": "client-library",
+        "path": "packages/db/package.json",
+        "lines": null
+      },
+      {
+        "id": "ev-88efcc6167fc341c",
+        "repositoryId": "repo-root",
+        "analyzerId": "node-manifest",
+        "analyzerVersion": "1.0.0",
+        "ruleId": "package-manifest",
+        "path": "examples/demo/package.json",
+        "lines": null
+      },
+      {
+        "id": "ev-8ea786cf6227aaff",
+        "repositoryId": "repo-root",
+        "analyzerId": "node-manifest",
+        "analyzerVersion": "1.0.0",
+        "ruleId": "package-manifest",
+        "path": "apps/api/package.json",
+        "lines": null
+      },
+      {
+        "id": "ev-93791805e2adce81",
+        "repositoryId": "repo-root",
+        "analyzerId": "node-manifest",
+        "analyzerVersion": "1.0.0",
+        "ruleId": "package-manifest",
+        "path": "packages/db/package.json",
+        "lines": null
+      },
+      {
+        "id": "ev-982e7757488bc591",
+        "repositoryId": "repo-root",
+        "analyzerId": "node-roles",
+        "analyzerVersion": "1.0.0",
+        "ruleId": "client-library",
+        "path": "apps/api/package.json",
+        "lines": null
+      },
+      {
+        "id": "ev-9b845b993c8c7644",
+        "repositoryId": "repo-root",
+        "analyzerId": "node-roles",
+        "analyzerVersion": "1.0.0",
+        "ruleId": "client-library",
+        "path": "apps/worker/package.json",
+        "lines": null
+      },
+      {
+        "id": "ev-c4480ca02ca17390",
+        "repositoryId": "repo-root",
+        "analyzerId": "node-manifest",
+        "analyzerVersion": "1.0.0",
+        "ruleId": "package-manifest",
+        "path": "package.json",
+        "lines": null
+      },
+      {
+        "id": "ev-cbcd39e1767e612b",
+        "repositoryId": "repo-root",
+        "analyzerId": "prisma-schema",
+        "analyzerVersion": "1.0.0",
+        "ruleId": "prisma-datasource",
+        "path": "packages/db/prisma/schema.prisma",
+        "lines": {
+          "start": 2,
+          "end": 2
+        }
+      },
+      {
+        "id": "ev-ec64505b1798b169",
+        "repositoryId": "repo-root",
+        "analyzerId": "node-manifest",
+        "analyzerVersion": "1.0.0",
+        "ruleId": "package-dependency",
+        "path": "apps/api/package.json",
+        "lines": null
+      },
+      {
+        "id": "ev-f2dabac59b188215",
+        "repositoryId": "repo-root",
+        "analyzerId": "node-manifest",
+        "analyzerVersion": "1.0.0",
+        "ruleId": "package-manifest",
+        "path": "apps/web/package.json",
+        "lines": null
+      },
+      {
+        "id": "ev-faa6d22e69079887",
+        "repositoryId": "repo-root",
+        "analyzerId": "node-roles",
+        "analyzerVersion": "1.0.0",
+        "ruleId": "framework-dependency",
+        "path": "apps/web/package.json",
+        "lines": null
+      },
+      {
+        "id": "ev-fd047fd1687a38b5",
+        "repositoryId": "repo-root",
+        "analyzerId": "node-manifest",
+        "analyzerVersion": "1.0.0",
+        "ruleId": "package-dependency",
+        "path": "apps/worker/package.json",
+        "lines": null
+      }
+    ],
+    "nodes": [
+      {
+        "id": "ds-db8e1adb0bdbc2cd",
+        "kind": "datastore",
+        "label": "db",
+        "repositoryId": "repo-root",
+        "confidence": {
+          "level": "observed",
+          "reasons": ["compose-image"]
+        },
+        "evidenceIds": ["ev-1ab32e9147675916"]
+      },
+      {
+        "id": "ds-e861a6b8cf05ab49",
+        "kind": "datastore",
+        "label": "cache",
+        "repositoryId": "repo-root",
+        "confidence": {
+          "level": "observed",
+          "reasons": ["compose-image"]
+        },
+        "evidenceIds": ["ev-1ab32e9147675916"]
+      },
+      {
+        "id": "ext-98cc3d8e40c3c2ea",
+        "kind": "external-system",
+        "label": "Stripe",
+        "repositoryId": null,
+        "confidence": {
+          "level": "inferred",
+          "reasons": ["client-library"]
+        },
+        "evidenceIds": ["ev-982e7757488bc591"]
+      },
+      {
+        "id": "fe-14b60f636e1a2b00",
+        "kind": "frontend",
+        "label": "@shop/web",
+        "repositoryId": "repo-root",
+        "confidence": {
+          "level": "inferred",
+          "reasons": ["framework-dependency"]
+        },
+        "evidenceIds": ["ev-f2dabac59b188215", "ev-faa6d22e69079887"]
+      },
+      {
+        "id": "mod-7ae45ad102eab3b6",
+        "kind": "module",
+        "label": "shop",
+        "repositoryId": "repo-root",
+        "confidence": {
+          "level": "observed",
+          "reasons": ["manifest-declared"]
+        },
+        "evidenceIds": ["ev-c4480ca02ca17390"]
+      },
+      {
+        "id": "mod-c89735ad606b83e8",
+        "kind": "module",
+        "label": "@shop/db",
+        "repositoryId": "repo-root",
+        "confidence": {
+          "level": "observed",
+          "reasons": ["manifest-declared"]
+        },
+        "evidenceIds": ["ev-93791805e2adce81"]
+      },
+      {
+        "id": "q-af009e790557dc54",
+        "kind": "queue",
+        "label": "BullMQ",
+        "repositoryId": null,
+        "confidence": {
+          "level": "inferred",
+          "reasons": ["client-library"]
+        },
+        "evidenceIds": ["ev-9b845b993c8c7644"]
+      },
+      {
+        "id": "svc-2c40985d6d91eed8",
+        "kind": "service",
+        "label": "@shop/api",
+        "repositoryId": "repo-root",
+        "confidence": {
+          "level": "observed",
+          "reasons": ["compose-build", "framework-dependency"]
+        },
+        "evidenceIds": ["ev-37f89fe25ee83d35", "ev-6d887993cf333fd0", "ev-8ea786cf6227aaff"]
+      },
+      {
+        "id": "svc-efa3472835c6d9f8",
+        "kind": "service",
+        "label": "demo",
+        "repositoryId": "repo-root",
+        "confidence": {
+          "level": "inferred",
+          "reasons": ["framework-dependency"]
+        },
+        "evidenceIds": ["ev-26eea040748bfcfb", "ev-88efcc6167fc341c"]
+      },
+      {
+        "id": "svc-f9012e19553e72c0",
+        "kind": "service",
+        "label": "@shop/worker",
+        "repositoryId": "repo-root",
+        "confidence": {
+          "level": "observed",
+          "reasons": ["compose-build"]
+        },
+        "evidenceIds": ["ev-3a68163e814fce13", "ev-6d887993cf333fd0"]
+      }
+    ],
+    "edges": [
+      {
+        "id": "dep-13ad53f374470c52",
+        "kind": "depends-on",
+        "sourceId": "svc-2c40985d6d91eed8",
+        "targetId": "ds-e861a6b8cf05ab49",
+        "confidence": {
+          "level": "observed",
+          "reasons": ["compose-depends-on"]
+        },
+        "evidenceIds": ["ev-3e8e4a34f2a263e2"]
+      },
+      {
+        "id": "dep-15c8b4e7d5b2417c",
+        "kind": "depends-on",
+        "sourceId": "svc-f9012e19553e72c0",
+        "targetId": "mod-c89735ad606b83e8",
+        "confidence": {
+          "level": "observed",
+          "reasons": ["dependency-declared"]
+        },
+        "evidenceIds": ["ev-fd047fd1687a38b5"]
+      },
+      {
+        "id": "dep-3cfc5f95df8fbd42",
+        "kind": "depends-on",
+        "sourceId": "svc-2c40985d6d91eed8",
+        "targetId": "mod-c89735ad606b83e8",
+        "confidence": {
+          "level": "observed",
+          "reasons": ["dependency-declared"]
+        },
+        "evidenceIds": ["ev-ec64505b1798b169"]
+      },
+      {
+        "id": "dep-5630374829778d23",
+        "kind": "depends-on",
+        "sourceId": "svc-f9012e19553e72c0",
+        "targetId": "q-af009e790557dc54",
+        "confidence": {
+          "level": "inferred",
+          "reasons": ["client-library"]
+        },
+        "evidenceIds": ["ev-9b845b993c8c7644"]
+      },
+      {
+        "id": "dep-6ec475d114382ffe",
+        "kind": "depends-on",
+        "sourceId": "svc-2c40985d6d91eed8",
+        "targetId": "ext-98cc3d8e40c3c2ea",
+        "confidence": {
+          "level": "inferred",
+          "reasons": ["client-library"]
+        },
+        "evidenceIds": ["ev-982e7757488bc591"]
+      },
+      {
+        "id": "dep-8292efacaceb15a1",
+        "kind": "depends-on",
+        "sourceId": "svc-f9012e19553e72c0",
+        "targetId": "ds-e861a6b8cf05ab49",
+        "confidence": {
+          "level": "observed",
+          "reasons": ["compose-depends-on"]
+        },
+        "evidenceIds": ["ev-3e8e4a34f2a263e2"]
+      },
+      {
+        "id": "dep-e1d8249889c354b8",
+        "kind": "depends-on",
+        "sourceId": "svc-2c40985d6d91eed8",
+        "targetId": "ds-db8e1adb0bdbc2cd",
+        "confidence": {
+          "level": "observed",
+          "reasons": ["compose-depends-on"]
+        },
+        "evidenceIds": ["ev-3e8e4a34f2a263e2"]
+      },
+      {
+        "id": "dep-fb43a3030f1f0e1f",
+        "kind": "depends-on",
+        "sourceId": "mod-c89735ad606b83e8",
+        "targetId": "ds-db8e1adb0bdbc2cd",
+        "confidence": {
+          "level": "inferred",
+          "reasons": ["client-library", "prisma-datasource"]
+        },
+        "evidenceIds": ["ev-7ffdc9bcf7702bf4", "ev-cbcd39e1767e612b"]
+      }
+    ],
+    "diagnostics": []
+  }
+}

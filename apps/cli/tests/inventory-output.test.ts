@@ -179,6 +179,18 @@ test('the scan record carries counts and codes only', () => {
   expect(JSON.stringify(record)).not.toContain('/');
 });
 
+test('the scan record lists every analyzer version, sorted', () => {
+  const record = scanRecord(result, 'a', 'b', [
+    { id: 'prisma-schema', version: '1.0.0' },
+    { id: 'docker-compose', version: '1.0.0' },
+  ]);
+  expect(record.analyzers).toEqual([
+    { id: 'docker-compose', version: '1.0.0' },
+    { id: 'node-manifest', version: '1.0.0' },
+    { id: 'prisma-schema', version: '1.0.0' },
+  ]);
+});
+
 test('the session list shows the last scan', () => {
   const text = formatSessionList([], {
     id: 'scan-1',

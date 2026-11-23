@@ -10,9 +10,19 @@ import {
 import { BUILTIN_ANALYZERS } from '@archwise/analyzers';
 import { filesystemInventory } from '@archwise/discovery';
 import { SYSTEM_FIXTURE, createFixture, type Fixture } from '@archwise/test-fixtures';
+import { createRevision } from '@archwise/domain';
+import { serializeGraphRevision } from '@archwise/schemas';
 import { buildArchitectureGraph, type ArchitectureGraph } from '../src/graph.js';
+import { buildGraphRevision } from '../src/revision.js';
 
 const GOLDEN_GRAPH = new URL('./golden/system-fixture.graph.json', import.meta.url);
+const GOLDEN_REVISION = new URL('./golden/system-fixture.revision.json', import.meta.url);
+const IDS = {
+  revisionId: 'rev-1',
+  workspaceId: 'ws-1',
+  parentRevisionId: null,
+  createdAt: '2026-11-23T00:00:00.000Z',
+};
 const update = process.env.UPDATE_GOLDEN === '1';
 
 async function scanFixture(files: Readonly<Record<string, string>>): Promise<{
@@ -28,11 +38,12 @@ async function scanFixture(files: Readonly<Record<string, string>>): Promise<{
   return { fixture, inventory };
 }
 
+function analyze(inventory: InventoryResult, analyzers: readonly Analyzer[] = BUILTIN_ANALYZERS) {
+  return runAnalyzers({ analyzers, repositories: analysisInputs(inventory) });
+}
+
 function graphOf(inventory: InventoryResult, analyzers: readonly Analyzer[] = BUILTIN_ANALYZERS) {
-  return buildArchitectureGraph(
-    inventory,
-    runAnalyzers({ analyzers, repositories: analysisInputs(inventory) }),
-  );
+  return buildArchitectureGraph(inventory, analyze(inventory, analyzers));
 }
 
 describe('system fixture', () => {
@@ -48,6 +59,22 @@ describe('system fixture', () => {
   test('matches the golden graph', async () => {
     if (update) await writeFile(GOLDEN_GRAPH, `${JSON.stringify(graph, null, 2)}\n`);
     expect(graph).toEqual(JSON.parse(await readFile(GOLDEN_GRAPH, 'utf8')));
+  });
+
+  test('matches the golden revision and is a valid complete revision', async () => {
+    const revision = buildGraphRevision(graph, inventory, IDS, analyze(inventory));
+    expect(createRevision(revision).ok).toBe(true);
+    expect(revision.status).toBe('complete');
+    const serialized = serializeGraphRevision(revision);
+    if (!serialized.ok) throw new Error(JSON.stringify(serialized.issues));
+    // The root label is the temporary directory's name; pin it so the golden is stable.
+    const envelope = JSON.parse(serialized.value) as {
+      revision: { repositories: { label: string }[] };
+    };
+    for (const repository of envelope.revision.repositories) repository.label = 'system-fixture';
+    if (update) await writeFile(GOLDEN_REVISION, `${JSON.stringify(envelope, null, 2)}\n`);
+    expect(envelope).toEqual(JSON.parse(await readFile(GOLDEN_REVISION, 'utf8')));
+    expect(serialized.value).not.toContain('secret');
   });
 
   test('the fixture shows the expected system', () => {

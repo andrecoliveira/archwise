@@ -2,6 +2,8 @@ import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, expect, test } from 'vitest';
+import { analysisInputs, analyzerInputs, runAnalyzers } from '@archwise/application';
+import { BUILTIN_ANALYZERS } from '@archwise/analyzers';
 import { filesystemInventory } from '@archwise/discovery';
 import { buildArchitectureGraph } from '../src/graph.js';
 import { buildGraphRevision } from '../src/revision.js';
@@ -94,4 +96,43 @@ test('a single root whose package lives in a submodule keeps the same view and I
   } finally {
     await rm(marker);
   }
+});
+
+test('with the built-in analyzers, modules and edges keep their Phase 3 revision IDs', async () => {
+  const inventory = await filesystemInventory.inspect({
+    roots: [{ path: root }],
+    knownHomes: [],
+    inputs: analyzerInputs(BUILTIN_ANALYZERS),
+  });
+  const analysis = runAnalyzers({
+    analyzers: BUILTIN_ANALYZERS,
+    repositories: analysisInputs(inventory),
+  });
+  const graph = buildArchitectureGraph(inventory, analysis);
+  const revision = buildGraphRevision(
+    graph,
+    inventory,
+    {
+      revisionId: 'rev-1',
+      workspaceId: 'ws-1',
+      parentRevisionId: null,
+      createdAt: '2026-11-16T00:00:00.000Z',
+    },
+    analysis,
+  );
+  // The root and core packages stay modules; web (next) and api (fastify) gain roles.
+  const modules = revision.nodes.filter((n) => n.kind === 'module').map((n) => n.id);
+  expect(modules).toEqual(baseline.nodes.filter((id) => modules.includes(id)));
+  expect(modules).toHaveLength(2);
+  expect(revision.edges.map((e) => e.id)).toEqual(baseline.edges);
+  for (const id of baseline.evidence) {
+    expect(revision.evidence.map((e) => e.id)).toContain(id);
+  }
+  expect(revision.coverage.map((c) => c.analyzerId)).toEqual([
+    'node-manifest',
+    'docker-compose',
+    'node-roles',
+    'node-workspace',
+    'prisma-schema',
+  ]);
 });
