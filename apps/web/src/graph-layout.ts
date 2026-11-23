@@ -11,6 +11,8 @@ export async function layoutNodes(nodes: Node[], edges: Edge[]): Promise<Node[]>
       'elk.direction': 'RIGHT',
       'elk.spacing.nodeNode': '45',
       'elk.layered.spacing.nodeNodeBetweenLayers': '90',
+      // Unconnected components (a frontend with no detected relation) get the same breathing room.
+      'elk.spacing.componentComponent': '60',
     },
     children: nodes.map((node) => ({ id: node.id, width: 200, height: 72 })),
     edges: edges.map((edge) => ({

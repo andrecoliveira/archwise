@@ -965,12 +965,73 @@ aside {
   color: var(--ink-3);
 }
 
-/* Discovered components. Inferred items are dashed: deduced, not stated. */
+/*
+ * Discovered components as flat cards. Fill = kind; dashed outline + "inferred" = deduced;
+ * accent outline = selected. Width matches the 200 px the automatic layout reserves.
+ */
 .discovered-node {
-  border-color: var(--outline);
+  --kind-fill: var(--kind-module);
+  width: 200px;
+  min-width: 0;
+  max-width: none;
+  padding: 9px 12px 10px;
+  background: var(--kind-fill);
+  color: var(--on-fill);
+  border: 1.8px solid var(--outline);
+  border-radius: 10px;
+  box-shadow: 2px 2px 0 var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
 }
-.discovered-node.inferred {
+.discovered-node[data-kind='frontend'] {
+  --kind-fill: var(--kind-frontend);
+}
+.discovered-node[data-kind='service'] {
+  --kind-fill: var(--kind-service);
+}
+.discovered-node[data-kind='datastore'] {
+  --kind-fill: var(--kind-datastore);
+}
+.discovered-node[data-kind='queue'] {
+  --kind-fill: var(--kind-queue);
+}
+.discovered-node[data-kind='external-system'] {
+  --kind-fill: var(--kind-external);
+}
+.discovered-node[data-kind='job'] {
+  --kind-fill: var(--kind-job);
+}
+.discovered-node[data-confidence='inferred'] {
   border-style: dashed;
+}
+.discovered-node.chosen {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+.discovered-kind {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+.discovered-label {
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.discovered-detail {
+  font-size: 11px;
+  opacity: 0.85;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.discovered-inferred {
+  text-decoration: underline dashed;
+  text-underline-offset: 3px;
 }
 .graph-view-switch {
   display: inline-flex;

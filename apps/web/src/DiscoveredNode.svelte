@@ -4,33 +4,22 @@
 
   let { data, selected = false }: { data: { node: GraphNode }; selected?: boolean } = $props();
 
-  const SYMBOLS: Record<GraphNode['type'], string> = {
-    frontend: '◧',
-    service: '▣',
-    module: '▢',
-    datastore: '▤',
-    queue: '☷',
-    'external-system': '◎',
-    job: '⏱',
-  };
   const node = $derived(data.node);
-  const subtitle = $derived(
-    [kindLabel(node.type), node.technology, node.confidence === 'inferred' ? 'inferred' : null]
-      .filter((part) => part !== null)
-      .join(' · '),
-  );
+  /** Second line: what it runs on, and which repository it belongs to in multi-root workspaces. */
+  const detail = $derived([node.technology, node.repository?.label].filter((part) => part).join(' · '));
 </script>
 
+<!-- The fill says what the component is; a dashed outline plus the word "inferred" says Archwise
+     deduced it. Only selection uses the accent colour. -->
 <div class="archwise-node discovered-node" class:chosen={selected} class:inferred={node.confidence === 'inferred'}
-  data-kind={node.type}>
+  data-kind={node.type} data-confidence={node.confidence}>
   <Handle type="target" position={Position.Left} class="archwise-handle archwise-handle-in" isConnectable={false} />
-  <div class="archwise-node-head">
-    <span class="archwise-node-icon" aria-hidden="true">{SYMBOLS[node.type]}</span>
-    <div class="archwise-node-title">
-      <strong>{node.label}</strong>
-      <small>{subtitle}</small>
-      {#if node.repository}<small>{node.repository.label}</small>{/if}
-    </div>
-  </div>
+  <div class="discovered-kind">{kindLabel(node.type)}</div>
+  <strong class="discovered-label" title={node.label}>{node.label}</strong>
+  {#if detail || node.confidence === 'inferred'}
+    <small class="discovered-detail">
+      {detail}{#if detail && node.confidence === 'inferred'}{' · '}{/if}{#if node.confidence === 'inferred'}<span class="discovered-inferred">inferred</span>{/if}
+    </small>
+  {/if}
   <Handle type="source" position={Position.Right} class="archwise-handle archwise-handle-out" isConnectable={false} />
 </div>
