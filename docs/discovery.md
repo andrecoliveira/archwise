@@ -126,6 +126,64 @@ Pass `--repo` more than once, or a workspace file, to see one system across repo
 
 The large tree exceeds the default entries budget, so the benchmark raises that budget.
 
+## Architecture analyzers
+
+Phase 4 turns the inventory into a system-level graph ([spec](superpowers/specs/2026-11-23-architecture-discovery-design.md)). PR 1 of 3 is implemented: package roles, workspace membership, Docker Compose and Prisma. Source analysis of TypeScript and JavaScript (PR 2) and deployment manifests (PR 3) are not implemented yet.
+
+**Contract.** An analyzer implements `Analyzer` from `@archwise/application`. It is a pure, synchronous function that receives the text of the files it declares, by exact base name or name suffix, plus the repository's parsed `package.json` files. It returns facts, coverage gaps and a `complete` or `partial` status. Analyzers never touch the filesystem or execute anything. A boundary rule forbids Node built-ins in `@archwise/analyzers`. `packages/test-fixtures/src/demo-analyzer.ts` shows that an analyzer can be written outside the core with only the public contract.
+
+**Isolation.** The runner calls each analyzer once per repository, in ID order, with a time budget and a file budget. An analyzer fails for a repository when it throws, returns output that fails the fact schema, or finishes after its deadline. Its findings for that repository are then discarded, its coverage is `failed`, and the Studio shows `Analyzer failed: <id> in <repository>. Its findings were discarded.` Every other analyzer's findings, and every package, are kept.
+
+**Built-in analyzers:**
+
+| Analyzer | Version | Reads | Produces |
+|---|---|---|---|
+| `node-roles` | 1.0.0 | parsed `package.json` only | package roles and client-library infrastructure |
+| `node-workspace` | 1.0.0 | `pnpm-workspace.yaml`; `nx.json`, `project.json`, `lerna.json` as gaps | packages outside the declared workspace |
+| `docker-compose` | 1.0.0 | `compose.yaml`, `compose.yml`, `docker-compose.yaml`, `docker-compose.yml`; the four `*.override.*` names as gaps | Compose services, images and `depends_on` |
+| `prisma-schema` | 1.0.0 | `*.prisma` | the `datasource` provider |
+
+The catalogs of frameworks, client libraries and container images live in `packages/analyzers/src/catalog.ts`.
+
+**Roles.** A package depending on a frontend framework (Next, Nuxt, SvelteKit, Remix, Astro, Angular, Vue, Svelte, Solid, React DOM, Expo, React Native) is a frontend. A package depending on a server framework (Express, Fastify, NestJS, Koa, Hono, hapi, Apollo Server, tRPC) is a service. Both kinds of dependency count, development ones included, and frontend wins when both are present. A role from a dependency is `inferred`. A package that a Compose service builds is an `observed` service. Every other package is a library (`module`).
+
+**Client libraries.** A runtime dependency in the catalog, such as `pg`, `ioredis`, `bullmq`, `kafkajs`, `stripe` or `@aws-sdk/client-s3`, adds an `inferred` datastore, queue or external system and a `depends-on` edge from the package. Development dependencies never do, so test-only drivers do not create phantom databases. An ORM without a known engine (`@prisma/client`, TypeORM, Sequelize, Drizzle, Knex) targets "Database (unknown engine)" and the gap `unidentified-datastore`. A Prisma `datasource` provider in the same package names the engine instead.
+
+**Docker Compose.** Compose files are parsed as data with the YAML 1.2 core schema, merge keys, unique keys and at most 100 aliases. A file with any error is the gap `invalid-syntax`. Only `image`, `build` and `depends_on` are read. `environment`, `env_file`, `secrets`, `command` and `entrypoint` are never looked at, and `${…}` interpolation is never resolved.
+- An image in the catalog, such as `postgres`, `redis`, `rabbitmq` or `bitnami/kafka`, becomes an `observed` datastore or queue, named after the Compose service. The registry host, tag and digest are ignored.
+- A `build` context that is a package directory links that package to the Compose service. The package keeps its node, and the inspector lists every Compose service that builds it.
+- A build context matching no package is a service with the gap `unmatched-build-context`.
+- Any other image is a service whose technology is the image name.
+- `depends_on`, in list or map form, becomes `observed` edges.
+- Override files (`docker-compose.override.yml` and its variants) are the gap `unsupported`. Other `compose.<name>.yaml` variants are not read.
+
+**Merging.** Infrastructure inferred from client libraries attaches to the Compose service of the same technology when the workspace has exactly one. With none, Archwise draws a workspace-wide node such as `datastore:postgresql`. With several, it draws that node, reports `Ambiguous resource: <label> (<candidates>)`, and draws no edge to any of the candidates.
+
+**Workspace membership.** When the repository root declares workspaces (the `package.json` `workspaces` field, or `pnpm-workspace.yaml` `packages`), a `package.json` outside those globs is flagged as outside the workspace. Examples and test fixtures are typical. It stays in the graph and is hidden in the System view. Globs support `*`, `**` and `!` exclusions.
+
+**Identity.** Package nodes keep their Phase 3 IDs. Compose nodes are `compose:<path>#<service>`, prefixed with the root ID when there are several roots. Workspace-wide technology nodes are `datastore:`, `queue:` or `external:` plus the technology. Edges between packages keep `dependency:<source>-><target>`, and every other edge is `<kind>:<source>-><target>`. In the revision, modules keep `mod-` IDs. Frontends, services, datastores, queues and external systems get `fe-`, `svc-`, `ds-`, `q-` and `ext-`.
+
+**Gaps.** Inputs that are recognized but not analyzed appear in the Studio's scan summary under "Not analyzed", and in the revision as `info` diagnostics. Gaps never make a revision `partial`. A failed analyzer does.
+
+| Gap reason | Revision code |
+|---|---|
+| `unsupported` | `unsupported-input` |
+| `invalid-syntax` | `invalid-syntax` |
+| `unmatched-build-context` | `unmatched-build-context` |
+| `unidentified-datastore` | `unidentified-datastore` |
+| `too-large`, `binary`, `unreadable`, `budget` | `input-skipped` |
+
+**Files that are never read.** Whatever an analyzer declares, discovery never reads:
+- `.env` and `.env.*`, `*.pem`, `*.key` and `id_rsa*`;
+- `.npmrc` and `.netrc`;
+- anything under `.ssh/`, `.aws/` or `.gnupg/`.
+
+`package.json` stays parsed by discovery. Analyzer input files obey the same per-file and total byte budgets and the binary check as manifests.
+
+**Output.** `--graph` prints the view graph version 2. Nodes carry `type`, `technology`, `confidence` (`observed` or `inferred`), `reasons`, `outsideWorkspace`, `aliases` and evidence with `lines` and `analyzer`. The graph also has a `gaps` list. `--json` (inventory version 2) is unchanged.
+
+**Studio.** Explore opens on the **System** view, which hides libraries and packages outside the workspace. A hidden library's edges are lifted to the services that depend on it, for example `api → PostgreSQL` with the reason "via @app/db". **All packages** shows everything. When nothing is recognized, the Studio opens on All packages and says so. Inferred nodes and edges are dashed.
+
 ## Repository detection
 
 The resolver searches from each input root for VCS boundaries and ecosystem/workspace manifests, including `package.json`, npm/pnpm/yarn workspaces, Turborepo/Nx configuration, Maven/Gradle, Go workspaces/modules, Cargo, Python project files, Docker Compose, Kubernetes manifests, Terraform, and CI definitions. Support is analyzer-based and incremental; unsupported ecosystems produce coverage diagnostics rather than invented relationships.
@@ -155,4 +213,4 @@ File hashes and analyzer versions form the cache key. A watcher batches filesyst
 
 ## Evidence and confidence
 
-Evidence references contain repository ID, relative path, line/column range when available, analyzer/version, extraction rule, and content hash. Confidence uses explainable categories (`confirmed`, `high`, `medium`, `low`) rather than opaque decimals alone. User confirmations are separate attestations and never rewrite original evidence.
+Every node and edge carries evidence: the path, the analyzer, the rule (`kind`) and, when known, the line range. In the revision, evidence is relative to the repository that owns it. Confidence is either `observed` (a file states it, such as a Compose image or a declared workspace dependency) or `inferred` (deduced, such as a database from the `pg` client library), with stable reason codes. Ambiguous evidence draws no edge. User confirmations, a future feature, will be separate attestations and will never rewrite original evidence.

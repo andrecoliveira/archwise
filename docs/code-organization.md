@@ -1,10 +1,11 @@
 # Code organization
 
 The tree below is the **target** layout. Today, `main` contains the following:
-- **Packages:** `apps/{cli,server,web}` and `packages/{domain,schemas,application,storage,test-fixtures}`.
+- **Packages:** `apps/{cli,server,web}` and `packages/{domain,schemas,application,discovery,analyzers,storage,test-fixtures}`.
 - **Graph contracts:** `archwise.graph` v1 lives in `domain` and `schemas`.
+- **Discovery:** the read-only inventory lives in `discovery`. The analyzer contract, the runner and the resolver (`resolveArchitecture`) live in `application`. The built-in analyzers live in `analyzers`, which stands in for the target `discovery-typescript` and `discovery-infra` packages.
 - **Sessions:** store ports and `SessionService` live in `application`; the SQLite adapter lives in `storage`.
-- **Alpha logic placed in apps:** manifest discovery and the loopback server are in `apps/cli`; the simulator, Sandbox persistence and coach are in `apps/web`.
+- **Alpha logic placed in apps:** the revision mapping and the loopback server are in `apps/cli`; the simulator, Sandbox persistence and coach are in `apps/web`.
 
 [ADR 0005](decisions/0005-svelte-flow-browser-workspace.md) records the Alpha logic in apps as debt, to be moved into the target packages as the matching roadmap phases land.
 

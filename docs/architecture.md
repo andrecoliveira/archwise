@@ -29,7 +29,12 @@ The CLI owns path resolution, startup options, lifecycle, browser launch, and hu
 
 ### Discovery engine
 
-Discovery is a pipeline of independently testable analyzers. It inventories files and manifests, identifies repository/package boundaries, extracts evidence, emits normalized facts, and resolves facts into graph nodes and edges. Analyzers declare supported file patterns, cost, version, and capabilities.
+Discovery is a pipeline of independently testable analyzers.
+- `@archwise/discovery` inventories files and manifests and reads only the files analyzers declare, never deny-listed ones.
+- `@archwise/analyzers` holds the built-in analyzers. They are pure functions over that text, with no Node built-ins, that emit normalized facts with evidence.
+- `@archwise/application` defines the analyzer contract and runs analyzers in isolation, with per-analyzer time and file budgets. Its `resolveArchitecture` merges inventory and facts into the view graph: packages, services, frontends, datastores, queues and external systems, with typed edges.
+
+Analyzers declare their file names, extensions, version and budget. See [Discovery](discovery.md#architecture-analyzers).
 
 ### Domain and application services
 

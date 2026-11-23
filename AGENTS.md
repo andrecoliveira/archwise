@@ -49,6 +49,7 @@ apps/cli ───────┐
 apps/server ────┼──> packages/application ──> packages/domain
 apps/web ───────┘             │
                               ├──> packages/discovery
+                              ├──> packages/analyzers (pure: no Node built-ins)
                               ├──> packages/simulator
                               ├──> packages/storage
                               └──> packages/ai

@@ -34,12 +34,12 @@ Without a flag, the CLI prints a summary: manifests, entries and repositories, a
 
 To see several repositories as one system, pass `--repo` once per repository, for example `--repo /work/api --repo /work/web`, or list them in a workspace file and pass `--workspace <file>` ([Discovery](discovery.md#several-repositories)).
 
-Use `--json` for the inventory instead of the graph, or `--serve --no-open` to avoid automatic browser launch. Both JSON outputs use repository-relative paths and omit the absolute project root. They still contain your package names, so review them before sharing.
+`--graph` prints the architecture graph (version 2): frontends, services, libraries, datastores, queues and external systems, each with its confidence (`observed` or `inferred`), reasons and evidence, plus the list of inputs that were not analyzed. Use `--json` for the inventory instead of the graph, or `--serve --no-open` to avoid automatic browser launch. Both JSON outputs use repository-relative paths and omit the absolute project root. They still contain your package and Compose service names, so review them before sharing.
 
 ## What to verify
 
-1. The browser opens to the Architecture Studio with discovered packages and their declared internal dependencies.
-2. Selecting a component shows the relative-path manifest evidence in the inspector. With several repositories, each package shows its repository label, the inspector shows the repository, and the header's **Scan** summary lists each repository's counts.
+1. In **Explore**, the Studio opens on the **System** view. It shows frontends, services, datastores, queues and external services found in package manifests, Docker Compose and Prisma schemas. Libraries are hidden, and their connections appear on the services that use them, marked "via …". Inferred items are dashed. **All packages** shows every package. A project with only libraries opens on All packages and says why.
+2. Selecting a component shows its kind, technology, confidence with reasons, any Compose services that build it, and its evidence (`path` or `path:line`, with analyzer and rule) in the inspector. With several repositories, each package shows its repository label, the inspector shows the repository, and the header's **Scan** summary lists each repository's counts.
 3. The search filter narrows visible packages and edges.
 4. Zoom, pan and automatic layout work on the Svelte Flow canvas.
 5. Switching to Sandbox permits proposed nodes and connections, visibly distinct from discovered items.
@@ -54,7 +54,7 @@ Use `--json` for the inventory instead of the graph, or `--serve --no-open` to a
 
 ## Current limits and safety
 
-- Discovery currently covers Node package manifests and explicitly declared dependencies between uniquely identified local packages. It does **not** infer a live runtime system, traffic flows, databases or deployed infrastructure.
+- Discovery currently covers Node package manifests, declared dependencies between uniquely identified local packages, workspace membership, Docker Compose services and Prisma datasources. Datastores, queues and external services found only through client libraries are **inferred**, not proven deployments. Calls between services, routes and queue topics from source code are not analyzed yet (Phase 4 PR 2). Archwise does not observe live traffic.
 - Sandbox topology, simulation inputs and saved A/B snapshots are autosaved to sessions in the local store outside the project. You can resume them from **Sessions**, `--resume` or `--sessions`, and disable the store with `--no-store`; see [Sessions](sessions.md). A resumed session shows the graph as it was; rebasing onto newer discoveries is future work. The offline Coach question index is not persisted. See [Sandbox persistence](sandbox-persistence.md) and [Scenario comparison](scenario-comparison.md).
 - A deterministic Sandbox simulation is available, but it **does not measure production traffic**. It assumes a single entry node, evenly split routing across proposed links, a DAG topology, no retries and modeled capacity drops. See [Simulation assumptions](simulation.md).
 - There is no npm-published `npx archwise` package yet; use the compiled CLI.

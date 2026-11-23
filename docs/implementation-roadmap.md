@@ -34,7 +34,7 @@ Finalization does not mean development stops. It establishes a reliable open-sou
 
 ## Current state
 
-Snapshot as of 2026-11-22, after PRs #5 to #15. Issues and milestones remain the live tracker.
+Snapshot as of 2026-11-23, after PRs #5 to #15 and Phase 4 PR 1. Issues and milestones remain the live tracker.
 
 | Phase | State on `main` | What is missing for the exit gate |
 |---|---|---|
@@ -42,7 +42,7 @@ Snapshot as of 2026-11-22, after PRs #5 to #15. Issues and milestones remain the
 | 1 | Complete (2026-11-15) | — |
 | 2 | Complete (2026-11-16) | — |
 | 3 | Complete (2026-11-22) | — |
-| 4 | Next. Alpha only: Node package manifests, across several repositories | Analyzer SDK, TS imports, HTTP/DB/queue detectors, Compose, golden graphs |
+| 4 | In progress (PR 1 of 3): analyzer contract, package roles, client libraries, workspaces, Docker Compose, Prisma, System view, golden graph | Source analysis of TS/JS (imports, routes, HTTP calls, topics, jobs, env names), deployment manifests, precision review |
 | 5 | Alpha only: protected loopback server and Svelte Flow Studio | SSE progress, evidence navigation from domain revisions, accessibility, large-graph strategy |
 | 6 | Not started | — |
 | 7 | Alpha only: Sandbox JSON v1 snapshots autosaved per session | Revision-based operation log, undo/redo, rebase, checksummed exports |
@@ -248,6 +248,15 @@ Resolve `cwd` and explicit roots, inventory repositories safely, and show explai
 ---
 
 ## Phase 4 — Useful architecture discovery
+
+Status: in progress ([spec](superpowers/specs/2026-11-23-architecture-discovery-design.md)). PR 1 of 3 implements:
+- the analyzer contract and isolated runner in `@archwise/application`;
+- the built-in analyzers in `@archwise/analyzers`: `node-roles`, `node-workspace`, `docker-compose` and `prisma-schema`;
+- the resolver into the view graph v2, with revision mapping, coverage gaps and ambiguity diagnostics;
+- the Studio's System view;
+- a golden graph and revision for the documented `system-fixture`.
+
+See [Discovery](discovery.md#architecture-analyzers). PR 2 adds source analysis of TypeScript and JavaScript. PR 3 adds deployment manifests and the precision review that closes the exit gate.
 
 ### Goal
 
