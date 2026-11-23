@@ -2,7 +2,11 @@ import { expect, test } from 'vitest';
 import { discoveredNode, graphOf } from './graph-fixtures.js';
 import { initialMode, isSearchShortcut } from './studio-mode.js';
 
-const key = (key: string, target: EventTarget | null, mods: { metaKey?: boolean; ctrlKey?: boolean } = {}) => ({
+const key = (
+  key: string,
+  target: EventTarget | null,
+  mods: { metaKey?: boolean; ctrlKey?: boolean } = {},
+) => ({
   key,
   metaKey: mods.metaKey ?? false,
   ctrlKey: mods.ctrlKey ?? false,

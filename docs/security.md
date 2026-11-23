@@ -10,6 +10,10 @@ Archwise analyzes untrusted repositories that may contain malicious files, overs
 - Open files with size, type, count, depth, and time budgets; isolate expensive parsers in workers with cancellation and memory limits.
 - Canonicalize roots and reject path traversal. Do not follow symlinks outside registered roots.
 - Bind the API to loopback. Require a high-entropy session capability, validate `Origin`/`Host`, use restrictive CORS, and set a strict Content Security Policy.
+- **The Studio loads nothing remote.**
+  - Its font (JetBrains Mono, SIL OFL 1.1) and its icon ship with the app.
+  - The Content Security Policy keeps `default-src 'none'` and allows only `'self'` for scripts, styles, fonts and connections, plus `data:` images.
+  - The browser smoke test fails if the Studio requests anything outside its own local server.
 - Give the browser opaque workspace IDs, never arbitrary filesystem APIs.
 - Escape all repository-derived labels and render untrusted Markdown without raw HTML.
 - Redact common credential patterns and sensitive filenames before persistence, logs, exports, or provider context.

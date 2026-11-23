@@ -18,20 +18,35 @@ function card(node: GraphNode, selected = false): HTMLElement {
 }
 
 test('inferred card is dashed and labelled, not recolored', () => {
-  const element = card(discoveredNode('datastore:postgresql', { type: 'datastore', confidence: 'inferred', label: 'PostgreSQL' }));
+  const element = card(
+    discoveredNode('datastore:postgresql', {
+      type: 'datastore',
+      confidence: 'inferred',
+      label: 'PostgreSQL',
+    }),
+  );
   expect(element.dataset.confidence).toBe('inferred');
   expect(element.dataset.kind).toBe('datastore');
   expect(screen.getByText('inferred')).toBeTruthy();
 });
 
 test('observed card has no inferred label', () => {
-  const element = card(discoveredNode('package:apps/api/package.json', { type: 'service', label: '@shop/api' }));
+  const element = card(
+    discoveredNode('package:apps/api/package.json', { type: 'service', label: '@shop/api' }),
+  );
   expect(element.dataset.confidence).toBe('observed');
   expect(screen.queryByText('inferred')).toBeNull();
 });
 
 test('the card names its kind', () => {
-  card(discoveredNode('queue:bullmq', { type: 'queue', label: 'BullMQ', technology: 'BullMQ', confidence: 'inferred' }));
+  card(
+    discoveredNode('queue:bullmq', {
+      type: 'queue',
+      label: 'BullMQ',
+      technology: 'BullMQ',
+      confidence: 'inferred',
+    }),
+  );
   expect(screen.getByText('Queue')).toBeTruthy();
 });
 

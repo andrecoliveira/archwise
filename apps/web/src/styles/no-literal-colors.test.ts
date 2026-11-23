@@ -37,7 +37,9 @@ function styledLines(path: string): { line: number; text: string }[] {
   lines.forEach((text, i) => {
     if (/<style[\s>]/.test(text)) inStyle = true;
     if (inStyle) out.push({ line: i + 1, text });
-    else for (const match of text.matchAll(/style(?::[\w-]+)?="([^"]*)"/g)) out.push({ line: i + 1, text: match[1]! });
+    else
+      for (const match of text.matchAll(/style(?::[\w-]+)?="([^"]*)"/g))
+        out.push({ line: i + 1, text: match[1]! });
     if (/<\/style>/.test(text)) inStyle = false;
   });
   return out;

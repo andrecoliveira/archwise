@@ -80,4 +80,3 @@ test('node labels add the repository when there is one', () => {
     '@shop/api · fastify · api',
   );
 });
-

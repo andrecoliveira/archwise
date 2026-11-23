@@ -118,4 +118,3 @@ export function nodeDisplayLabel(node: GraphNode): string {
   if (node.repository) parts.push(node.repository.label);
   return parts.join(' · ');
 }
-

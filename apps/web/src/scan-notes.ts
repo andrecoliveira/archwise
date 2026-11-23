@@ -22,7 +22,8 @@ export interface ScanNotesView {
   readonly headline: string;
 }
 
-const plural = (count: number, one: string, many: string): string => `${count} ${count === 1 ? one : many}`;
+const plural = (count: number, one: string, many: string): string =>
+  `${count} ${count === 1 ? one : many}`;
 const compare = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
 export function scanNotes(graph: Graph): ScanNotesView {

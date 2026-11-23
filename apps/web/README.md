@@ -4,4 +4,17 @@ Svelte 5 and Svelte Flow Architecture Studio (ADR 0005). It covers Explore mode 
 
 The simulator, persistence and coach live here temporarily during the Alpha; ADR 0005 records their planned extraction into packages.
 
+**Styling:**
+
+- Colours are design tokens in `src/styles/tokens.css`. There is a dark theme (the default) and a light theme, chosen in `theme.ts`.
+- `src/styles/no-literal-colors.test.ts` fails on any literal colour elsewhere.
+- JetBrains Mono is bundled from `@fontsource/jetbrains-mono`, so the Studio never fetches a remote font.
+
+**The shell:**
+
+- `StudioTopBar.svelte` (top bar);
+- `RevisionChip.svelte` (scan time and status, from `scan-status.ts`);
+- `ScanNotes.svelte` (files not analyzed and diagnostics, from `scan-notes.ts`);
+- `studio-mode.ts` (opening mode and the search shortcut).
+
 Source lives in `src/`. Tests run with `pnpm --filter @archwise/web test`; real-browser acceptance is in `scripts/browser-smoke.mjs`.

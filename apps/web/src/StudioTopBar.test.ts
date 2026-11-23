@@ -30,7 +30,9 @@ test('mode tabs switch and expose pressed state', async () => {
   expect(screen.getByRole('button', { name: 'Explore' }).getAttribute('aria-pressed')).toBe('true');
   await fireEvent.click(sandbox);
   expect(sandbox.getAttribute('aria-pressed')).toBe('true');
-  expect(screen.getByRole('button', { name: 'Explore' }).getAttribute('aria-pressed')).toBe('false');
+  expect(screen.getByRole('button', { name: 'Explore' }).getAttribute('aria-pressed')).toBe(
+    'false',
+  );
   expect(screen.getByRole('group', { name: 'Studio mode' })).toBeTruthy();
 });
 

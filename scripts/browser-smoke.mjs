@@ -475,13 +475,50 @@ try {
   const { SYSTEM_FIXTURE, createFixture } = await import(
     pathToFileURL(join(process.cwd(), 'packages/test-fixtures/dist/index.js')).href
   );
-  const system = await createFixture(SYSTEM_FIXTURE);
+  // A long package name and an unsupported Compose variant exercise truncation and Scan notes.
+  const LONG_NAME =
+    'demo-with-a-very-long-package-name-that-keeps-going-and-going-to-eighty-characters';
+  const system = await createFixture({
+    ...SYSTEM_FIXTURE,
+    'examples/demo/package.json': SYSTEM_FIXTURE['examples/demo/package.json'].replace(
+      '"demo"',
+      `"${LONG_NAME}"`,
+    ),
+    'compose.prod.yaml': 'services:\n  api:\n    image: node:22\n',
+  });
   try {
     await stopServer();
     const systemUrl = await startServer(['--path', system.root, '--no-store']);
     const systemPage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     systemPage.on('pageerror', (error) => errors.push(error.message));
+    systemPage.on('console', (message) => {
+      if (message.type() === 'error') errors.push(`console: ${message.text()}`);
+    });
+    // The Studio never contacts anything but its own local server (fonts are bundled).
+    const origin = new URL(systemUrl).origin;
+    const remote = [];
+    systemPage.on('request', (request) => {
+      const url = new URL(request.url());
+      if (url.protocol !== 'data:' && url.origin !== origin) remote.push(request.url());
+    });
     await systemPage.goto(systemUrl, { waitUntil: 'networkidle' });
+    // First load: dark theme, Explore (the project has components), the bundled font.
+    assert.equal(
+      await systemPage.evaluate(() => globalThis.document.documentElement.dataset.theme),
+      'dark',
+    );
+    await systemPage.getByRole('button', { name: 'Explore', exact: true, pressed: true }).waitFor();
+    await systemPage.evaluate(() => globalThis.document.fonts.ready);
+    assert.ok(
+      await systemPage.evaluate(() => globalThis.document.fonts.check('13px "JetBrains Mono"')),
+      'JetBrains Mono is loaded from the bundle',
+    );
+    assert.match(
+      await systemPage.evaluate(
+        () => globalThis.getComputedStyle(globalThis.document.body).fontFamily,
+      ),
+      /JetBrains Mono/,
+    );
     await systemPage.getByRole('button', { name: 'Explore', exact: true }).click();
     const viewControl = systemPage.getByRole('group', { name: 'Graph view' });
     assert.equal(
@@ -538,19 +575,57 @@ try {
     await viewControl.getByRole('button', { name: 'All packages' }).click();
     await canvasNodes.filter({ hasText: '@shop/db' }).first().waitFor();
     const scanNotesPanel = systemPage.getByRole('region', { name: 'Scan notes' });
-    await scanNotesPanel.getByText('Nothing to report').waitFor();
+    await scanNotesPanel.getByText('1 file not analyzed').waitFor();
+    await scanNotesPanel.getByText('compose.prod.yaml').waitFor();
+    await scanNotesPanel.getByText('not analyzed: not supported yet').waitFor();
+
+    // Both themes, two sizes, for review; the theme survives a reload.
+    const shots = process.env.ARCHWISE_SMOKE_SCREENSHOT_DIR;
+    const shoot = async (name) => {
+      if (shots) await systemPage.screenshot({ path: join(shots, `${name}.png`) });
+    };
+    await systemPage.setViewportSize({ width: 1600, height: 950 });
+    await shoot('studio-dark-1600');
+    await systemPage.getByRole('button', { name: 'Switch to light theme' }).click();
     assert.equal(
-      await scanNotesPanel.getByText('not analyzed', { exact: false }).count(),
-      0,
-      'A fully supported fixture has no coverage gaps',
+      await systemPage.evaluate(() => globalThis.document.documentElement.dataset.theme),
+      'light',
     );
+    await systemPage.reload({ waitUntil: 'networkidle' });
+    assert.equal(
+      await systemPage.evaluate(() => globalThis.document.documentElement.dataset.theme),
+      'light',
+      'The theme choice survives a reload',
+    );
+    await shoot('studio-light-1600');
+
+    // 1024 x 768: no horizontal scroll even with an 80-character name; the inspector is a drawer.
+    await systemPage.setViewportSize({ width: 1024, height: 768 });
+    await systemPage.getByRole('button', { name: 'All packages' }).click();
+    await canvasNodes.filter({ hasText: 'demo-with-a-very-long' }).first().waitFor();
+    assert.ok(
+      await systemPage.evaluate(
+        () => globalThis.document.documentElement.scrollWidth <= globalThis.innerWidth,
+      ),
+      'No horizontal page scroll at 1024 px',
+    );
+    const inspector = systemPage.getByRole('complementary', { name: 'Component inspector' });
+    assert.equal(await inspector.isVisible(), false, 'The inspector is a closed drawer at 1024 px');
+    await systemPage.getByRole('button', { name: 'Show inspector' }).click();
+    await inspector.waitFor();
+    await shoot('studio-light-1024-drawer');
+    await systemPage.keyboard.press('Escape');
+    await inspector.waitFor({ state: 'hidden' });
+    await systemPage.getByRole('button', { name: 'Switch to dark theme' }).click();
+    await shoot('studio-dark-1024');
+    assert.deepEqual(remote, [], 'The Studio makes no request outside its local server');
   } finally {
     await system.dispose();
   }
 
   assert.deepEqual(errors, [], 'Browser runtime errors must not occur');
   console.log(
-    'Browser smoke passed: components, handles, edge intent, replica scaling, A/B, autosave, drag positions, JSON export/import, reload, cross-launch resume, rename, delete, no catalog replay, edit-before-refresh, keyboard panel, unrestorable-session protection, a two-repository workspace with repository labels and the scan summary, and the System view of a full-stack fixture.',
+    'Browser smoke passed: components, handles, edge intent, replica scaling, A/B, autosave, drag positions, JSON export/import, reload, cross-launch resume, rename, delete, no catalog replay, edit-before-refresh, keyboard panel, unrestorable-session protection, a two-repository workspace with repository labels and the scan summary, the System view of a full-stack fixture, both themes with persistence, the bundled font, Scan notes, the 1024 px drawer layout and no remote requests.',
   );
 } finally {
   await browser?.close();

@@ -3,10 +3,16 @@ import { graphOf } from './graph-fixtures.js';
 import { GAP_REASONS, type GapReason, type GraphGap } from './graph-types.js';
 import { GAP_REASON_TEXT, scanNotes } from './scan-notes.js';
 
-const gap = (path: string, reason: GapReason, analyzer = 'docker-compose'): GraphGap => ({ path, analyzer, reason });
+const gap = (path: string, reason: GapReason, analyzer = 'docker-compose'): GraphGap => ({
+  path,
+  analyzer,
+  reason,
+});
 
 test('headline counts files and notes', () => {
-  const view = scanNotes(graphOf([], [], { gaps: [gap('compose.prod.yaml', 'unsupported')], diagnostics: ['a', 'b'] }));
+  const view = scanNotes(
+    graphOf([], [], { gaps: [gap('compose.prod.yaml', 'unsupported')], diagnostics: ['a', 'b'] }),
+  );
   expect(view.headline).toBe('1 file not analyzed · 2 notes');
 });
 
@@ -43,7 +49,9 @@ test('gaps sort by path then reason', () => {
 });
 
 test('one file missed by two analyzers for the same reason is listed once', () => {
-  const view = scanNotes(graphOf([], [], { gaps: [gap('x.yaml', 'binary', 'a'), gap('x.yaml', 'binary', 'b')] }));
+  const view = scanNotes(
+    graphOf([], [], { gaps: [gap('x.yaml', 'binary', 'a'), gap('x.yaml', 'binary', 'b')] }),
+  );
   expect(view.gaps).toHaveLength(1);
   expect(view.headline).toBe('1 file not analyzed');
 });

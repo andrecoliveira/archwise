@@ -45,8 +45,10 @@ function partialReasons(scan: ScanSummaryView | null, graph: Graph): string[] {
   for (const repository of scan?.repositories ?? []) {
     if (!repository.reached) reasons.push(`${repository.label} was not scanned`);
   }
-  if (graph.diagnostics.some((line) => line.startsWith('Analyzer failed'))) reasons.push('an analyzer failed');
-  if (graph.gaps.some((gap) => gap.reason === 'budget')) reasons.push('an analyzer ran out of budget');
+  if (graph.diagnostics.some((line) => line.startsWith('Analyzer failed')))
+    reasons.push('an analyzer failed');
+  if (graph.gaps.some((gap) => gap.reason === 'budget'))
+    reasons.push('an analyzer ran out of budget');
   return reasons;
 }
 
