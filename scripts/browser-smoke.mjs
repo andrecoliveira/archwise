@@ -144,6 +144,30 @@ try {
     2,
     'Two actual Svelte Flow connections must render',
   );
+  // Connection arrowheads take their colour from intent tokens through var(); they must paint.
+  const arrowFills = await page.evaluate(() =>
+    [...globalThis.document.querySelectorAll('.svelte-flow__edge path')]
+      .map((path) => path.getAttribute('marker-end'))
+      .filter(Boolean)
+      .map((ref) => {
+        const id = decodeURIComponent(ref.replace(/^url\(['"]?#/, '').replace(/['"]?\)$/, ''));
+        const marker = globalThis.document.getElementById(id);
+        const shape = marker?.querySelector('polyline, path');
+        return shape ? globalThis.getComputedStyle(shape).fill : 'missing';
+      }),
+  );
+  assert.ok(arrowFills.length >= 2, 'Connections reference arrowhead markers');
+  for (const fill of arrowFills) {
+    assert.ok(
+      !['missing', 'none', 'rgb(0, 0, 0)'].includes(fill),
+      `Arrowhead paints a token colour, got ${fill}`,
+    );
+  }
+  if (process.env.ARCHWISE_SMOKE_SCREENSHOT_DIR) {
+    await page.screenshot({
+      path: join(process.env.ARCHWISE_SMOKE_SCREENSHOT_DIR, 'sandbox-connections.png'),
+    });
+  }
   if (dragFallbacks > 0) {
     console.warn(
       `${dragFallbacks} connections required click-to-connect; drag remains unverified.`,
