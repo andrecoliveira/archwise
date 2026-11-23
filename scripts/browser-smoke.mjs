@@ -463,8 +463,9 @@ try {
   await multiPage.waitForFunction(
     () => globalThis.document.querySelectorAll('.svelte-flow__edge').length >= 1,
   );
-  await multiPage.getByText('Scan · 2 repositories').click();
-  const scanPanel = multiPage.getByLabel('Scan summary');
+  await multiPage.locator('.topbar-workspace').getByText('2 repositories').waitFor();
+  await multiPage.locator('.revision-chip > summary').click();
+  const scanPanel = multiPage.getByRole('group', { name: 'Scan details' });
   await scanPanel.getByText('api: 1 manifest').waitFor();
   await scanPanel.getByText('web: 1 manifest').waitFor();
   // Libraries only: the Studio says so and opens on All packages.
@@ -536,9 +537,10 @@ try {
     await discoveredInspector.getByText('Compose services: api').waitFor();
     await viewControl.getByRole('button', { name: 'All packages' }).click();
     await canvasNodes.filter({ hasText: '@shop/db' }).first().waitFor();
-    await systemPage.getByText(/^Scan · /).click();
+    const scanNotesPanel = systemPage.getByRole('region', { name: 'Scan notes' });
+    await scanNotesPanel.getByText('Nothing to report').waitFor();
     assert.equal(
-      await systemPage.getByLabel('Scan summary').getByText('Not analyzed').count(),
+      await scanNotesPanel.getByText('not analyzed', { exact: false }).count(),
       0,
       'A fully supported fixture has no coverage gaps',
     );

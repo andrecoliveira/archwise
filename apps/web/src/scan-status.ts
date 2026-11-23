@@ -63,3 +63,11 @@ export function revisionChip({ scan, graph, storeEnabled, historical, now }: Chi
   if (historical) parts.push('viewing an earlier architecture');
   return { text: parts.join(' · '), status, reasons };
 }
+
+/** The workspace name for the top bar: its one repository's label, or how many there are. */
+export function workspaceName(scan: ScanSummaryView | null): string {
+  const repositories = scan?.repositories ?? [];
+  if (repositories.length === 1) return repositories[0]!.label;
+  if (repositories.length > 1) return `${repositories.length} repositories`;
+  return 'Workspace';
+}

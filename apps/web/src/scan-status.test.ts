@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest';
 import { discoveredNode, graphOf } from './graph-fixtures.js';
 import type { Graph } from './graph-types.js';
-import { relativeTime, revisionChip, type ChipInput } from './scan-status.js';
+import { relativeTime, revisionChip, workspaceName, type ChipInput } from './scan-status.js';
 import { isScanSummary, type ScanSummaryView } from './scan-summary.js';
 
 const NOW = Date.parse('2026-11-23T10:02:00Z');
@@ -103,4 +103,15 @@ test('isScanSummary accepts a summary without scannedAt and rejects an unparseab
   expect(isScanSummary(scanAt('2026-11-23T10:00:00Z'))).toBe(true);
   expect(isScanSummary({ ...scanAt(undefined), scannedAt: 'x' })).toBe(false);
   expect(isScanSummary({ ...scanAt(undefined), scannedAt: 42 })).toBe(false);
+});
+
+test('workspaceName is the repository label, a count, or a fallback', () => {
+  expect(workspaceName(scanAt(undefined))).toBe('shop');
+  const three = scanAt(undefined, {
+    repositories: ['a', 'b', 'c'].map((label) => ({
+      id: label, label, nested: false, reached: true, listedEntries: 1, manifests: 1, skipped: {},
+    })),
+  });
+  expect(workspaceName(three)).toBe('3 repositories');
+  expect(workspaceName(null)).toBe('Workspace');
 });

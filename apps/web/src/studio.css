@@ -11,33 +11,174 @@
   min-height: 0;
   overflow: hidden;
 }
-.studio > header {
+.topbar {
   flex-shrink: 0;
   min-height: 52px;
   border-bottom: 1px solid var(--line);
   background: var(--panel);
   padding: 8px 18px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
   gap: 14px;
+  min-width: 0;
 }
-header strong {
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.topbar-brand strong {
   font-size: 16px;
 }
-header small {
-  color: var(--ink-2);
-  font-size: 12px;
+.topbar-logo {
+  width: 26px;
+  height: 26px;
+  flex: none;
 }
-main {
-  display: grid;
-  grid-template-columns: 260px minmax(0, 1fr) 340px;
-  gap: 14px;
-  padding: 14px;
+.topbar-workspace {
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 22ch;
+  flex-shrink: 0;
+}
+.revision-chip {
+  min-width: 0;
+  flex-shrink: 1;
+}
+.revision-chip > summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 1099px) {
+  .topbar {
+    gap: 8px;
+    padding-inline: 10px;
+  }
+  .topbar-workspace {
+    max-width: 14ch;
+  }
+  .save-indicator {
+    max-width: 10ch;
+  }
+}
+.topbar-workspace span {
+  color: var(--ink);
+}
+.topbar-modes {
+  display: flex;
+  gap: 4px;
+}
+.topbar-spacer {
+  flex: 1;
+}
+.topbar-search {
+  width: min(280px, 26vw);
+}
+.topbar-theme {
+  font-size: 15px;
+  line-height: 1;
+  padding: 6px 9px;
+}
+.save-indicator {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 24ch;
 }
 .studio > main {
   flex: 1;
   min-height: 0;
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  grid-template-columns: 260px minmax(0, 1fr) 340px;
+  grid-template-areas: 'left center right';
+}
+.studio-sidebar {
+  grid-area: left;
+}
+.workspace {
+  grid-area: center;
+}
+.discovered-inspector {
+  grid-area: right;
+}
+.studio > main.left-hidden {
+  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-areas: 'center right';
+}
+.studio > main.right-hidden {
+  grid-template-columns: 260px minmax(0, 1fr);
+  grid-template-areas: 'left center';
+}
+.studio > main.left-hidden.right-hidden {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'center';
+}
+.studio > main.left-hidden > .studio-sidebar,
+.studio > main.right-hidden > .discovered-inspector {
+  display: none;
+}
+/* Below 1100 px the side columns become drawers over the canvas. */
+.studio > main.narrow {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'center';
+}
+.studio > main.narrow > aside {
+  display: none;
+}
+.studio > main.narrow > aside.drawer-open {
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 60px;
+  bottom: 8px;
+  z-index: 30;
+  width: min(340px, calc(100vw - 32px));
+  box-shadow: 3px 3px 0 var(--shadow);
+}
+.studio > main.narrow > .studio-sidebar.drawer-open {
+  left: 8px;
+}
+.studio > main.narrow > .discovered-inspector.drawer-open {
+  right: 8px;
+}
+.drawer-close {
+  align-self: flex-end;
+}
+.drawer-scrim {
+  position: fixed;
+  inset: 52px 0 0;
+  z-index: 25;
+  border: 0;
+  border-radius: 0;
+  background: var(--overlay);
+}
+.list-count {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.empty-state {
+  margin: 12px 16px;
+  padding: 18px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  text-align: center;
+}
+.empty-state strong {
+  display: block;
+  font-size: 15px;
+}
+.workspace-title {
+  min-width: 0;
+}
+.workspace-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 aside {
   padding: 14px;
@@ -862,22 +1003,6 @@ aside {
   font-size: 0.9em;
 }
 
-/* Narrow screens (drawers arrive with the three-column layout) */
-@media (max-width: 1060px) {
-  .studio > main {
-    grid-template-columns: 232px minmax(0, 1fr);
-  }
-  .studio > main > aside:last-child {
-    display: none;
-  }
-}
-/* The proposed-component editor lives in the canvas; package evidence stays in Explore. */
-.studio > main.sandbox-workspace {
-  grid-template-columns: 260px minmax(0, 1fr);
-}
-.studio > main.sandbox-workspace > .discovered-inspector {
-  display: none;
-}
 
 /* Revision chip: when the scan ran and whether it is complete. */
 .revision-chip {
@@ -963,4 +1088,42 @@ aside {
   text-overflow: ellipsis;
   white-space: nowrap;
   vertical-align: bottom;
+}
+
+/* Svelte Flow chrome (minimap, controls, background) on the Studio tokens. */
+.svelte-flow {
+  --xy-background-color: var(--bg);
+  --xy-background-pattern-color: var(--line);
+  --xy-edge-stroke: var(--ink-2);
+  --xy-edge-stroke-selected: var(--accent);
+  --xy-edge-label-background-color: var(--panel-2);
+  --xy-edge-label-color: var(--ink);
+  --xy-connectionline-stroke: var(--accent);
+  --xy-handle-background-color: var(--ink-2);
+  --xy-handle-border-color: var(--panel);
+  --xy-minimap-background-color: var(--panel);
+  --xy-minimap-mask-background-color: var(--overlay);
+  --xy-minimap-mask-stroke-color: var(--line);
+  --xy-minimap-node-background-color: var(--panel-2);
+  --xy-minimap-node-stroke-color: var(--outline);
+  --xy-controls-button-background-color: var(--panel);
+  --xy-controls-button-background-color-hover: var(--panel-2);
+  --xy-controls-button-color: var(--ink);
+  --xy-controls-button-color-hover: var(--ink);
+  --xy-controls-button-border-color: var(--line);
+  --xy-controls-box-shadow: 2px 2px 0 var(--shadow);
+  --xy-attribution-background-color: transparent;
+}
+.svelte-flow .svelte-flow__minimap {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.svelte-flow .svelte-flow__attribution a {
+  color: var(--ink-3);
+}
+
+/* On narrow screens the minimap would cover components; zoom controls remain. */
+.studio > main.narrow .svelte-flow__minimap {
+  display: none;
 }
