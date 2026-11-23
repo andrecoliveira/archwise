@@ -82,3 +82,10 @@ test('a schema without an owning package emits nothing', () => {
     [],
   );
 });
+
+test('hostile comment runs are scanned in linear time', () => {
+  const hostile = `datasource db {\n  provider = "mysql"\n}\n${'//'.repeat(100_000)}x\n${' '.repeat(100_000)}provider${' '.repeat(100_000)}=\n`;
+  const started = performance.now();
+  expect(run('packages/db/schema.prisma', hostile).facts).toHaveLength(1);
+  expect(performance.now() - started).toBeLessThan(200);
+});

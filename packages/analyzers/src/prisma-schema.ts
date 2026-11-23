@@ -44,7 +44,12 @@ export const prismaSchema: Analyzer = Object.freeze({
     const facts: Fact[] = [];
     const gaps: CoverageGap[] = [];
     for (const file of input.files) {
-      const lines = file.text.split(/\r?\n/).map((line) => line.replace(/\/\/.*$/, ''));
+      const lines = file.text.split('\n').map((line) => {
+        // Strip a `//` comment without a regular expression (input is untrusted).
+        const comment = line.indexOf('//');
+        const text = line.endsWith('\r') ? line.slice(0, -1) : line;
+        return comment === -1 ? text : text.slice(0, comment);
+      });
       const found: { technology: string; line: number }[] = [];
       let inside = false;
       for (let index = 0; index < lines.length; index++) {
