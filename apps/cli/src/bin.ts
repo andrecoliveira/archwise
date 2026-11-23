@@ -7,7 +7,15 @@ import { resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { resolveDataDir, StoreUnavailableError } from '@archwise/storage';
 import { filesystemInventory, resolveRoots } from '@archwise/discovery';
-import type { InventoryProgress, RootRequest } from '@archwise/application';
+import {
+  analysisInputs,
+  analyzerInputs,
+  runAnalyzers,
+  type AnalysisResult,
+  type InventoryProgress,
+  type RootRequest,
+} from '@archwise/application';
+import { BUILTIN_ANALYZERS } from '@archwise/analyzers';
 import { buildArchitectureGraph } from './graph.js';
 import {
   formatInventorySummary,
@@ -93,6 +101,7 @@ if (command.kind === 'output') {
       outcome = await runScan(filesystemInventory, {
         roots,
         knownHomes,
+        inputs: analyzerInputs(BUILTIN_ANALYZERS),
         signal: controller.signal,
         ...(progress ? { onProgress: progress } : {}),
       });
@@ -105,8 +114,30 @@ if (command.kind === 'output') {
       process.exit(130);
     }
     const result = outcome.result;
-    const record = scanRecord(result, startedAt, new Date().toISOString());
-    const graph = buildArchitectureGraph(result);
+    let analysis: AnalysisResult;
+    process.once('SIGINT', cancel);
+    try {
+      analysis = runAnalyzers({
+        analyzers: BUILTIN_ANALYZERS,
+        repositories: analysisInputs(result),
+        signal: controller.signal,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        process.stderr.write('Scan cancelled.\n');
+        process.exit(130);
+      }
+      throw error;
+    } finally {
+      process.off('SIGINT', cancel);
+    }
+    const record = scanRecord(
+      result,
+      startedAt,
+      new Date().toISOString(),
+      BUILTIN_ANALYZERS.map((a) => ({ id: a.descriptor.id, version: a.descriptor.version })),
+    );
+    const graph = buildArchitectureGraph(result, analysis);
     const prepareRuntime = async (enabled: boolean) => {
       const runtime = await prepareStore({
         enabled,
@@ -115,6 +146,7 @@ if (command.kind === 'output') {
         scan: result,
         scanRecord: record,
         graph,
+        analysis,
       });
       for (const notice of runtime.notices) process.stderr.write(`${notice}\n`);
       return runtime;
@@ -167,6 +199,9 @@ if (command.kind === 'output') {
     } else {
       process.stdout.write(formatInventorySummary(result));
       for (const warning of result.diagnostics) process.stderr.write(`Warning: ${warning}\n`);
+      for (const warning of graph.diagnostics.filter((d) => d.startsWith('Analyzer failed'))) {
+        process.stderr.write(`Warning: ${warning}\n`);
+      }
       process.stdout.write(
         'Run with --graph for graph JSON, --serve to open the local Studio, or --sessions to list saved sessions.\n',
       );

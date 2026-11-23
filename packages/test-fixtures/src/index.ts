@@ -38,3 +38,4 @@ export async function createFixture(files: Readonly<Record<string, string>>): Pr
   }
 }
 export * from './system-fixture.js';
+export * from './demo-analyzer.js';

@@ -52,6 +52,13 @@ export default {
       },
     },
     {
+      name: 'demo-analyzer-uses-contract-only',
+      comment: 'Proves an analyzer can be written outside the core with only the public contract.',
+      severity: 'error',
+      from: { path: '^packages/test-fixtures/src/demo-analyzer' },
+      to: { pathNot: '^packages/(application|domain)/' },
+    },
+    {
       name: 'schemas-inward-only',
       severity: 'error',
       from: { path: '^packages/schemas/src/' },

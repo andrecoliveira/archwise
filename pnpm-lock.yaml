@@ -157,7 +157,11 @@ importers:
         specifier: workspace:*
         version: link:../schemas
 
-  packages/test-fixtures: {}
+  packages/test-fixtures:
+    dependencies:
+      '@archwise/application':
+        specifier: workspace:*
+        version: link:../application
 
 packages:
 
