@@ -224,7 +224,13 @@ try {
   assert.deepEqual(after.draft.capacities, before.draft.capacities);
   assert.deepEqual(after.draft.replicas, before.draft.replicas);
 
+  // Switching to Explore drops a selected Sandbox component.
+  await page.locator('.svelte-flow__node').filter({ hasText: 'App Server' }).click();
   await page.getByRole('button', { name: 'Explore', exact: true }).click();
+  await page
+    .getByRole('complementary', { name: 'Component inspector' })
+    .getByText('Select a component on the canvas or in the list')
+    .waitFor();
   await page.getByRole('button', { name: 'Sandbox', exact: true }).click();
   await page.waitForFunction(
     () => globalThis.document.querySelectorAll('.svelte-flow__edge').length === 2,
@@ -611,11 +617,55 @@ try {
     );
     const inspector = systemPage.getByRole('complementary', { name: 'Component inspector' });
     assert.equal(await inspector.isVisible(), false, 'The inspector is a closed drawer at 1024 px');
+    const focusedName = () =>
+      systemPage.evaluate(() => {
+        const el = globalThis.document.activeElement;
+        return el?.getAttribute('aria-label') ?? el?.textContent?.trim() ?? null;
+      });
     await systemPage.getByRole('button', { name: 'Show inspector' }).click();
     await inspector.waitFor();
+    assert.equal(await focusedName(), 'Close inspector', 'Opening a drawer moves focus into it');
+    assert.ok(
+      await systemPage.evaluate(
+        () => globalThis.document.querySelector('.workspace')?.inert === true,
+      ),
+      'The canvas behind an open drawer is inert',
+    );
     await shoot('studio-light-1024-drawer');
     await systemPage.keyboard.press('Escape');
     await inspector.waitFor({ state: 'hidden' });
+    assert.equal(
+      await focusedName(),
+      'Show inspector',
+      'Closing a drawer returns focus to its toggle',
+    );
+    await systemPage.getByRole('button', { name: 'Show components' }).click();
+    assert.equal(await focusedName(), 'Close components', 'The components drawer takes focus too');
+    await systemPage.getByRole('button', { name: 'Close components' }).click();
+    assert.equal(await focusedName(), 'Show components');
+
+    // The top bar never hides the chip or the theme toggle, and the chip is never cut off.
+    for (const width of [1024, 600]) {
+      await systemPage.setViewportSize({ width, height: 768 });
+      const bar = await systemPage.evaluate(() => {
+        const rect = (selector) =>
+          globalThis.document.querySelector(selector)?.getBoundingClientRect();
+        const chip = globalThis.document.querySelector('.revision-chip > summary');
+        return {
+          chipCut: chip ? chip.scrollWidth > chip.clientWidth + 1 : true,
+          chipRight: rect('.revision-chip')?.right ?? Infinity,
+          themeRight: rect('.topbar-theme')?.right ?? Infinity,
+          themeWidth: rect('.topbar-theme')?.width ?? 0,
+          inner: globalThis.innerWidth,
+        };
+      });
+      assert.equal(bar.chipCut, false, `The revision chip is not truncated at ${width} px`);
+      assert.ok(
+        bar.chipRight <= bar.inner && bar.themeRight <= bar.inner && bar.themeWidth > 0,
+        `Top bar fits at ${width} px`,
+      );
+    }
+    await systemPage.setViewportSize({ width: 1024, height: 768 });
     await systemPage.getByRole('button', { name: 'Switch to dark theme' }).click();
     await shoot('studio-dark-1024');
     assert.deepEqual(remote, [], 'The Studio makes no request outside its local server');

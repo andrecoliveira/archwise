@@ -69,7 +69,7 @@ Svelte 5 renders the application shell; Svelte Flow renders interactive graphs (
 
   The side columns collapse, and below 1100 px of viewport width they become drawers.
 
-**Opening mode.** The Studio opens in Explore when the scan found components, and in Sandbox otherwise. Later reloads keep the mode the person chose.
+**Opening mode.** When the page loads, the Studio opens in Explore if the scan found components, and in Sandbox otherwise. Refreshing the graph, resuming a session, or starting or deleting one keeps the mode the person chose. A browser reload opens Explore again.
 
 **Design tokens.**
 - Every colour is a token in `apps/web/src/styles/tokens.css`, with a dark theme (the default) and a light theme. A test fails on any literal colour elsewhere.

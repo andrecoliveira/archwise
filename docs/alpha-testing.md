@@ -50,9 +50,15 @@ To see several repositories as one system, pass `--repo` once per repository, fo
 10. Verify that A/B snapshots survive switching to Explore and back **and persist after page reload**. The header indicator should read **All changes saved**. Stop the server, start it again, open **Sessions** and **Resume** the previous session (or start with `--resume latest`). Its components and snapshots must return.
 11. Export the Sandbox as versioned JSON; reset it; import the JSON and verify your components, parameters, and A/B snapshots are restored. Invalid files must not replace the current design.
 12. The Architecture Coach panel shows offline contextual questions.
-13. Narrow the window below 1100 px. The component list and the inspector become drawers: **Show components** and **Show inspector** open them, and Esc or **Close** shuts them. The page never scrolls sideways.
+13. Narrow the window below 1100 px.
+    - The component list and the inspector become drawers. **Show components** and **Show inspector** open them, and focus moves to the drawer's **Close** button.
+    - While a drawer is open, the rest of the page is inactive.
+    - Esc, **Close** or a click outside the drawer shuts it, and focus returns to the button that opened it.
+    - The top bar wraps onto a second row rather than cutting off the scan status.
+    - The page never scrolls sideways.
 14. **Keyboard walkthrough** (a manual accessibility check; there is no automated accessibility audit yet):
-    - Tab reaches, in order, the revision chip, Explore, Sandbox, the search, Sessions and the theme toggle, then the column and canvas controls.
+    - Tab reaches the top bar first: the revision chip, Explore, Sandbox, the search, any Retry button, Sessions and the theme toggle.
+    - It then moves through the left column (the component list and Scan notes), the workspace controls and the canvas, and finally the inspector.
     - Every control shows a visible focus ring.
     - Enter or Space activates buttons.
     - `/` focuses the search, except while you type in a field.

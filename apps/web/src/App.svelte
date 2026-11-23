@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import ArchitectureCanvas from './ArchitectureCanvas.svelte';
   import SessionsPanel from './SessionsPanel.svelte';
   import { createAutosave, type Autosave, type AutosaveStatus } from './autosave.js';
@@ -19,7 +19,7 @@
   import { graphForView, initialView, showsNothingRecognized, type StudioView } from './system-view.js';
   import { isScanSummary, nodeDisplayLabel, type ScanSummaryView } from './scan-summary.js';
   import { scanNotes } from './scan-notes.js';
-  import { revisionChip, workspaceName } from './scan-status.js';
+  import { placeholderChip, revisionChip, workspaceName } from './scan-status.js';
   import { initialMode, isSearchShortcut, type StudioMode } from './studio-mode.js';
   import { applyTheme, nextTheme, readTheme, safeStorage, writeTheme, type Theme } from './theme.js';
   import ScanNotes from './ScanNotes.svelte';
@@ -51,6 +51,30 @@
   let leftShown = $state(startsWide);
   let rightShown = $state(startsWide);
   let searchInput: HTMLInputElement | null = $state(null);
+  let leftToggle: HTMLButtonElement | null = $state(null);
+  let rightToggle: HTMLButtonElement | null = $state(null);
+  let leftClose: HTMLButtonElement | null = $state(null);
+  let rightClose: HTMLButtonElement | null = $state(null);
+  const drawerOpen = $derived.by(() => !wide && (leftShown || (rightShown && studioMode === 'explore')));
+
+  /** On wide screens a toggle collapses its column; on narrow ones it opens a modal drawer. */
+  async function toggleColumn(side: 'left' | 'right'): Promise<void> {
+    const opening = side === 'left' ? !leftShown : !rightShown;
+    if (side === 'left') leftShown = opening;
+    else rightShown = opening;
+    if (wide || !opening) return;
+    await tick();
+    (side === 'left' ? leftClose : rightClose)?.focus();
+  }
+
+  /** Closes any open drawer and returns focus to the toggle that opened it. */
+  async function closeDrawers(): Promise<void> {
+    const opener = leftShown ? leftToggle : rightToggle;
+    leftShown = false;
+    rightShown = false;
+    await tick();
+    opener?.focus();
+  }
   let now = $state(Date.now());
   let addRequest: { id: number; preset: string } | null = $state(null);
   let catalogCounter = 0;
@@ -237,9 +261,8 @@
       if (isSearchShortcut(event) && studioMode === 'explore' && searchInput) {
         event.preventDefault();
         searchInput.focus();
-      } else if (event.key === 'Escape' && !wide && (leftShown || rightShown)) {
-        leftShown = false;
-        rightShown = false;
+      } else if (event.key === 'Escape' && drawerOpen) {
+        void closeDrawers();
       }
     };
     document.addEventListener('keydown', onKey);
@@ -257,15 +280,17 @@
 
 <svelte:head><title>Archwise — Architecture Studio</title></svelte:head>
 <div class="studio">
-  <StudioTopBar workspace={workspaceName(scan)} chip={chip ?? { text: loading ? 'scanning…' : 'no scan', status: 'complete', reasons: [] }}
+  <div class="topbar-wrap" inert={drawerOpen}>
+  <StudioTopBar workspace={workspaceName(scan)} chip={chip ?? placeholderChip(loading)}
     {scan} bind:mode={studioMode} bind:search={filter} bind:searchInput {theme} onToggleTheme={toggleTheme}
     {saveStatus} onRetrySave={() => autosave?.retry()} {storeEnabled} bind:sessionsOpen />
+  </div>
   <SessionsPanel bind:open={sessionsOpen} currentId={sessionId}
     onResume={resume} onNew={startNew} onDelete={remove} onRename={rename} />
   <main class:sandbox-workspace={studioMode === 'sandbox'} class:narrow={!wide}
     class:left-hidden={!leftShown} class:right-hidden={!rightShown || studioMode === 'sandbox'}>
     <aside class="studio-sidebar" id="components-column" aria-label="Component library" class:drawer-open={!wide && leftShown}>
-      {#if !wide}<button type="button" class="drawer-close" onclick={() => (leftShown = false)}>Close</button>{/if}
+      {#if !wide}<button type="button" class="drawer-close" bind:this={leftClose} onclick={() => void closeDrawers()}>Close components</button>{/if}
       <div class="sidebar-heading">
         <h1>{studioMode === 'sandbox' ? 'Components' : 'Discovered components'}</h1>
         <p>{studioMode === 'sandbox' ? 'Choose a component to add it to your canvas.' : 'Frontends, services and infrastructure found in your project.'}</p>
@@ -308,7 +333,7 @@
         {#if notes}<ScanNotes view={notes} />{/if}
       {/if}
     </aside>
-    <section class="workspace" aria-label="Architecture workspace">
+    <section class="workspace" aria-label="Architecture workspace" inert={drawerOpen}>
       <div class="workspace-header">
         <div class="workspace-title">
           <h1>{studioMode === 'sandbox' ? 'Your architecture playground' : 'Discovered architecture'}</h1>
@@ -318,7 +343,7 @@
         </div>
         <div class="workspace-actions">
           <button type="button" class="column-toggle" aria-controls="components-column" aria-expanded={leftShown}
-            onclick={() => (leftShown = !leftShown)}>{leftShown ? 'Hide components' : 'Show components'}</button>
+            bind:this={leftToggle} onclick={() => void toggleColumn('left')}>{leftShown ? 'Hide components' : 'Show components'}</button>
           {#if graph && studioMode === 'explore'}
             <div class="graph-view-switch" role="group" aria-label="Graph view">
               <button type="button" aria-pressed={graphView === 'system'} onclick={() => (graphView = 'system')}>System</button>
@@ -328,7 +353,7 @@
           <button type="button" onclick={() => void loadGraph()}>Refresh graph</button>
           {#if studioMode === 'explore'}
             <button type="button" class="column-toggle" aria-controls="inspector-column" aria-expanded={rightShown}
-              onclick={() => (rightShown = !rightShown)}>{rightShown ? 'Hide inspector' : 'Show inspector'}</button>
+              bind:this={rightToggle} onclick={() => void toggleColumn('right')}>{rightShown ? 'Hide inspector' : 'Show inspector'}</button>
           {/if}
         </div>
       </div>
@@ -362,7 +387,7 @@
       {/if}
     </section>
     <aside aria-label="Component inspector" class="discovered-inspector" id="inspector-column" class:drawer-open={!wide && rightShown}>
-      {#if !wide}<button type="button" class="drawer-close" onclick={() => (rightShown = false)}>Close</button>{/if}
+      {#if !wide}<button type="button" class="drawer-close" bind:this={rightClose} onclick={() => void closeDrawers()}>Close inspector</button>{/if}
       <h1>Inspector</h1>
       {#if selected}
         <h2>{selected.label}</h2>
@@ -393,9 +418,9 @@
         </section>
       {/if}
     </aside>
-    {#if !wide && (leftShown || (rightShown && studioMode === 'explore'))}
-      <button type="button" class="drawer-scrim" aria-label="Close panel"
-        onclick={() => { leftShown = false; rightShown = false; }}></button>
+    {#if drawerOpen}
+      <!-- Pointer-only backdrop; keyboard users close the drawer with Esc or its Close button. -->
+      <div class="drawer-scrim" aria-hidden="true" onclick={() => void closeDrawers()}></div>
     {/if}
   </main>
 </div>

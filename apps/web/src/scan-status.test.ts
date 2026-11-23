@@ -1,7 +1,13 @@
 import { expect, test } from 'vitest';
 import { discoveredNode, graphOf } from './graph-fixtures.js';
 import type { Graph } from './graph-types.js';
-import { relativeTime, revisionChip, workspaceName, type ChipInput } from './scan-status.js';
+import {
+  placeholderChip,
+  relativeTime,
+  revisionChip,
+  workspaceName,
+  type ChipInput,
+} from './scan-status.js';
 import { isScanSummary, type ScanSummaryView } from './scan-summary.js';
 
 const NOW = Date.parse('2026-11-23T10:02:00Z');
@@ -167,4 +173,9 @@ test('workspaceName is the repository label, a count, or a fallback', () => {
   });
   expect(workspaceName(three)).toBe('3 repositories');
   expect(workspaceName(null)).toBe('Workspace');
+});
+
+test('before any scan the chip claims nothing', () => {
+  expect(placeholderChip(true)).toEqual({ text: 'scanning…', status: 'unknown', reasons: [] });
+  expect(placeholderChip(false)).toEqual({ text: 'no scan', status: 'unknown', reasons: [] });
 });

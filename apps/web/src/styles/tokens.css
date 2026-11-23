@@ -36,7 +36,7 @@
   --kind-external: #e58f8f;
   --kind-job: #a9cf72;
   --ok: #8fe07a;
-  --warn: #e8b04b;
+  --warn: #f2916b; /* never the accent amber: amber means selection only */
   --danger: #e58f8f;
   --overlay: rgba(7, 8, 10, 0.55);
   /* Sandbox connection intents (a separate vocabulary from component kinds). */

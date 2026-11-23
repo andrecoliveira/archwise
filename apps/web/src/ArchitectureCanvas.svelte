@@ -350,10 +350,15 @@
     return () => { cancelled = true; };
   });
 
-  // Switching mode (now done from the App's tabs) drops a selected Sandbox connection.
+  // Switching mode (done from the App's tabs) drops the selected component and connection,
+  // as the old in-canvas switch did: a Sandbox selection means nothing in Explore.
+  let previousMode = untrack(() => mode);
   $effect(() => {
-    void mode;
+    const current = mode;
     untrack(() => {
+      if (current === previousMode) return;
+      previousMode = current;
+      selectedId = null;
       selectedEdgeId = null;
     });
   });

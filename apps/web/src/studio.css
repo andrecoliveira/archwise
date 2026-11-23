@@ -11,8 +11,12 @@
   min-height: 0;
   overflow: hidden;
 }
-.topbar {
+.topbar-wrap {
   flex-shrink: 0;
+}
+.topbar {
+  flex-wrap: wrap;
+  row-gap: 8px;
   min-height: 52px;
   border-bottom: 1px solid var(--line);
   background: var(--panel);
@@ -45,12 +49,7 @@
   flex-shrink: 0;
 }
 .revision-chip {
-  min-width: 0;
-  flex-shrink: 1;
-}
-.revision-chip > summary {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex-shrink: 0;
 }
 @media (max-width: 1099px) {
   .topbar {
@@ -89,6 +88,7 @@
   max-width: 24ch;
 }
 .studio > main {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: grid;
@@ -133,8 +133,8 @@
 .studio > main.narrow > aside.drawer-open {
   display: flex;
   flex-direction: column;
-  position: fixed;
-  top: 60px;
+  position: absolute;
+  top: 8px;
   bottom: 8px;
   z-index: 30;
   width: min(340px, calc(100vw - 32px));
@@ -150,11 +150,9 @@
   align-self: flex-end;
 }
 .drawer-scrim {
-  position: fixed;
-  inset: 52px 0 0;
+  position: absolute;
+  inset: 0;
   z-index: 25;
-  border: 0;
-  border-radius: 0;
   background: var(--overlay);
 }
 .list-count {
@@ -1013,7 +1011,6 @@ aside {
   font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  opacity: 0.75;
 }
 .discovered-label {
   font-size: 13px;
@@ -1024,7 +1021,6 @@ aside {
 }
 .discovered-detail {
   font-size: 11px;
-  opacity: 0.85;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1087,6 +1083,10 @@ aside {
 }
 .revision-chip[data-status='partial'] > summary {
   border-color: var(--warn);
+  border-style: dashed;
+}
+.revision-chip[data-status='unknown'] .revision-chip-status {
+  display: none;
 }
 .revision-chip[data-status='partial'] .revision-chip-status {
   color: var(--warn);

@@ -3,11 +3,15 @@
   import { repositoryLines, skippedLine, type ScanSummaryView } from './scan-summary.js';
 
   let { chip, scan }: { chip: Chip; scan: ScanSummaryView | null } = $props();
+  /** The full text, and why a scan is partial, on hover even when the chip is truncated. */
+  const tooltip = $derived(
+    chip.reasons.length > 0 ? `${chip.text} — partial because ${chip.reasons.join('; ')}` : chip.text,
+  );
 </script>
 
 <details class="revision-chip" data-status={chip.status}>
-  <summary>
-    <span class="revision-chip-status" aria-hidden="true">{chip.status === 'complete' ? '✓' : '!'}</span>
+  <summary title={tooltip}>
+    <span class="revision-chip-status" aria-hidden="true">{chip.status === 'complete' ? '✓' : chip.status === 'partial' ? '!' : ''}</span>
     {chip.text}
   </summary>
   <div class="revision-chip-panel" role="group" aria-label="Scan details">

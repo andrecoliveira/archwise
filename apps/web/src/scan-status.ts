@@ -17,7 +17,8 @@ export interface ChipInput {
 
 export interface Chip {
   readonly text: string;
-  readonly status: 'complete' | 'partial';
+  /** `unknown` before any scan result exists: the chip then claims nothing. */
+  readonly status: 'complete' | 'partial' | 'unknown';
   readonly reasons: string[];
 }
 
@@ -72,4 +73,9 @@ export function workspaceName(scan: ScanSummaryView | null): string {
   if (repositories.length === 1) return repositories[0]!.label;
   if (repositories.length > 1) return `${repositories.length} repositories`;
   return 'Workspace';
+}
+
+/** The chip while the first scan loads or after it failed: no status, no check mark. */
+export function placeholderChip(loading: boolean): Chip {
+  return { text: loading ? 'scanning…' : 'no scan', status: 'unknown', reasons: [] };
 }
