@@ -928,3 +928,39 @@ aside {
 .revision-chip-panel p {
   margin: 6px 0 0;
 }
+
+/* Scan notes: files not analyzed, then every other scan diagnostic. */
+.scan-notes {
+  margin-top: auto;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.scan-notes h2 {
+  margin: 0 0 2px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.scan-notes-headline {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 500;
+}
+.scan-notes ul {
+  margin: 6px 0 0;
+  padding-left: 16px;
+  max-height: 30vh;
+  overflow: auto;
+  color: var(--ink-2);
+  font-size: 12px;
+}
+.scan-notes code {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}

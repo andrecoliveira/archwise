@@ -2,7 +2,6 @@ import { expect, test } from 'vitest';
 import { discoveredNode } from './graph-fixtures.js';
 import {
   isScanSummary,
-  gapLines,
   nodeDisplayLabel,
   repositoryLines,
   scanHeadline,
@@ -82,16 +81,3 @@ test('node labels add the repository when there is one', () => {
   );
 });
 
-test('gapLines groups by reason', () => {
-  expect(
-    gapLines([
-      { path: 'nx.json', analyzer: 'node-workspace', reason: 'unsupported' },
-      { path: 'compose.yaml', analyzer: 'docker-compose', reason: 'invalid-syntax' },
-      { path: 'apps/web/project.json', analyzer: 'node-workspace', reason: 'unsupported' },
-    ]),
-  ).toEqual([
-    'Not analyzed (unsupported): apps/web/project.json, nx.json',
-    'Not analyzed (invalid-syntax): compose.yaml',
-  ]);
-  expect(gapLines([])).toEqual([]);
-});

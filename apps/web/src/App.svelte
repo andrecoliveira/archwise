@@ -18,7 +18,6 @@
   import { kindLabel, upgradeGraph, type Graph } from './graph-types.js';
   import { graphForView, initialView, showsNothingRecognized, type StudioView } from './system-view.js';
   import {
-    gapLines,
     isScanSummary,
     nodeDisplayLabel,
     repositoryLines,
@@ -26,6 +25,7 @@
     skippedLine,
     type ScanSummaryView,
   } from './scan-summary.js';
+  import { scanNotes } from './scan-notes.js';
   import './studio.css';
 
   let graphData = $state<Graph | null>(null);
@@ -238,7 +238,7 @@
             {#if graph && (graph.gaps.length > 0 || failedAnalyzers.length > 0)}
               <h2>Not analyzed</h2>
               <ul>
-                {#each gapLines(graph.gaps) as line, i (i)}<li>{line}</li>{/each}
+                {#each scanNotes(graph).gaps as gap, i (i)}<li><code>{gap.path}</code> — {gap.reason}</li>{/each}
                 {#each failedAnalyzers as line, i (i)}<li>{line}</li>{/each}
               </ul>
             {/if}
