@@ -443,8 +443,16 @@ try {
   multiPage.on('pageerror', (error) => errors.push(error.message));
   await multiPage.goto(multiUrl, { waitUntil: 'networkidle' });
   await multiPage.getByRole('button', { name: 'Explore · Inspect' }).click();
-  for (const label of ['@smoke/api · Package · api', '@smoke/web · Package · web']) {
-    await multiPage.locator('.svelte-flow__node').filter({ hasText: label }).waitFor();
+  for (const [name, repository] of [
+    ['@smoke/api', 'api'],
+    ['@smoke/web', 'web'],
+  ]) {
+    await multiPage
+      .locator('.svelte-flow__node')
+      .filter({ hasText: name })
+      .filter({ hasText: 'Library' })
+      .filter({ hasText: repository })
+      .waitFor();
   }
   await multiPage.waitForFunction(
     () => globalThis.document.querySelectorAll('.svelte-flow__edge').length >= 1,
@@ -453,13 +461,88 @@ try {
   const scanPanel = multiPage.getByLabel('Scan summary');
   await scanPanel.getByText('api: 1 manifest').waitFor();
   await scanPanel.getByText('web: 1 manifest').waitFor();
-  if (process.env.ARCHWISE_SMOKE_SCREENSHOT) {
-    await multiPage.screenshot({ path: process.env.ARCHWISE_SMOKE_SCREENSHOT });
+  // Libraries only: the Studio says so and opens on All packages.
+  await multiPage.getByText('No frontends, services or infrastructure were recognized').waitFor();
+
+  // A system project: the System view shows frontends, services and infrastructure.
+  const { SYSTEM_FIXTURE, createFixture } = await import(
+    pathToFileURL(join(process.cwd(), 'packages/test-fixtures/dist/index.js')).href
+  );
+  const system = await createFixture(SYSTEM_FIXTURE);
+  try {
+    await stopServer();
+    const systemUrl = await startServer(['--path', system.root, '--no-store']);
+    const systemPage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    systemPage.on('pageerror', (error) => errors.push(error.message));
+    await systemPage.goto(systemUrl, { waitUntil: 'networkidle' });
+    await systemPage.getByRole('button', { name: 'Explore · Inspect' }).click();
+    const viewControl = systemPage.getByRole('group', { name: 'Graph view' });
+    assert.equal(
+      await viewControl.getByRole('button', { name: 'System' }).getAttribute('aria-pressed'),
+      'true',
+      'The System view is the default',
+    );
+    const canvasNodes = systemPage.locator('.svelte-flow__node');
+    for (const label of ['@shop/web', '@shop/api', '@shop/worker', 'Stripe', 'BullMQ']) {
+      await canvasNodes.filter({ hasText: label }).first().waitFor();
+    }
+    await canvasNodes.filter({ hasText: 'PostgreSQL' }).first().waitFor();
+    assert.equal(
+      await canvasNodes.filter({ hasText: '@shop/db' }).count(),
+      0,
+      'Libraries are hidden in the System view',
+    );
+    await systemPage.waitForFunction(
+      () => globalThis.document.querySelectorAll('.svelte-flow__edge').length >= 6,
+    );
+    // After the automatic layout, the whole System view fits on screen.
+    const viewport = await systemPage.locator('.svelte-flow').boundingBox();
+    await systemPage.waitForFunction(
+      () => {
+        const pane = globalThis.document.querySelector('.svelte-flow')?.getBoundingClientRect();
+        const boxes = [...globalThis.document.querySelectorAll('.svelte-flow__node')].map((n) =>
+          n.getBoundingClientRect(),
+        );
+        return (
+          pane !== undefined &&
+          boxes.length >= 7 &&
+          boxes.every(
+            (b) =>
+              b.left >= pane.left - 1 &&
+              b.right <= pane.right + 1 &&
+              b.top >= pane.top - 1 &&
+              b.bottom <= pane.bottom + 1,
+          )
+        );
+      },
+      undefined,
+      { timeout: 10_000 },
+    );
+    assert.ok(viewport, 'The canvas is visible');
+    if (process.env.ARCHWISE_SMOKE_SCREENSHOT) {
+      await systemPage.screenshot({ path: process.env.ARCHWISE_SMOKE_SCREENSHOT });
+    }
+    await canvasNodes.filter({ hasText: '@shop/api' }).first().click();
+    const discoveredInspector = systemPage.getByRole('complementary', {
+      name: 'Component inspector',
+    });
+    await discoveredInspector.getByText('Kind: Service').waitFor();
+    await discoveredInspector.getByText('Compose services: api').waitFor();
+    await viewControl.getByRole('button', { name: 'All packages' }).click();
+    await canvasNodes.filter({ hasText: '@shop/db' }).first().waitFor();
+    await systemPage.getByText(/^Scan · /).click();
+    assert.equal(
+      await systemPage.getByLabel('Scan summary').getByText('Not analyzed').count(),
+      0,
+      'A fully supported fixture has no coverage gaps',
+    );
+  } finally {
+    await system.dispose();
   }
 
   assert.deepEqual(errors, [], 'Browser runtime errors must not occur');
   console.log(
-    'Browser smoke passed: components, handles, edge intent, replica scaling, A/B, autosave, drag positions, JSON export/import, reload, cross-launch resume, rename, delete, no catalog replay, edit-before-refresh, keyboard panel, unrestorable-session protection, and a two-repository workspace with repository labels and the scan summary.',
+    'Browser smoke passed: components, handles, edge intent, replica scaling, A/B, autosave, drag positions, JSON export/import, reload, cross-launch resume, rename, delete, no catalog replay, edit-before-refresh, keyboard panel, unrestorable-session protection, a two-repository workspace with repository labels and the scan summary, and the System view of a full-stack fixture.',
   );
 } finally {
   await browser?.close();
