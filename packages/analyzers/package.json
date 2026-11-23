@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@archwise/application": "workspace:*",
-    "@archwise/domain": "workspace:*"
+    "@archwise/domain": "workspace:*",
+    "yaml": "2.9.1"
   }
 }
