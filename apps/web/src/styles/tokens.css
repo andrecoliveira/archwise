@@ -1,0 +1,73 @@
+/*
+ * Design tokens. This is the only stylesheet that may contain literal colours; everything else
+ * uses these custom properties (enforced by no-literal-colors.test.ts).
+ *
+ * Meaning is never doubled up: kind fills say what a component is, line style says how sure
+ * Archwise is, and --accent marks only selection and focus.
+ */
+:root {
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  color-scheme: dark;
+}
+
+:root,
+:root[data-theme='dark'] {
+  --bg: #14161b;
+  --panel: #1b1e25;
+  --panel-2: #222631;
+  --line: #343a48;
+  --ink: #e9e4da;
+  --ink-2: #a8a293;
+  --ink-3: #968f82;
+  --grid: rgba(233, 228, 218, 0.05);
+  --stroke: #0c0d10;
+  --outline: rgba(233, 228, 218, 0.55);
+  --shadow: #07080a;
+  --accent: #e8b04b;
+  --accent-ink: #1b1408;
+  --on-fill: #1b1408;
+  --plinth: #2c313d;
+  --msg: #f1ece2;
+  --kind-frontend: #6cc4b4;
+  --kind-service: #7aa6e0;
+  --kind-module: #8f96a6;
+  --kind-datastore: #b49be0;
+  --kind-queue: #d9774a;
+  --kind-external: #e58f8f;
+  --kind-job: #a9cf72;
+  --ok: #8fe07a;
+  --warn: #e8b04b;
+  --danger: #e58f8f;
+  --overlay: rgba(7, 8, 10, 0.55);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f3ede3;
+  --panel: #fbf8f2;
+  --panel-2: #f1ebe0;
+  --line: #d6cdbd;
+  --ink: #1f1c18;
+  --ink-2: #5d564b;
+  --ink-3: #6b6458;
+  --grid: rgba(31, 28, 24, 0.07);
+  --stroke: #1f1c18;
+  --outline: #1f1c18;
+  --shadow: #1f1c18;
+  --accent: #d9902a;
+  --accent-ink: #1b1408;
+  --on-fill: #1b1408;
+  --plinth: #e7ddcc;
+  --msg: #ffffff;
+  --kind-frontend: #9fd8cc;
+  --kind-service: #a9c5ea;
+  --kind-module: #c8ccd4;
+  --kind-datastore: #cdbbea;
+  --kind-queue: #efb08e;
+  --kind-external: #f0b3b0;
+  --kind-job: #c9e2a0;
+  --ok: #3d8a2f;
+  --warn: #9a6a12;
+  --danger: #b4423f;
+  --overlay: rgba(31, 28, 24, 0.35);
+}

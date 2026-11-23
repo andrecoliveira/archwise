@@ -150,3 +150,17 @@ test('without a scan summary the route is not found', async () => {
     await server.close();
   }
 });
+
+test('the CSP allows only self-hosted fonts', async () => {
+  const server = await startLocalGraphServer(graph);
+  try {
+    const cookie = await signIn(server);
+    const response = await fetch(`${server.address}/api/v1/health`, { headers: { cookie } });
+    await response.json();
+    const csp = response.headers.get('content-security-policy') ?? '';
+    expect(csp).toContain("font-src 'self'");
+    expect(csp).toContain("default-src 'none'");
+  } finally {
+    await server.close();
+  }
+});
