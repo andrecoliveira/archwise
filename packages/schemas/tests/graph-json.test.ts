@@ -187,3 +187,9 @@ describe('import edge cases', () => {
     expect(JSON.stringify(result)).not.toContain(syntheticAwsKey);
   });
 });
+
+test('parses a revision with a frontend node', () => {
+  const envelope = validEnvelope();
+  envelope.revision.nodes[0].kind = 'frontend';
+  expect(parseGraphEnvelope(envelope).ok).toBe(true);
+});
