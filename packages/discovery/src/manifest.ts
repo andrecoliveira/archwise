@@ -8,6 +8,9 @@ export interface ParsedManifest {
   readonly name: string;
   readonly framework: string | null;
   readonly dependencies: readonly string[];
+  readonly runtimeDependencies: readonly string[];
+  readonly devDependencies: readonly string[];
+  readonly workspaces: readonly string[] | null;
   readonly sha256: string;
 }
 
@@ -40,18 +43,34 @@ export function parseManifest(
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return { kind: 'invalid' };
   const data = parsed as Record<string, unknown>;
   const redact = (text: string): string => redactSensitiveText(text, knownHomes);
-  const dependencies = [data.dependencies, data.devDependencies]
-    .flatMap((value) =>
-      value && typeof value === 'object' && !Array.isArray(value) ? Object.keys(value) : [],
-    )
-    .map(redact);
-  const unique = [...new Set(dependencies)].sort();
+  const names = (value: unknown): string[] =>
+    [
+      ...new Set(
+        (value && typeof value === 'object' && !Array.isArray(value) ? Object.keys(value) : []).map(
+          redact,
+        ),
+      ),
+    ].sort();
+  const runtimeDependencies = names(data.dependencies);
+  const devDependencies = names(data.devDependencies);
+  const unique = [...new Set([...runtimeDependencies, ...devDependencies])].sort();
+  const globs = Array.isArray(data.workspaces)
+    ? (data.workspaces as unknown[])
+    : data.workspaces && typeof data.workspaces === 'object'
+      ? (data.workspaces as Record<string, unknown>).packages
+      : null;
+  const workspaces = Array.isArray(globs)
+    ? globs.filter((item): item is string => typeof item === 'string').map(redact)
+    : null;
   return {
     kind: 'ok',
     manifest: {
       name: typeof data.name === 'string' ? redact(data.name) : fallbackName,
       framework: FRAMEWORKS.find((item) => unique.includes(item)) ?? null,
       dependencies: unique,
+      runtimeDependencies,
+      devDependencies,
+      workspaces,
       sha256: createHash('sha256').update(bytes).digest('hex'),
     },
   };

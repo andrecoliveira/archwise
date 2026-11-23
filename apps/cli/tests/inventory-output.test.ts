@@ -29,8 +29,20 @@ const result: InventoryResult = {
       path: 'apps/api/package.json',
       name: '@shop/api',
       framework: 'fastify',
-      dependencies: ['fastify'],
+      dependencies: ['fastify', 'vitest'],
+      runtimeDependencies: ['fastify'],
+      devDependencies: ['vitest'],
+      workspaces: null,
       sha256: 'a'.repeat(64),
+    },
+  ],
+  files: [
+    {
+      repositoryId: 'repo-root',
+      rootId: 'repo-root',
+      path: 'compose.yaml',
+      text: 'services: {}',
+      problem: null,
     },
   ],
   listedEntries: 120,
@@ -90,6 +102,21 @@ test('portable JSON is an allowlist without the root or timing', () => {
   expect(text).not.toContain(result.roots[0]);
   expect(text).not.toContain('durationMs');
   expect(text).toContain('a'.repeat(64));
+});
+
+test('portable --json manifests keep the Phase 3 fields only', () => {
+  const portable = portableInventory(result) as { manifests: Record<string, unknown>[] };
+  expect(Object.keys(portable.manifests[0]!)).toEqual([
+    'repositoryId',
+    'rootId',
+    'path',
+    'name',
+    'framework',
+    'dependencies',
+    'sha256',
+  ]);
+  expect('files' in portable).toBe(false);
+  expect(JSON.stringify(portable)).not.toContain('services: {}');
 });
 
 test.each([

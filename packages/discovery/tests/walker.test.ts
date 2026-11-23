@@ -495,3 +495,76 @@ describe('final review fixes', () => {
     });
   });
 });
+
+describe('analyzer inputs', () => {
+  const inputs = { fileNames: ['compose.yaml', '.env'], extensions: ['.prisma'] };
+
+  test('reads declared inputs and never deny-listed files', async () => {
+    const root = await tree({
+      'package.json': pkg('root'),
+      'compose.yaml': 'services: {}\n',
+      'db/schema.prisma': 'datasource db {}\n',
+      '.env': 'SECRET=1\n',
+      'src/a.ts': 'export {}\n',
+    });
+    const result = await scan(root, { inputs });
+    expect(result.files.map((file) => file.path)).toEqual(['compose.yaml', 'db/schema.prisma']);
+    expect(result.files.map((file) => [file.text, file.problem])).toEqual([
+      ['services: {}\n', null],
+      ['datasource db {}\n', null],
+    ]);
+    expect(JSON.stringify(result)).not.toContain('SECRET');
+  });
+
+  test('an oversized input is reported, not read', async () => {
+    const root = await tree({ 'compose.yaml': 'services: {}\n# padding\n' });
+    const result = await scan(root, { inputs, budgets: { bytesPerFile: 10 } });
+    expect(result.files).toEqual([
+      expect.objectContaining({ path: 'compose.yaml', text: null, problem: 'too-large' }),
+    ]);
+    expect(result.skipped['too-large']?.count).toBe(1);
+  });
+
+  test('a binary input is reported', async () => {
+    const root = await tree({ 'compose.yaml': Buffer.from([0x61, 0x00, 0x62]) });
+    const result = await scan(root, { inputs });
+    expect(result.files).toEqual([
+      expect.objectContaining({ path: 'compose.yaml', text: null, problem: 'binary' }),
+    ]);
+  });
+
+  test('without inputs nothing extra is read', async () => {
+    const manifest = pkg('root');
+    const root = await tree({ 'package.json': manifest, 'compose.yaml': 'services: {}\n' });
+    const result = await scan(root);
+    expect(result.files).toEqual([]);
+    expect(result.bytesRead).toBe(Buffer.byteLength(manifest));
+  });
+
+  test('manifests keep runtime dependencies, dev dependencies and workspaces', async () => {
+    const root = await tree({
+      'package.json': JSON.stringify({
+        name: 'root',
+        dependencies: { pg: '1' },
+        devDependencies: { vitest: '1' },
+        workspaces: { packages: ['apps/*', 7] },
+      }),
+      'apps/a/package.json': JSON.stringify({ name: 'a', workspaces: ['x/*'] }),
+    });
+    const result = await scan(root);
+    const [first, second] = result.manifests;
+    expect(first).toMatchObject({
+      path: 'apps/a/package.json',
+      runtimeDependencies: [],
+      devDependencies: [],
+      workspaces: ['x/*'],
+    });
+    expect(second).toMatchObject({
+      path: 'package.json',
+      runtimeDependencies: ['pg'],
+      devDependencies: ['vitest'],
+      dependencies: ['pg', 'vitest'],
+      workspaces: ['apps/*'],
+    });
+  });
+});

@@ -15,6 +15,9 @@ const manifest = (
   name,
   framework,
   dependencies,
+  runtimeDependencies: dependencies,
+  devDependencies: [],
+  workspaces: null,
   sha256: '0',
 });
 
@@ -23,6 +26,7 @@ const sample: InventoryResult = {
   roots: ['/private/home/developer'],
   repositories: [repository({ id: 'repo-root', label: 'developer', path: '', nested: false })],
   listedEntries: 10,
+  files: [],
   bytesRead: 0,
   skipped: {},
   truncated: null,

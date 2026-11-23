@@ -61,8 +61,31 @@ export interface InventoryManifest {
   readonly path: string;
   readonly name: string;
   readonly framework: string | null;
+  /** Runtime and dev dependency names, merged and sorted (Phase 3 shape). */
   readonly dependencies: readonly string[];
+  /** `dependencies` only. */
+  readonly runtimeDependencies: readonly string[];
+  readonly devDependencies: readonly string[];
+  /** `workspaces` globs (array or `{ packages }`), else null. */
+  readonly workspaces: readonly string[] | null;
   readonly sha256: string;
+}
+
+/** A file read for analyzers. Process-local: its text is never serialized to outputs. */
+export interface InventoryFile {
+  readonly repositoryId: string;
+  readonly rootId: string;
+  /** Path relative to the user root, '/'-separated, like manifests. */
+  readonly path: string;
+  /** UTF-8 text; null when `problem` is set. */
+  readonly text: string | null;
+  readonly problem: 'too-large' | 'binary' | 'unreadable' | null;
+}
+
+/** Files analyzers declare; matched by exact base name or name suffix. */
+export interface InventoryInputs {
+  readonly fileNames: readonly string[];
+  readonly extensions: readonly string[];
 }
 
 export interface SkipSummary {
@@ -77,6 +100,8 @@ export interface InventoryResult {
   readonly roots: readonly string[];
   readonly repositories: readonly InventoryRepository[];
   readonly manifests: readonly InventoryManifest[];
+  /** Analyzer input files (never package.json, never deny-listed); process-local. */
+  readonly files: readonly InventoryFile[];
   readonly listedEntries: number;
   readonly bytesRead: number;
   readonly skipped: Readonly<Partial<Record<SkipReason, SkipSummary>>>;
@@ -102,6 +127,8 @@ export interface InventoryRequest {
   readonly roots: readonly RootRequest[];
   readonly knownHomes: readonly string[];
   readonly budgets?: Partial<InventoryBudgets>;
+  /** Files to read for analyzers, besides package manifests. */
+  readonly inputs?: InventoryInputs;
   readonly signal?: AbortSignal;
   /** Milliseconds clock, injectable for time-budget tests. */
   readonly now?: () => number;

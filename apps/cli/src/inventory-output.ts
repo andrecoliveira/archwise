@@ -80,7 +80,17 @@ export function portableInventory(result: InventoryResult): object {
         skipped,
       }),
     ),
-    manifests: result.manifests,
+    manifests: result.manifests.map(
+      ({ repositoryId, rootId, path, name, framework, dependencies, sha256 }) => ({
+        repositoryId,
+        rootId,
+        path,
+        name,
+        framework,
+        dependencies,
+        sha256,
+      }),
+    ),
     listedEntries: result.listedEntries,
     skipped: result.skipped,
     truncated: result.truncated,
