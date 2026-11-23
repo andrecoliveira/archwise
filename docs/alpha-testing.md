@@ -38,9 +38,9 @@ To see several repositories as one system, pass `--repo` once per repository, fo
 
 ## What to verify
 
-1. In **Explore**, the Studio opens on the **System** view. It shows frontends, services, datastores, queues and external services found in package manifests, Docker Compose and Prisma schemas. Libraries are hidden, and their connections appear on the services that use them, marked "via …". Inferred items are dashed. **All packages** shows every package. A project with only libraries opens on All packages and says why.
-2. Selecting a component shows its kind, technology, confidence with reasons, any Compose services that build it, and its evidence (`path` or `path:line`, with analyzer and rule) in the inspector. With several repositories, each package shows its repository label, the inspector shows the repository, and the header's **Scan** summary lists each repository's counts.
-3. The search filter narrows visible packages and edges.
+1. The Studio opens in **Explore**, on the **System** view, when your project has components (an empty project opens in **Sandbox**). It uses the dark theme; the **◐** button switches to light, and the choice survives a reload. It shows frontends, services, datastores, queues and external services found in package manifests, Docker Compose and Prisma schemas. Libraries are hidden, and their connections appear on the services that use them, marked "via …". Inferred items are dashed. **All packages** shows every package. A project with only libraries opens on All packages and says why.
+2. Selecting a component shows its kind, technology, confidence with reasons, any Compose services that build it, and its evidence (`path` or `path:line`, with analyzer and rule) in the inspector. With several repositories, each package shows its repository label, the inspector shows the repository, and the top bar shows "N repositories". Open the revision chip ("scanned … · complete") for each repository's counts. **Scan notes**, at the bottom of the left column, list the files that were not analyzed, with the reason, and every other scan note.
+3. The **Find component** search in the top bar narrows visible packages and edges. Press `/` or Cmd/Ctrl+K to focus it.
 4. Zoom, pan and automatic layout work on the Svelte Flow canvas.
 5. Switching to Sandbox permits proposed nodes and connections, visibly distinct from discovered items.
 6. Switching back to Explore shows the source-backed graph without the proposed items.
@@ -50,7 +50,20 @@ To see several repositories as one system, pass `--repo` once per repository, fo
 10. Verify that A/B snapshots survive switching to Explore and back **and persist after page reload**. The header indicator should read **All changes saved**. Stop the server, start it again, open **Sessions** and **Resume** the previous session (or start with `--resume latest`). Its components and snapshots must return.
 11. Export the Sandbox as versioned JSON; reset it; import the JSON and verify your components, parameters, and A/B snapshots are restored. Invalid files must not replace the current design.
 12. The Architecture Coach panel shows offline contextual questions.
-13. Stop the local server with Ctrl+C. No project files should have been modified.
+13. Narrow the window below 1100 px.
+    - The component list and the inspector become drawers. **Show components** and **Show inspector** open them, and focus moves to the drawer's **Close** button.
+    - While a drawer is open, the rest of the page is inactive.
+    - Esc, **Close** or a click outside the drawer shuts it, and focus returns to the button that opened it.
+    - The top bar wraps onto a second row rather than cutting off the scan status.
+    - The page never scrolls sideways.
+14. **Keyboard walkthrough** (a manual accessibility check; there is no automated accessibility audit yet):
+    - Tab reaches the top bar first: the revision chip, Explore, Sandbox, the search, any Retry button, Sessions and the theme toggle.
+    - It then moves through the left column (the component list and Scan notes), the workspace controls and the canvas, and finally the inspector.
+    - Every control shows a visible focus ring.
+    - Enter or Space activates buttons.
+    - `/` focuses the search, except while you type in a field.
+    - Esc closes drawers and the Sessions panel.
+15. Stop the local server with Ctrl+C. No project files should have been modified.
 
 ## Current limits and safety
 

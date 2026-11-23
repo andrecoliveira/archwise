@@ -4,14 +4,14 @@ This increment replaces the default proposed Svelte Flow nodes with purpose-buil
 
 ## Test this in the browser
 
-1. Start the [local Alpha](alpha-testing.md), which opens in **Sandbox · Build**.
+1. Start the [local Alpha](alpha-testing.md) and select the **Sandbox** tab in the top bar.
 2. In the component catalog, add **Client**, **App Server** and **SQL Database**.
 3. Each card has an obvious **input handle on the left** and **output handle on the right**. Drag from Client's output handle to App Server's input, then App Server's output to SQL Database's input.
 4. Select a node. The contextual inspector appears inside the canvas on the right. Rename it, change its **capacity** (RPS) or **baseline latency** (ms), and toggle **Simulate failure**. Cache nodes also expose **cache hit rate**.
 5. Watch the node's modeled utilization or bottleneck state update using the same simulation settings that the lower drawer uses.
 6. Select a connection to edit its semantic intent. The intent is still *visual metadata*; the capacity simulator doesn't interpret production network traffic from labels.
 7. Export the Sandbox JSON, refresh/restart the Studio, and import it. Custom component preset identity, names, topology, intent types and numerical settings should be retained.
-8. Switch to **Explore · Inspect** to inspect discovered package evidence. The workspace source files are not changed by any Sandbox operations.
+8. Switch to the **Explore** tab to inspect discovered package evidence. The workspace source files are not changed by any Sandbox operations.
 
 ## Design boundaries
 

@@ -350,6 +350,19 @@
     return () => { cancelled = true; };
   });
 
+  // Switching mode (done from the App's tabs) drops the selected component and connection,
+  // as the old in-canvas switch did: a Sandbox selection means nothing in Explore.
+  let previousMode = untrack(() => mode);
+  $effect(() => {
+    const current = mode;
+    untrack(() => {
+      if (current === previousMode) return;
+      previousMode = current;
+      selectedId = null;
+      selectedEdgeId = null;
+    });
+  });
+
   function addNode(preset: string): void {
     const item = findCatalogComponent(preset);
     if (!item) return;
@@ -467,13 +480,6 @@
 </script>
 
 <div class="toolbar" aria-label="Studio controls">
-  <div class="studio-mode-switch" role="group" aria-label="Studio mode">
-    <button type="button" aria-pressed={mode === 'sandbox'}
-      onclick={() => { mode = 'sandbox'; selectedId = null; selectedEdgeId = null; }}>Sandbox · Build</button>
-    <button type="button" aria-pressed={mode === 'explore'}
-      onclick={() => { mode = 'explore'; selectedId = null; selectedEdgeId = null; }}>Explore · Inspect</button>
-  </div>
-  <span class="toolbar-separator" aria-hidden="true"></span>
   <button type="button" onclick={() => (layoutNonce += 1)}>Auto layout</button>
   {#if mode === 'sandbox'}
     <span class="toolbar-count">{proposedNodes.length} components · {proposedEdges.length} connections</span>

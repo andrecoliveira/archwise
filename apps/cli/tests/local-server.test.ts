@@ -105,6 +105,7 @@ test('rejects missing compiled browser assets with actionable error', async () =
 
 const summary: ScanSummary = {
   version: 1,
+  scannedAt: '2026-11-23T00:00:00.000Z',
   listedEntries: 120,
   skipped: { 'ignored-builtin': 3 },
   truncated: null,
@@ -146,6 +147,20 @@ test('without a scan summary the route is not found', async () => {
     const response = await fetch(`${server.address}/api/v1/scan`, { headers: { cookie } });
     expect(response.status).toBe(404);
     expect(await response.json()).toEqual({ error: 'Not found' });
+  } finally {
+    await server.close();
+  }
+});
+
+test('the CSP allows only self-hosted fonts', async () => {
+  const server = await startLocalGraphServer(graph);
+  try {
+    const cookie = await signIn(server);
+    const response = await fetch(`${server.address}/api/v1/health`, { headers: { cookie } });
+    await response.json();
+    const csp = response.headers.get('content-security-policy') ?? '';
+    expect(csp).toContain("font-src 'self'");
+    expect(csp).toContain("default-src 'none'");
   } finally {
     await server.close();
   }

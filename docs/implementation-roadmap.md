@@ -34,7 +34,9 @@ Finalization does not mean development stops. It establishes a reliable open-sou
 
 ## Current state
 
-Snapshot as of 2026-11-23, after PRs #5 to #15 and Phase 4 PR 1. Issues and milestones remain the live tracker.
+Snapshot as of 2026-11-23, after PRs #5 to #15, Phase 4 PR 1 and the first Studio redesign PR. Issues and milestones remain the live tracker.
+
+**Studio redesign (interlude before Phase 4 PR 2), PR 1 of 3 done:** design tokens with dark and light themes, the bundled font, the three-column layout with a top bar, Explore and Sandbox tabs, the revision chip, Scan notes and flat component cards. The next two PRs add the isometric pieces and canvas interactions, then the comprehension rules (readable reasons, relation wording, evidence excerpts). See the [spec](superpowers/specs/2026-11-23-studio-redesign-design.md).
 
 | Phase | State on `main` | What is missing for the exit gate |
 |---|---|---|
@@ -358,6 +360,7 @@ Allow safe architectural experimentation while making proposed changes impossibl
 - Add undo/redo, named checkpoints, autosave, discard, and duplicate sandbox.
 - Render discovered, inferred, confirmed, proposed, changed, and removed states distinctly and accessibly.
 - Implement structural comparison, boundary/cycle/single-point-of-failure metrics, and narrative change summaries from deterministic rules.
+- Add a revision timeline to the Studio whose labels come from real revision diffs and are never hand-written (Studio redesign spec §5.12).
 - Detect stale bases and implement explicit rebase mapping/conflict resolution.
 - Export/import snapshots and sandboxes with checksums, size limits, schema migrations, and source-free portability.
 

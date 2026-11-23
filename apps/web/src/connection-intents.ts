@@ -14,11 +14,11 @@ export const CONNECTION_INTENTS: readonly ConnectionIntent[] = [
 export const CONNECTION_STYLES: Readonly<
   Record<ConnectionIntent, { label: string; color: string; meaning: string }>
 > = {
-  REQ: { label: 'REQ', color: '#60a5fa', meaning: 'Synchronous request' },
-  CACHE: { label: 'CACHE', color: '#34d399', meaning: 'Cache operation' },
-  DB: { label: 'DB', color: '#fb923c', meaning: 'Database operation' },
-  ASYNC: { label: 'ASYNC', color: '#c084fc', meaning: 'Queue publish' },
-  WORK: { label: 'WORK', color: '#fbbf24', meaning: 'Queue consume' },
+  REQ: { label: 'REQ', color: 'var(--intent-req)', meaning: 'Synchronous request' },
+  CACHE: { label: 'CACHE', color: 'var(--intent-cache)', meaning: 'Cache operation' },
+  DB: { label: 'DB', color: 'var(--intent-db)', meaning: 'Database operation' },
+  ASYNC: { label: 'ASYNC', color: 'var(--intent-async)', meaning: 'Queue publish' },
+  WORK: { label: 'WORK', color: 'var(--intent-work)', meaning: 'Queue consume' },
 };
 
 export function isConnectionIntent(value: unknown): value is ConnectionIntent {

@@ -58,7 +58,26 @@ The server exposes versioned JSON endpoints and Server-Sent Events initially for
 
 ### Browser workspace
 
-Svelte 5 renders the application shell; Svelte Flow renders interactive graphs (see ADR 0005). Large-graph strategies include hierarchical aggregation, server-side filtering, progressive expansion, stable layout caching, and viewport virtualization. The UI never receives unrestricted filesystem access.
+Svelte 5 renders the application shell; Svelte Flow renders interactive graphs (see ADR 0005). The UI never receives unrestricted filesystem access.
+
+**The Studio layout:**
+- A top bar holds the workspace name, the revision chip, the **Explore** and **Sandbox** tabs, component search, the save status, Sessions and the theme toggle.
+- Three columns sit below it:
+  - **left:** the component list and Scan notes in Explore, the catalog in Sandbox;
+  - **center:** the canvas;
+  - **right:** the inspector.
+
+  The side columns collapse, and below 1100 px of viewport width they become drawers.
+
+**Opening mode.** When the page loads, the Studio opens in Explore if the scan found components, and in Sandbox otherwise. Refreshing the graph, resuming a session, or starting or deleting one keeps the mode the person chose. A browser reload opens Explore again.
+
+**Design tokens.**
+- Every colour is a token in `apps/web/src/styles/tokens.css`, with a dark theme (the default) and a light theme. A test fails on any literal colour elsewhere.
+- The tokens follow one rule: the fill colour says what a component is, the line style says how sure Archwise is, and the accent marks only selection and focus.
+
+The design decisions are in the [Studio redesign spec](superpowers/specs/2026-11-23-studio-redesign-design.md). The words the UI uses are in [`CONTEXT.md`](../CONTEXT.md).
+
+Large-graph strategies remain future work: hierarchical aggregation, server-side filtering, progressive expansion, stable layout caching and viewport virtualization.
 
 ## Core data flow
 

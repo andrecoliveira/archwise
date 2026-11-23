@@ -179,7 +179,7 @@ if (command.kind === 'output') {
         const server = await startLocalGraphServer(graph, {
           ...(assets ? { webDistPath: assets } : {}),
           sessions: runtime.kind === 'ready' ? runtime.service : null,
-          scan: scanSummary(result),
+          scan: scanSummary(result, startedAt),
         });
         process.stdout.write(`Archwise API listening at ${server.address}\n`);
         process.stdout.write(`Local session URL: ${server.bootstrapUrl}\n`);

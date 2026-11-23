@@ -112,7 +112,7 @@ Pass `--repo` more than once, or a workspace file, to see one system across repo
 
 **Cross-repository edges:** a declared dependency resolves by exact package name across all repositories. Two packages with the same name produce the `Ambiguous package name` diagnostic, and no edge is drawn.
 
-**Output:** the summary lists each repository with its manifests, entries and skipped paths. `--json` repositories carry `id`, `rootId`, `label`, `path`, `nested`, `reached`, `listedEntries`, `manifests` and `skipped` counts. The Studio header shows a scan summary from `GET /api/v1/scan`: repositories, entries, skipped paths by reason and truncation, counts only.
+**Output:** the summary lists each repository with its manifests, entries and skipped paths. `--json` repositories carry `id`, `rootId`, `label`, `path`, `nested`, `reached`, `listedEntries`, `manifests` and `skipped` counts. The Studio's revision chip reads `GET /api/v1/scan`: when the scan started (`scannedAt`), plus repositories, entries, skipped paths by reason and truncation, as counts only. It shows how long ago the scan ran and whether it is complete or partial, with the reasons. Files that were not analyzed and other diagnostics are listed under **Scan notes** in the left column.
 
 **Sessions:** a set of repositories is its own project in the store. Adding or removing a repository starts a different session history ([Sessions](sessions.md)).
 

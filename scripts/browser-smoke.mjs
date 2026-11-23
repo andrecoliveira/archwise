@@ -73,7 +73,7 @@ try {
 
   // The one-time bootstrap URL contains a private session token. Never log it.
   await page.goto(url, { waitUntil: 'networkidle' });
-  await page.getByRole('button', { name: 'Sandbox · Build' }).waitFor();
+  await page.getByRole('button', { name: 'Sandbox', exact: true }).click();
   await page.getByRole('button', { name: 'Add Client' }).click();
   await page.getByRole('button', { name: 'Add App Server' }).click();
   await page.getByRole('button', { name: 'Add SQL Database' }).click();
@@ -144,6 +144,30 @@ try {
     2,
     'Two actual Svelte Flow connections must render',
   );
+  // Connection arrowheads take their colour from intent tokens through var(); they must paint.
+  const arrowFills = await page.evaluate(() =>
+    [...globalThis.document.querySelectorAll('.svelte-flow__edge path')]
+      .map((path) => path.getAttribute('marker-end'))
+      .filter(Boolean)
+      .map((ref) => {
+        const id = decodeURIComponent(ref.replace(/^url\(['"]?#/, '').replace(/['"]?\)$/, ''));
+        const marker = globalThis.document.getElementById(id);
+        const shape = marker?.querySelector('polyline, path');
+        return shape ? globalThis.getComputedStyle(shape).fill : 'missing';
+      }),
+  );
+  assert.ok(arrowFills.length >= 2, 'Connections reference arrowhead markers');
+  for (const fill of arrowFills) {
+    assert.ok(
+      !['missing', 'none', 'rgb(0, 0, 0)'].includes(fill),
+      `Arrowhead paints a token colour, got ${fill}`,
+    );
+  }
+  if (process.env.ARCHWISE_SMOKE_SCREENSHOT_DIR) {
+    await page.screenshot({
+      path: join(process.env.ARCHWISE_SMOKE_SCREENSHOT_DIR, 'sandbox-connections.png'),
+    });
+  }
   if (dragFallbacks > 0) {
     console.warn(
       `${dragFallbacks} connections required click-to-connect; drag remains unverified.`,
@@ -208,6 +232,9 @@ try {
   assert(before.draft.savedA && before.draft.savedB, 'Saved A/B snapshots must be persisted');
 
   await page.reload({ waitUntil: 'networkidle' });
+  // A project with components opens in Explore; the saved Sandbox is one tab away.
+  await page.getByRole('button', { name: 'Explore', exact: true, pressed: true }).waitFor();
+  await page.getByRole('button', { name: 'Sandbox', exact: true }).click();
   await page.waitForFunction(
     () => globalThis.document.querySelectorAll('.svelte-flow__node').length === 3,
   );
@@ -221,8 +248,14 @@ try {
   assert.deepEqual(after.draft.capacities, before.draft.capacities);
   assert.deepEqual(after.draft.replicas, before.draft.replicas);
 
-  await page.getByRole('button', { name: 'Explore · Inspect' }).click();
-  await page.getByRole('button', { name: 'Sandbox · Build' }).click();
+  // Switching to Explore drops a selected Sandbox component.
+  await page.locator('.svelte-flow__node').filter({ hasText: 'App Server' }).click();
+  await page.getByRole('button', { name: 'Explore', exact: true }).click();
+  await page
+    .getByRole('complementary', { name: 'Component inspector' })
+    .getByText('Select a component on the canvas or in the list')
+    .waitFor();
+  await page.getByRole('button', { name: 'Sandbox', exact: true }).click();
   await page.waitForFunction(
     () => globalThis.document.querySelectorAll('.svelte-flow__edge').length === 2,
   );
@@ -297,7 +330,7 @@ try {
   const resumedPage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   resumedPage.on('pageerror', (error) => errors.push(error.message));
   await resumedPage.goto(secondUrl, { waitUntil: 'networkidle' });
-  await resumedPage.getByRole('button', { name: 'Sandbox · Build' }).waitFor();
+  await resumedPage.getByRole('button', { name: 'Sandbox', exact: true }).click();
   assert.equal(
     await resumedPage.locator('.svelte-flow__node').count(),
     0,
@@ -310,6 +343,8 @@ try {
   await row.getByText('A/B').waitFor();
   await row.getByText('Architecture changed').waitFor();
   await row.getByRole('button', { name: 'Resume' }).click();
+  // Resuming reloads the graph but keeps the mode the person chose.
+  await resumedPage.getByRole('button', { name: 'Sandbox', exact: true, pressed: true }).waitFor();
   await resumedPage.waitForFunction(
     () => globalThis.document.querySelectorAll('.svelte-flow__edge').length === 2,
   );
@@ -414,6 +449,7 @@ try {
     .locator('.save-indicator')
     .filter({ hasText: 'could not be restored' })
     .waitFor();
+  await resumedPage.getByRole('button', { name: 'Sandbox', exact: true }).click();
   await resumedPage.getByRole('button', { name: 'Add Worker' }).click();
   await resumedPage.waitForTimeout(1500);
   const untouched = await savedDocument(resumedPage);
@@ -442,7 +478,7 @@ try {
   const multiPage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   multiPage.on('pageerror', (error) => errors.push(error.message));
   await multiPage.goto(multiUrl, { waitUntil: 'networkidle' });
-  await multiPage.getByRole('button', { name: 'Explore · Inspect' }).click();
+  await multiPage.getByRole('button', { name: 'Explore', exact: true }).click();
   for (const [name, repository] of [
     ['@smoke/api', 'api'],
     ['@smoke/web', 'web'],
@@ -457,8 +493,9 @@ try {
   await multiPage.waitForFunction(
     () => globalThis.document.querySelectorAll('.svelte-flow__edge').length >= 1,
   );
-  await multiPage.getByText('Scan · 2 repositories').click();
-  const scanPanel = multiPage.getByLabel('Scan summary');
+  await multiPage.locator('.topbar-workspace').getByText('2 repositories').waitFor();
+  await multiPage.locator('.revision-chip > summary').click();
+  const scanPanel = multiPage.getByRole('group', { name: 'Scan details' });
   await scanPanel.getByText('api: 1 manifest').waitFor();
   await scanPanel.getByText('web: 1 manifest').waitFor();
   // Libraries only: the Studio says so and opens on All packages.
@@ -468,14 +505,51 @@ try {
   const { SYSTEM_FIXTURE, createFixture } = await import(
     pathToFileURL(join(process.cwd(), 'packages/test-fixtures/dist/index.js')).href
   );
-  const system = await createFixture(SYSTEM_FIXTURE);
+  // A long package name and an unsupported Compose variant exercise truncation and Scan notes.
+  const LONG_NAME =
+    'demo-with-a-very-long-package-name-that-keeps-going-and-going-to-eighty-characters';
+  const system = await createFixture({
+    ...SYSTEM_FIXTURE,
+    'examples/demo/package.json': SYSTEM_FIXTURE['examples/demo/package.json'].replace(
+      '"demo"',
+      `"${LONG_NAME}"`,
+    ),
+    'compose.prod.yaml': 'services:\n  api:\n    image: node:22\n',
+  });
   try {
     await stopServer();
     const systemUrl = await startServer(['--path', system.root, '--no-store']);
     const systemPage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     systemPage.on('pageerror', (error) => errors.push(error.message));
+    systemPage.on('console', (message) => {
+      if (message.type() === 'error') errors.push(`console: ${message.text()}`);
+    });
+    // The Studio never contacts anything but its own local server (fonts are bundled).
+    const origin = new URL(systemUrl).origin;
+    const remote = [];
+    systemPage.on('request', (request) => {
+      const url = new URL(request.url());
+      if (url.protocol !== 'data:' && url.origin !== origin) remote.push(request.url());
+    });
     await systemPage.goto(systemUrl, { waitUntil: 'networkidle' });
-    await systemPage.getByRole('button', { name: 'Explore · Inspect' }).click();
+    // First load: dark theme, Explore (the project has components), the bundled font.
+    assert.equal(
+      await systemPage.evaluate(() => globalThis.document.documentElement.dataset.theme),
+      'dark',
+    );
+    await systemPage.getByRole('button', { name: 'Explore', exact: true, pressed: true }).waitFor();
+    await systemPage.evaluate(() => globalThis.document.fonts.ready);
+    assert.ok(
+      await systemPage.evaluate(() => globalThis.document.fonts.check('13px "JetBrains Mono"')),
+      'JetBrains Mono is loaded from the bundle',
+    );
+    assert.match(
+      await systemPage.evaluate(
+        () => globalThis.getComputedStyle(globalThis.document.body).fontFamily,
+      ),
+      /JetBrains Mono/,
+    );
+    await systemPage.getByRole('button', { name: 'Explore', exact: true }).click();
     const viewControl = systemPage.getByRole('group', { name: 'Graph view' });
     assert.equal(
       await viewControl.getByRole('button', { name: 'System' }).getAttribute('aria-pressed'),
@@ -530,19 +604,102 @@ try {
     await discoveredInspector.getByText('Compose services: api').waitFor();
     await viewControl.getByRole('button', { name: 'All packages' }).click();
     await canvasNodes.filter({ hasText: '@shop/db' }).first().waitFor();
-    await systemPage.getByText(/^Scan · /).click();
+    const scanNotesPanel = systemPage.getByRole('region', { name: 'Scan notes' });
+    await scanNotesPanel.getByText('1 file not analyzed').waitFor();
+    await scanNotesPanel.getByText('compose.prod.yaml').waitFor();
+    await scanNotesPanel.getByText('not analyzed: not supported yet').waitFor();
+
+    // Both themes, two sizes, for review; the theme survives a reload.
+    const shots = process.env.ARCHWISE_SMOKE_SCREENSHOT_DIR;
+    const shoot = async (name) => {
+      if (shots) await systemPage.screenshot({ path: join(shots, `${name}.png`) });
+    };
+    await systemPage.setViewportSize({ width: 1600, height: 950 });
+    await shoot('studio-dark-1600');
+    await systemPage.getByRole('button', { name: 'Switch to light theme' }).click();
     assert.equal(
-      await systemPage.getByLabel('Scan summary').getByText('Not analyzed').count(),
-      0,
-      'A fully supported fixture has no coverage gaps',
+      await systemPage.evaluate(() => globalThis.document.documentElement.dataset.theme),
+      'light',
     );
+    await systemPage.reload({ waitUntil: 'networkidle' });
+    assert.equal(
+      await systemPage.evaluate(() => globalThis.document.documentElement.dataset.theme),
+      'light',
+      'The theme choice survives a reload',
+    );
+    await shoot('studio-light-1600');
+
+    // 1024 x 768: no horizontal scroll even with an 80-character name; the inspector is a drawer.
+    await systemPage.setViewportSize({ width: 1024, height: 768 });
+    await systemPage.getByRole('button', { name: 'All packages' }).click();
+    await canvasNodes.filter({ hasText: 'demo-with-a-very-long' }).first().waitFor();
+    assert.ok(
+      await systemPage.evaluate(
+        () => globalThis.document.documentElement.scrollWidth <= globalThis.innerWidth,
+      ),
+      'No horizontal page scroll at 1024 px',
+    );
+    const inspector = systemPage.getByRole('complementary', { name: 'Component inspector' });
+    assert.equal(await inspector.isVisible(), false, 'The inspector is a closed drawer at 1024 px');
+    const focusedName = () =>
+      systemPage.evaluate(() => {
+        const el = globalThis.document.activeElement;
+        return el?.getAttribute('aria-label') ?? el?.textContent?.trim() ?? null;
+      });
+    await systemPage.getByRole('button', { name: 'Show inspector' }).click();
+    await inspector.waitFor();
+    assert.equal(await focusedName(), 'Close inspector', 'Opening a drawer moves focus into it');
+    assert.ok(
+      await systemPage.evaluate(
+        () => globalThis.document.querySelector('.workspace')?.inert === true,
+      ),
+      'The canvas behind an open drawer is inert',
+    );
+    await shoot('studio-light-1024-drawer');
+    await systemPage.keyboard.press('Escape');
+    await inspector.waitFor({ state: 'hidden' });
+    assert.equal(
+      await focusedName(),
+      'Show inspector',
+      'Closing a drawer returns focus to its toggle',
+    );
+    await systemPage.getByRole('button', { name: 'Show components' }).click();
+    assert.equal(await focusedName(), 'Close components', 'The components drawer takes focus too');
+    await systemPage.getByRole('button', { name: 'Close components' }).click();
+    assert.equal(await focusedName(), 'Show components');
+
+    // The top bar never hides the chip or the theme toggle, and the chip is never cut off.
+    for (const width of [1024, 600]) {
+      await systemPage.setViewportSize({ width, height: 768 });
+      const bar = await systemPage.evaluate(() => {
+        const rect = (selector) =>
+          globalThis.document.querySelector(selector)?.getBoundingClientRect();
+        const chip = globalThis.document.querySelector('.revision-chip > summary');
+        return {
+          chipCut: chip ? chip.scrollWidth > chip.clientWidth + 1 : true,
+          chipRight: rect('.revision-chip')?.right ?? Infinity,
+          themeRight: rect('.topbar-theme')?.right ?? Infinity,
+          themeWidth: rect('.topbar-theme')?.width ?? 0,
+          inner: globalThis.innerWidth,
+        };
+      });
+      assert.equal(bar.chipCut, false, `The revision chip is not truncated at ${width} px`);
+      assert.ok(
+        bar.chipRight <= bar.inner && bar.themeRight <= bar.inner && bar.themeWidth > 0,
+        `Top bar fits at ${width} px`,
+      );
+    }
+    await systemPage.setViewportSize({ width: 1024, height: 768 });
+    await systemPage.getByRole('button', { name: 'Switch to dark theme' }).click();
+    await shoot('studio-dark-1024');
+    assert.deepEqual(remote, [], 'The Studio makes no request outside its local server');
   } finally {
     await system.dispose();
   }
 
   assert.deepEqual(errors, [], 'Browser runtime errors must not occur');
   console.log(
-    'Browser smoke passed: components, handles, edge intent, replica scaling, A/B, autosave, drag positions, JSON export/import, reload, cross-launch resume, rename, delete, no catalog replay, edit-before-refresh, keyboard panel, unrestorable-session protection, a two-repository workspace with repository labels and the scan summary, and the System view of a full-stack fixture.',
+    'Browser smoke passed: components, handles, edge intent, replica scaling, A/B, autosave, drag positions, JSON export/import, reload, cross-launch resume, rename, delete, no catalog replay, edit-before-refresh, keyboard panel, unrestorable-session protection, a two-repository workspace with repository labels and the scan summary, the System view of a full-stack fixture, both themes with persistence, the bundled font, Scan notes, the 1024 px drawer layout and no remote requests.',
   );
 } finally {
   await browser?.close();

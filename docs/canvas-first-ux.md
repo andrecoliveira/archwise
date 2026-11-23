@@ -4,11 +4,11 @@ This increment makes the Sandbox immediately usable without understanding packag
 
 ## First-use workflow
 
-1. Launch the [Alpha Studio](alpha-testing.md). It now starts in **Sandbox · Build**.
+1. Launch the [Alpha Studio](alpha-testing.md). It opens in **Explore** when your project has components; select the **Sandbox** tab in the top bar. An empty project opens directly in Sandbox.
 2. In the left **Components** library, select **Client**, **App Server** and **SQL Database**. Each click adds a proposed component to the canvas. Search also works by name, category or description.
 3. Drag nodes to arrange your system. Connect nodes by dragging between their Svelte Flow handles; select the edge to edit the semantic `REQ`, `DB`, etc. intent.
 4. Click **Simulation & A/B comparison** below the canvas to reveal hypothetical load and capacity settings. It starts closed to keep the canvas dominant.
-5. Use **Explore · Inspect** to switch to the evidence-based discovered package graph and inspect package manifests. Switching back to Sandbox preserves the design.
+5. Use the **Explore** tab to switch to the evidence-based discovered package graph and inspect package manifests. Switching back to Sandbox preserves the design.
 6. Export/import the Sandbox as JSON or reload to test local browser restoration.
 
 The catalog groups:

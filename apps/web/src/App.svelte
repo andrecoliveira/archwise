@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import ArchitectureCanvas from './ArchitectureCanvas.svelte';
   import SessionsPanel from './SessionsPanel.svelte';
   import { createAutosave, type Autosave, type AutosaveStatus } from './autosave.js';
@@ -17,15 +17,13 @@
   import { getCoachQuestions } from './architecture-coach.js';
   import { kindLabel, upgradeGraph, type Graph } from './graph-types.js';
   import { graphForView, initialView, showsNothingRecognized, type StudioView } from './system-view.js';
-  import {
-    gapLines,
-    isScanSummary,
-    nodeDisplayLabel,
-    repositoryLines,
-    scanHeadline,
-    skippedLine,
-    type ScanSummaryView,
-  } from './scan-summary.js';
+  import { isScanSummary, nodeDisplayLabel, type ScanSummaryView } from './scan-summary.js';
+  import { scanNotes } from './scan-notes.js';
+  import { placeholderChip, revisionChip, workspaceName } from './scan-status.js';
+  import { initialMode, isSearchShortcut, type StudioMode } from './studio-mode.js';
+  import { applyTheme, nextTheme, readTheme, safeStorage, writeTheme, type Theme } from './theme.js';
+  import ScanNotes from './ScanNotes.svelte';
+  import StudioTopBar from './StudioTopBar.svelte';
   import './studio.css';
 
   let graphData = $state<Graph | null>(null);
@@ -35,7 +33,49 @@
   let selectedId: string | null = $state(null);
   let filter = $state('');
   let catalogFilter = $state('');
-  let studioMode: 'explore' | 'sandbox' = $state('sandbox');
+  let studioMode: StudioMode = $state('sandbox');
+  let modeChosen = false;
+
+  // Theme: dark by default, remembered per browser.
+  let theme: Theme = $state(readTheme(safeStorage()));
+  function toggleTheme(): void {
+    theme = nextTheme(theme);
+    writeTheme(safeStorage(), theme);
+    applyTheme(document.documentElement, theme);
+  }
+
+  // Side columns: open by default on wide screens, drawers (closed) below 1100 px.
+  const WIDE = '(min-width: 1100px)';
+  const startsWide = typeof window !== 'undefined' && window.matchMedia?.(WIDE).matches !== false;
+  let wide = $state(startsWide);
+  let leftShown = $state(startsWide);
+  let rightShown = $state(startsWide);
+  let searchInput: HTMLInputElement | null = $state(null);
+  let leftToggle: HTMLButtonElement | null = $state(null);
+  let rightToggle: HTMLButtonElement | null = $state(null);
+  let leftClose: HTMLButtonElement | null = $state(null);
+  let rightClose: HTMLButtonElement | null = $state(null);
+  const drawerOpen = $derived.by(() => !wide && (leftShown || (rightShown && studioMode === 'explore')));
+
+  /** On wide screens a toggle collapses its column; on narrow ones it opens a modal drawer. */
+  async function toggleColumn(side: 'left' | 'right'): Promise<void> {
+    const opening = side === 'left' ? !leftShown : !rightShown;
+    if (side === 'left') leftShown = opening;
+    else rightShown = opening;
+    if (wide || !opening) return;
+    await tick();
+    (side === 'left' ? leftClose : rightClose)?.focus();
+  }
+
+  /** Closes any open drawer and returns focus to the toggle that opened it. */
+  async function closeDrawers(): Promise<void> {
+    const opener = leftShown ? leftToggle : rightToggle;
+    leftShown = false;
+    rightShown = false;
+    await tick();
+    opener?.focus();
+  }
+  let now = $state(Date.now());
   let addRequest: { id: number; preset: string } | null = $state(null);
   let catalogCounter = 0;
   const filteredCatalog = $derived(searchCatalog(catalogFilter));
@@ -83,9 +123,10 @@
   );
   const visibleIds = $derived(new Set(visible.map((node) => node.id)));
   const selected = $derived(graph?.nodes.find((node) => node.id === selectedId) ?? null);
-  const failedAnalyzers = $derived(
-    graph?.diagnostics.filter((diagnostic) => diagnostic.startsWith('Analyzer failed')) ?? [],
+  const chip = $derived(
+    graph ? revisionChip({ scan, graph, storeEnabled, historical, now }) : null,
   );
+  const notes = $derived(graph ? scanNotes(graph) : null);
   const lineOf = (item: { path: string; lines: { start: number } | null }): string =>
     item.lines === null ? item.path : `${item.path}:${item.lines.start}`;
   const coachQuestions = $derived(graph ? getCoachQuestions(graph, selectedId) : []);
@@ -142,6 +183,9 @@
         const chosen = chooseWorkspaceGraph(detail, payload);
         graphData = chosen.graph;
         graphView = initialView(chosen.graph);
+        // Only the first load picks the mode; later reloads keep the one the person chose.
+        if (!modeChosen) studioMode = initialMode(chosen.graph);
+        modeChosen = true;
         historical = chosen.historical;
         initialDocument = detail?.sandbox ?? null;
         sessionId = current.ok ? current.value.id : null;
@@ -205,53 +249,48 @@
     };
     window.addEventListener('pagehide', flush);
     document.addEventListener('visibilitychange', onVisibility);
+    const clock = window.setInterval(() => (now = Date.now()), 60_000);
+    const media = window.matchMedia?.(WIDE);
+    const onMedia = (event: MediaQueryListEvent) => {
+      wide = event.matches;
+      leftShown = event.matches;
+      rightShown = event.matches;
+    };
+    media?.addEventListener('change', onMedia);
+    const onKey = (event: KeyboardEvent) => {
+      if (isSearchShortcut(event) && studioMode === 'explore' && searchInput) {
+        event.preventDefault();
+        searchInput.focus();
+      } else if (event.key === 'Escape' && drawerOpen) {
+        void closeDrawers();
+      }
+    };
+    document.addEventListener('keydown', onKey);
     return () => {
       controller?.abort();
       autosave?.dispose();
       window.removeEventListener('pagehide', flush);
       document.removeEventListener('visibilitychange', onVisibility);
+      window.clearInterval(clock);
+      media?.removeEventListener('change', onMedia);
+      document.removeEventListener('keydown', onKey);
     };
   });
 </script>
 
 <svelte:head><title>Archwise — Architecture Studio</title></svelte:head>
 <div class="studio">
-  <header>
-    <strong>⬡ Archwise <small>Architecture Studio</small></strong>
-    <div class="header-status">
-      <span class="save-indicator" data-state={saveStatus.state} role="status" aria-live="polite">{saveStatus.message}</span>
-      {#if saveStatus.state === 'unsaved' && !saveStatus.message.includes('Reload')}
-        <button type="button" onclick={() => autosave?.retry()}>Retry</button>
-      {/if}
-      {#if storeEnabled}
-        <button type="button" onclick={() => (sessionsOpen = !sessionsOpen)} aria-expanded={sessionsOpen}>Sessions</button>
-      {/if}
-      {#if scan}
-        <details class="scan-summary">
-          <summary>{scanHeadline(scan)}</summary>
-          <div class="scan-summary-panel" aria-label="Scan summary">
-            <ul>{#each repositoryLines(scan) as line, i (i)}<li>{line}</li>{/each}</ul>
-            {#if skippedLine(scan)}<p>{skippedLine(scan)}</p>{/if}
-            {#if scan.truncated}
-              <p role="status">Scan truncated: {scan.truncated} budget reached. Results are partial.</p>
-            {/if}
-            {#if graph && (graph.gaps.length > 0 || failedAnalyzers.length > 0)}
-              <h2>Not analyzed</h2>
-              <ul>
-                {#each gapLines(graph.gaps) as line, i (i)}<li>{line}</li>{/each}
-                {#each failedAnalyzers as line, i (i)}<li>{line}</li>{/each}
-              </ul>
-            {/if}
-          </div>
-        </details>
-      {/if}
-      <small>● Local · Read-only project inspection</small>
-    </div>
-  </header>
+  <div class="topbar-wrap" inert={drawerOpen}>
+  <StudioTopBar workspace={workspaceName(scan)} chip={chip ?? placeholderChip(loading)}
+    {scan} bind:mode={studioMode} bind:search={filter} bind:searchInput {theme} onToggleTheme={toggleTheme}
+    {saveStatus} onRetrySave={() => autosave?.retry()} {storeEnabled} bind:sessionsOpen />
+  </div>
   <SessionsPanel bind:open={sessionsOpen} currentId={sessionId}
     onResume={resume} onNew={startNew} onDelete={remove} onRename={rename} />
-  <main class:sandbox-workspace={studioMode === 'sandbox'}>
-    <aside class="studio-sidebar" aria-label="Component library">
+  <main class:sandbox-workspace={studioMode === 'sandbox'} class:narrow={!wide}
+    class:left-hidden={!leftShown} class:right-hidden={!rightShown || studioMode === 'sandbox'}>
+    <aside class="studio-sidebar" id="components-column" aria-label="Component library" class:drawer-open={!wide && leftShown}>
+      {#if !wide}<button type="button" class="drawer-close" bind:this={leftClose} onclick={() => void closeDrawers()}>Close components</button>{/if}
       <div class="sidebar-heading">
         <h1>{studioMode === 'sandbox' ? 'Components' : 'Discovered components'}</h1>
         <p>{studioMode === 'sandbox' ? 'Choose a component to add it to your canvas.' : 'Frontends, services and infrastructure found in your project.'}</p>
@@ -282,39 +321,43 @@
         </nav>
         <p class="sidebar-hint">Components are hypothetical. Their capacity and traffic are modeled, not observed.</p>
       {:else}
-        <label for="component-filter">Filter components</label>
-        <input id="component-filter" type="search" bind:value={filter} placeholder="Name or technology" />
         {#if shownGraph}
-          <p>{visible.length} of {shownGraph.nodes.length} components</p>
+          <p class="list-count">{visible.length} of {shownGraph.nodes.length} components</p>
         {/if}
         <nav aria-label="Discovered components">
           {#each visible as node (node.id)}
             <button type="button" class="node-item" class:active={selectedId === node.id}
-              onclick={() => (selectedId = node.id)}>{nodeDisplayLabel(node)}</button>
+              title={nodeDisplayLabel(node)} onclick={() => (selectedId = node.id)}>{nodeDisplayLabel(node)}</button>
           {/each}
         </nav>
-        <p class="sidebar-hint">Discovered relations are evidence-based, not measured runtime calls.</p>
+        {#if notes}<ScanNotes view={notes} />{/if}
       {/if}
     </aside>
-    <section class="workspace" aria-label="Architecture workspace">
+    <section class="workspace" aria-label="Architecture workspace" inert={drawerOpen}>
       <div class="workspace-header">
-        <div>
+        <div class="workspace-title">
           <h1>{studioMode === 'sandbox' ? 'Your architecture playground' : 'Discovered architecture'}</h1>
           <p>{studioMode === 'sandbox'
             ? 'Build a hypothetical system, connect components, then explore modeled outcomes.'
             : 'Evidence from manifests, workspaces, Docker Compose and Prisma. Dashed items are inferred.'}</p>
         </div>
         <div class="workspace-actions">
-          {#if graph}
+          <button type="button" class="column-toggle" aria-controls="components-column" aria-expanded={leftShown}
+            bind:this={leftToggle} onclick={() => void toggleColumn('left')}>{leftShown ? 'Hide components' : 'Show components'}</button>
+          {#if graph && studioMode === 'explore'}
             <div class="graph-view-switch" role="group" aria-label="Graph view">
               <button type="button" aria-pressed={graphView === 'system'} onclick={() => (graphView = 'system')}>System</button>
               <button type="button" aria-pressed={graphView === 'all'} onclick={() => (graphView = 'all')}>All packages</button>
             </div>
           {/if}
           <button type="button" onclick={() => void loadGraph()}>Refresh graph</button>
+          {#if studioMode === 'explore'}
+            <button type="button" class="column-toggle" aria-controls="inspector-column" aria-expanded={rightShown}
+              bind:this={rightToggle} onclick={() => void toggleColumn('right')}>{rightShown ? 'Hide inspector' : 'Show inspector'}</button>
+          {/if}
         </div>
       </div>
-      {#if nothingRecognized}
+      {#if nothingRecognized && studioMode === 'explore'}
         <p class="view-notice" role="status">No frontends, services or infrastructure were recognized; showing all packages.</p>
       {/if}
       {#if loading}
@@ -322,9 +365,11 @@
       {:else if loadError}
         <div class="alert" role="alert">{loadError} <button type="button" onclick={() => void loadGraph()}>Retry</button></div>
       {:else if graph}
-        {#if graph.nodes.length === 0}
-          <div role="status" class="persistence-status">
-            No package manifests found. You can still experiment with hypothetical architecture in Sandbox.
+        {#if graph.nodes.length === 0 && studioMode === 'explore'}
+          <div role="status" class="empty-state">
+            <strong>No package manifests found.</strong>
+            <p>Archwise found nothing to show here. You can still design a hypothetical architecture.</p>
+            <button type="button" onclick={() => (studioMode = 'sandbox')}>Open Sandbox</button>
           </div>
         {/if}
         {#if historical}
@@ -340,13 +385,9 @@
             onRestoreFailed={restoreFailed} />
         {/key}
       {/if}
-      {#if graph && graph.diagnostics.length > 0}
-        <details><summary>{graph.diagnostics.length} scan diagnostics</summary>
-          <ul>{#each graph.diagnostics as diagnostic, i (i)}<li>{diagnostic}</li>{/each}</ul>
-        </details>
-      {/if}
     </section>
-    <aside aria-label="Component inspector" class="discovered-inspector">
+    <aside aria-label="Component inspector" class="discovered-inspector" id="inspector-column" class:drawer-open={!wide && rightShown}>
+      {#if !wide}<button type="button" class="drawer-close" bind:this={rightClose} onclick={() => void closeDrawers()}>Close inspector</button>{/if}
       <h1>Inspector</h1>
       {#if selected}
         <h2>{selected.label}</h2>
@@ -366,9 +407,7 @@
         <h2>Hypothetical component</h2>
         <p>This component exists only in Sandbox; it does not modify repository files.</p>
       {:else}
-        <p>{studioMode === 'sandbox'
-          ? 'Select a component on the canvas to inspect its modeled behavior. Select a connection to change its intent.'
-          : 'Select a discovered component to inspect its evidence.'}</p>
+        <p>Select a component on the canvas or in the list to see what it is, what it relates to, and why.</p>
       {/if}
       {#if currentQuestion}
         <section aria-label="Architecture Coach">
@@ -379,5 +418,9 @@
         </section>
       {/if}
     </aside>
+    {#if drawerOpen}
+      <!-- Pointer-only backdrop; keyboard users close the drawer with Esc or its Close button. -->
+      <div class="drawer-scrim" aria-hidden="true" onclick={() => void closeDrawers()}></div>
+    {/if}
   </main>
 </div>
