@@ -1,9 +1,10 @@
 import { expect, test } from 'vitest';
-import type { Graph } from './graph-types.js';
+import { discoveredNode, graphOf } from './graph-fixtures.js';
 import { chooseWorkspaceGraph } from './session-view.js';
 
-const current: Graph = { version: 1, nodes: [], edges: [], diagnostics: [], inspectedEntries: 0 };
-const historical: Graph = {
+const current = graphOf([]);
+const historical = graphOf([discoveredNode('package:package.json', { label: 'old' })]);
+const storedV1 = {
   version: 1,
   nodes: [
     {
@@ -36,6 +37,14 @@ test('a session on an older base shows its stored view', () => {
     graph: historical,
     historical: true,
   });
+});
+
+test('a stored v1 view is shown historically after upgrade', () => {
+  const chosen = chooseWorkspaceGraph({ baseIsCurrent: false, view: storedV1 }, current);
+  expect(chosen.historical).toBe(true);
+  expect(chosen.graph.nodes.map((n) => [n.id, n.type])).toEqual([
+    ['package:package.json', 'module'],
+  ]);
 });
 
 test('an invalid stored view falls back to the current graph', () => {

@@ -1,4 +1,4 @@
-import type { GraphNode } from './graph-types.js';
+import { GAP_REASONS, kindLabel, type GraphGap, type GraphNode } from './graph-types.js';
 
 /** Skip reasons in the CLI's documented order; unknown future reasons follow alphabetically. */
 const REASON_ORDER = [
@@ -108,9 +108,22 @@ export function skippedLine(summary: ScanSummaryView): string | null {
     : `Skipped: ${reasons.map(([reason, count]) => `${reason} ${count}`).join(', ')}`;
 }
 
-/** Package name, framework, and the repository when the workspace has several. */
+/** Name, technology (or kind), and the repository when the workspace has several. */
 export function nodeDisplayLabel(node: GraphNode): string {
-  const parts = [node.label, node.framework ?? 'Package'];
+  const parts = [node.label, node.technology ?? kindLabel(node.type)];
   if (node.repository) parts.push(node.repository.label);
   return parts.join(' · ');
+}
+
+/** Coverage gaps grouped by reason, in reason order: "Not analyzed (<reason>): a, b". */
+export function gapLines(gaps: readonly GraphGap[]): string[] {
+  return GAP_REASONS.flatMap((reason) => {
+    const paths = gaps
+      .filter((gap) => gap.reason === reason)
+      .map((gap) => gap.path)
+      .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+    return paths.length === 0
+      ? []
+      : [`Not analyzed (${reason}): ${[...new Set(paths)].join(', ')}`];
+  });
 }

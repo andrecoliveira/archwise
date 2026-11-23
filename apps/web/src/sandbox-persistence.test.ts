@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+import { discoveredNode, graphOf } from './graph-fixtures.js';
 import type { Graph } from './graph-types.js';
 import {
   defaultSimulationDraft,
@@ -9,22 +10,20 @@ import {
 } from './sandbox-persistence.js';
 import { captureScenario } from './scenario-comparison.js';
 
-const graph: Graph = {
-  version: 1,
-  nodes: [
-    {
-      id: 'package:apps/web/package.json',
-      label: 'web',
-      type: 'package',
-      framework: 'vite',
-      origin: 'discovered',
-      evidence: [{ path: 'apps/web/package.json', kind: 'package-manifest' }],
-    },
-  ],
-  edges: [],
-  diagnostics: [],
-  inspectedEntries: 1,
-};
+const graph: Graph = graphOf([
+  discoveredNode('package:apps/web/package.json', {
+    label: 'web',
+    technology: 'vite',
+    evidence: [
+      {
+        path: 'apps/web/package.json',
+        kind: 'package-manifest',
+        lines: null,
+        analyzer: 'node-manifest',
+      },
+    ],
+  }),
+]);
 
 function example(): SandboxDocument {
   return {

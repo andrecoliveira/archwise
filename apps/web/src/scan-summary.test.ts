@@ -1,7 +1,8 @@
 import { expect, test } from 'vitest';
-import type { GraphNode } from './graph-types.js';
+import { discoveredNode } from './graph-fixtures.js';
 import {
   isScanSummary,
+  gapLines,
   nodeDisplayLabel,
   repositoryLines,
   scanHeadline,
@@ -67,17 +68,30 @@ test('the skipped line lists reasons in a stable order', () => {
 });
 
 test('node labels add the repository when there is one', () => {
-  const node: GraphNode = {
-    id: 'package:package.json',
+  const node = discoveredNode('package:package.json', {
     label: '@shop/api',
-    type: 'package',
-    framework: 'fastify',
-    origin: 'discovered',
-    evidence: [],
-  };
+    technology: 'fastify',
+  });
   expect(nodeDisplayLabel(node)).toBe('@shop/api · fastify');
-  expect(nodeDisplayLabel({ ...node, framework: null })).toBe('@shop/api · Package');
+  expect(nodeDisplayLabel({ ...node, technology: null })).toBe('@shop/api · Library');
+  expect(nodeDisplayLabel({ ...node, technology: null, type: 'datastore' })).toBe(
+    '@shop/api · Datastore',
+  );
   expect(nodeDisplayLabel({ ...node, repository: { id: 'repo-a', label: 'api' } })).toBe(
     '@shop/api · fastify · api',
   );
+});
+
+test('gapLines groups by reason', () => {
+  expect(
+    gapLines([
+      { path: 'nx.json', analyzer: 'node-workspace', reason: 'unsupported' },
+      { path: 'compose.yaml', analyzer: 'docker-compose', reason: 'invalid-syntax' },
+      { path: 'apps/web/project.json', analyzer: 'node-workspace', reason: 'unsupported' },
+    ]),
+  ).toEqual([
+    'Not analyzed (unsupported): apps/web/project.json, nx.json',
+    'Not analyzed (invalid-syntax): compose.yaml',
+  ]);
+  expect(gapLines([])).toEqual([]);
 });

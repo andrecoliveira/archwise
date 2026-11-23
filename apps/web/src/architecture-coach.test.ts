@@ -1,23 +1,22 @@
 import { expect, test } from 'vitest';
 import { getCoachQuestions } from './architecture-coach.js';
+import { discoveredEdge, discoveredNode, graphOf } from './graph-fixtures.js';
 import type { Graph } from './graph-types.js';
 
-const graph: Graph = {
-  version: 1,
-  nodes: [
-    {
-      id: 'package:apps/api/package.json',
-      type: 'package',
-      label: '@demo/api',
-      framework: 'fastify',
-      origin: 'discovered',
-      evidence: [{ path: 'apps/api/package.json', kind: 'package-manifest' }],
-    },
-  ],
-  edges: [],
-  diagnostics: [],
-  inspectedEntries: 1,
-};
+const graph: Graph = graphOf([
+  discoveredNode('package:apps/api/package.json', {
+    label: '@demo/api',
+    technology: 'fastify',
+    evidence: [
+      {
+        path: 'apps/api/package.json',
+        kind: 'package-manifest',
+        lines: null,
+        analyzer: 'node-manifest',
+      },
+    ],
+  }),
+]);
 
 test('asks for business requirements before drawing conclusions from manifests', () => {
   const questions = getCoachQuestions(graph, null);
@@ -42,16 +41,7 @@ test('flags unresolved evidence and distinguishes code dependencies from runtime
   const withGaps: Graph = {
     ...graph,
     diagnostics: ['Invalid manifest'],
-    edges: [
-      {
-        id: 'dep',
-        source: graph.nodes[0]!.id,
-        target: 'package:apps/web/package.json',
-        type: 'declared-dependency',
-        origin: 'discovered',
-        evidence: [{ path: 'apps/api/package.json', kind: 'package-dependency' }],
-      },
-    ],
+    edges: [discoveredEdge(graph.nodes[0]!.id, 'package:apps/web/package.json', { id: 'dep' })],
   };
   const questions = getCoachQuestions(withGaps, null);
   expect(questions.map((item) => item.id)).toContain('coverage');

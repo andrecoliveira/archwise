@@ -15,7 +15,7 @@
   import { chooseWorkspaceGraph } from './session-view.js';
   import { CATALOG_GROUPS, searchCatalog } from './component-catalog.js';
   import { getCoachQuestions } from './architecture-coach.js';
-  import { isGraph, type Graph } from './graph-types.js';
+  import { upgradeGraph, type Graph } from './graph-types.js';
   import {
     isScanSummary,
     nodeDisplayLabel,
@@ -72,7 +72,7 @@
   const graph = $derived(graphData);
   const visible = $derived(
     graph?.nodes.filter((node) =>
-      `${node.label} ${node.framework ?? ''} ${node.id}`.toLowerCase().includes(filter.toLowerCase()),
+      `${node.label} ${node.technology ?? ''} ${node.id}`.toLowerCase().includes(filter.toLowerCase()),
     ) ?? [],
   );
   const visibleIds = $derived(new Set(visible.map((node) => node.id)));
@@ -118,8 +118,8 @@
             : `Local API returned HTTP ${response.status}.`,
         );
       }
-      const payload: unknown = await response.json();
-      if (!isGraph(payload)) throw new Error('Unsupported graph format.');
+      const payload = upgradeGraph(await response.json());
+      if (payload === null) throw new Error('Unsupported graph format.');
       void loadScan(signal);
       const current = await getCurrent();
       let detail: { baseIsCurrent: boolean; view: unknown; sandbox: string } | null = null;
@@ -321,7 +321,7 @@
       {#if selected}
         <h2>{selected.label}</h2>
         <p>Discovered · Manifest evidence</p>
-        <p>Framework: {selected.framework ?? 'Not identified'}</p>
+        <p>Technology: {selected.technology ?? 'Not identified'}</p>
         {#if selected.repository}<p>Repository: {selected.repository.label}</p>{/if}
         <p>Internal dependencies: {graph?.edges.filter((edge) => edge.source === selected.id).length ?? 0}</p>
         <h2>Evidence</h2>
