@@ -1359,3 +1359,60 @@ aside {
   fill: var(--stroke);
   opacity: 0.75;
 }
+
+/* Piece nodes: the drawing, with a pill that names the component under its plinth. */
+.iso-node {
+  position: relative;
+  width: 232px;
+  height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.iso-node .iso-svg {
+  overflow: visible;
+}
+.iso-node .archwise-handle.svelte-flow__handle {
+  top: 89px;
+}
+.iso-pill {
+  max-width: 216px;
+  margin-top: -6px;
+  padding: 4px 10px 5px;
+  border: 1.4px solid var(--outline);
+  border-radius: 9px;
+  background: var(--panel);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.3;
+}
+.iso-pill strong,
+.iso-pill small {
+  max-width: 196px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.iso-pill strong {
+  font-size: 13px;
+}
+.iso-pill small {
+  font-size: 11px;
+  color: var(--ink-2);
+}
+.svelte-flow__node.selected .iso-pill,
+.svelte-flow__node:focus-visible .iso-pill {
+  border-color: var(--accent);
+}
+.proposed-tag {
+  margin-top: 2px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px dashed var(--ink-3);
+  border-radius: 6px;
+  padding: 0 6px;
+  color: var(--ink-2);
+}

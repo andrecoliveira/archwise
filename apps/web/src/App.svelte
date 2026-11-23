@@ -395,7 +395,7 @@
           </div>
         {/if}
         {#key workspaceKey}
-          <ArchitectureCanvas {graph} view={shownGraph} {visibleIds} bind:selectedId bind:mode={studioMode} {addRequest}
+          <ArchitectureCanvas {graph} view={shownGraph} {visibleIds} bind:selectedId bind:mode={studioMode} {addRequest} {nodeStyle}
             {initialDocument} onDocumentChange={(text) => autosave?.schedule(text)}
             onRestoreFailed={restoreFailed} />
         {/key}

@@ -10,6 +10,9 @@
   import SimulationPanel from './SimulationPanel.svelte';
   import ArchitectureNode from './ArchitectureNode.svelte';
   import DiscoveredNode from './DiscoveredNode.svelte';
+  import IsoNode from './IsoNode.svelte';
+  import { NODE_SIZE, type NodeStyle } from './node-style.js';
+  import { kindLabel } from './graph-types.js';
   import FitViewOnLayout from './FitViewOnLayout.svelte';
   import ArchitectureEdge from './ArchitectureEdge.svelte';
   import { validateProposedConnection, CONNECTION_HELP_TEXT } from './connection-validation.js';
@@ -42,6 +45,7 @@
     initialDocument = null,
     onDocumentChange = () => {},
     onRestoreFailed = () => {},
+    nodeStyle = 'cards',
   }: {
     /** The discovered graph; the Sandbox signature always hashes this full graph. */
     graph: Graph;
@@ -57,6 +61,8 @@
     onDocumentChange?: (text: string) => void;
     /** Called when the saved Sandbox cannot be restored, so it is never overwritten. */
     onRestoreFailed?: (message: string) => void;
+    /** Isometric pieces or flat cards (spec §4.3). */
+    nodeStyle?: NodeStyle;
   } = $props();
   let counter = $state(0);
   // A remount (session switch) must not replay a catalog request the previous canvas handled.
@@ -77,7 +83,7 @@
   let storageReady = $state(false);
   let persistenceStatus = $state('');
   const signature = $derived(projectSignature(graph));
-  const nodeTypes = { architecture: ArchitectureNode, discovered: DiscoveredNode };
+  const nodeTypes = { architecture: ArchitectureNode, discovered: DiscoveredNode, iso: IsoNode };
   const shown = $derived(view ?? graph);
   const edgeTypes = { semantic: ArchitectureEdge };
   const selectedProposed = $derived(proposedNodes.find((node) => node.id === selectedId));
@@ -271,14 +277,16 @@
 
   $effect(() => {
     const nonce = layoutNonce;
+    const pieces = nodeStyle === 'pieces';
     const discoveredNodes: Node[] = shown.nodes
       .filter((item) => visibleIds.has(item.id))
       .map((item) => ({
         id: item.id,
         position: { x: 0, y: 0 },
-        data: { node: item },
-        type: 'discovered',
+        data: { node: item, animated: true },
+        type: pieces ? 'iso' : 'discovered',
         draggable: true,
+        ariaLabel: `${item.label}, ${kindLabel(item.type)}, ${item.confidence}`,
       }));
     const visible = new Set(discoveredNodes.map((item) => item.id));
     const discoveredEdges: Edge[] = shown.edges
@@ -293,17 +301,25 @@
       }));
     const decoratedProposed = proposedNodes.map((node) => {
       const feedback = visualFeedback.get(node.id);
+      const label = String(node.data.label ?? node.id);
+      const preset = String(node.data.preset ?? '');
+      const modeled = {
+        status: feedback?.status ?? 'normal',
+        utilization: feedback?.utilization ?? 0,
+        droppedRps: feedback?.droppedRps ?? 0,
+      };
       return {
         ...node,
-        type: 'architecture',
-        data: {
-          ...node.data,
-          name: node.data.label,
-          status: feedback?.status ?? 'normal',
-          utilization: feedback?.utilization ?? 0,
-          droppedRps: feedback?.droppedRps ?? 0,
-          replicas: replicaCount(node.data.kind as SimulatedKind, String(node.data.preset ?? ''), draft.replicas[node.id]),
-        },
+        type: pieces ? 'iso' : 'architecture',
+        ariaLabel: `${label}, ${findCatalogComponent(preset)?.name ?? 'component'}, proposed`,
+        data: pieces
+          ? { ...node.data, animated: true, proposed: { label, preset, ...modeled } }
+          : {
+              ...node.data,
+              name: node.data.label,
+              ...modeled,
+              replicas: replicaCount(node.data.kind as SimulatedKind, preset, draft.replicas[node.id]),
+            },
       };
     });
     const current = mode === 'sandbox' ? decoratedProposed : discoveredNodes;
@@ -331,7 +347,7 @@
       hasRequestedLayout = nonce;
     }
     let cancelled = false;
-    void layoutNodes(positioned, links)
+    void layoutNodes(positioned, links, NODE_SIZE[nodeStyle])
       .then((placed) => {
         if (!cancelled && nonce === layoutNonce) {
           nodes = placed;
