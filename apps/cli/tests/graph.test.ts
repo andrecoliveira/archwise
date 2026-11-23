@@ -66,7 +66,34 @@ test('does not infer edges from ambiguous names', () => {
   expect(graph.diagnostics.some((item) => item.startsWith('Ambiguous package name'))).toBe(true);
 });
 
-test('does not invent infrastructure from external libraries', () => {
+test('packages are observed modules in the v2 shape', () => {
+  const graph = buildArchitectureGraph(sample);
+  expect(graph.version).toBe(2);
+  expect(graph.gaps).toEqual([]);
+  expect(graph.nodes[0]).toMatchObject({
+    type: 'module',
+    technology: 'fastify',
+    confidence: 'observed',
+    reasons: ['manifest-declared'],
+    outsideWorkspace: false,
+    aliases: [],
+  });
+  expect(graph.edges[0]).toMatchObject({
+    type: 'depends-on',
+    confidence: 'observed',
+    reasons: ['dependency-declared'],
+    evidence: [
+      {
+        path: 'apps/web/package.json',
+        kind: 'package-dependency',
+        lines: null,
+        analyzer: 'node-manifest',
+      },
+    ],
+  });
+});
+
+test('without analysis the graph has only packages and no infrastructure', () => {
   const graph = buildArchitectureGraph({ ...sample, manifests: [sample.manifests[1]!] });
   expect(graph.nodes).toHaveLength(1);
   expect(graph.edges).toHaveLength(0);
@@ -116,7 +143,7 @@ describe('several roots', () => {
       { id: apiId, label: 'api' },
       { id: webId, label: 'web' },
     ]);
-    expect(graph.nodes.map((n) => n.evidence[0].path)).toEqual(['package.json', 'package.json']);
+    expect(graph.nodes.map((n) => n.evidence[0]!.path)).toEqual(['package.json', 'package.json']);
   });
 
   test('the same package name in two repositories is ambiguous, with prefixed paths', () => {

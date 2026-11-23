@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { createRevision, isValidId } from '@archwise/domain';
 import { serializeGraphRevision } from '@archwise/schemas';
 import { expect, test } from 'vitest';
-import type { ArchitectureGraph } from '../src/graph.js';
+import type { ArchitectureGraph, ArchitectureNode } from '../src/graph.js';
 import { buildGraphRevision, type RevisionScan } from '../src/revision.js';
 
 const ids = {
@@ -12,17 +12,22 @@ const ids = {
   createdAt: '2026-11-16T00:00:00.000Z',
 };
 
-const node = (path: string, label: string) => ({
+const node = (path: string, label: string): ArchitectureNode => ({
   id: `package:${path}`,
-  type: 'package' as const,
+  type: 'module',
   label,
-  framework: null,
-  origin: 'discovered' as const,
-  evidence: [{ path, kind: 'package-manifest' as const }] as const,
+  technology: null,
+  confidence: 'observed',
+  reasons: ['manifest-declared'],
+  outsideWorkspace: false,
+  aliases: [],
+  origin: 'discovered',
+  evidence: [{ path, kind: 'package-manifest', lines: null, analyzer: 'node-manifest' }],
 });
 
 const graph: ArchitectureGraph = {
-  version: 1,
+  version: 2,
+  gaps: [],
   nodes: [
     node('package.json', 'root'),
     node('apps/web/package.json', '@demo/web'),
@@ -31,11 +36,20 @@ const graph: ArchitectureGraph = {
   edges: [
     {
       id: 'dependency:package:apps/web/package.json->package:packages/core/package.json',
-      type: 'declared-dependency',
+      type: 'depends-on',
+      confidence: 'observed',
+      reasons: ['dependency-declared'],
       source: 'package:apps/web/package.json',
       target: 'package:packages/core/package.json',
       origin: 'discovered',
-      evidence: [{ path: 'apps/web/package.json', kind: 'package-dependency' }],
+      evidence: [
+        {
+          path: 'apps/web/package.json',
+          kind: 'package-dependency',
+          lines: null,
+          analyzer: 'node-manifest',
+        },
+      ],
     },
   ],
   diagnostics: ['Ambiguous package name: dup (a/package.json, b/package.json)'],
@@ -49,7 +63,7 @@ const scanOf = (view: ArchitectureGraph, label: string): RevisionScan => ({
   manifests: view.nodes.map((n) => ({
     rootId: 'repo-root',
     repositoryId: 'repo-root',
-    path: n.evidence[0].path,
+    path: n.evidence[0]!.path,
   })),
   truncated: null,
 });
@@ -93,7 +107,8 @@ test('identifiers are domain-valid and stable', () => {
 
 test('an empty graph is a valid complete revision', () => {
   const empty: ArchitectureGraph = {
-    version: 1,
+    version: 2,
+    gaps: [],
     nodes: [],
     edges: [],
     diagnostics: [],
@@ -184,16 +199,26 @@ test('several roots hash the user-root ID into node IDs and list unreached repos
     id: `package:${rootId}/package.json`,
   });
   const view: ArchitectureGraph = {
-    version: 1,
+    version: 2,
+    gaps: [],
     nodes: [multiNode(apiId, '@shop/api'), multiNode(webId, '@shop/web')],
     edges: [
       {
         id: `dependency:package:${webId}/package.json->package:${apiId}/package.json`,
-        type: 'declared-dependency',
+        type: 'depends-on',
+        confidence: 'observed',
+        reasons: ['dependency-declared'],
         source: `package:${webId}/package.json`,
         target: `package:${apiId}/package.json`,
         origin: 'discovered',
-        evidence: [{ path: 'package.json', kind: 'package-dependency' }],
+        evidence: [
+          {
+            path: 'package.json',
+            kind: 'package-dependency',
+            lines: null,
+            analyzer: 'node-manifest',
+          },
+        ],
       },
     ],
     diagnostics: [],

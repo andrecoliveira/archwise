@@ -22,10 +22,14 @@
     "archwise": "dist/bin.js"
   },
   "dependencies": {
+    "@archwise/analyzers": "workspace:*",
     "@archwise/application": "workspace:*",
     "@archwise/discovery": "workspace:*",
     "@archwise/domain": "workspace:*",
     "@archwise/schemas": "workspace:*",
     "@archwise/storage": "workspace:*"
+  },
+  "devDependencies": {
+    "@archwise/test-fixtures": "workspace:*"
   }
 }

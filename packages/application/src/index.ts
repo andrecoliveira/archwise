@@ -13,3 +13,4 @@ export * from './workspace-key.js';
 export * from './analyzer.js';
 export * from './run-analyzers.js';
 export * from './analysis-inputs.js';
+export * from './architecture.js';

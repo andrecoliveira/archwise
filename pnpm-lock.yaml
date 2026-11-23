@@ -47,6 +47,9 @@ importers:
 
   apps/cli:
     dependencies:
+      '@archwise/analyzers':
+        specifier: workspace:*
+        version: link:../../packages/analyzers
       '@archwise/application':
         specifier: workspace:*
         version: link:../../packages/application
@@ -62,6 +65,10 @@ importers:
       '@archwise/storage':
         specifier: workspace:*
         version: link:../../packages/storage
+    devDependencies:
+      '@archwise/test-fixtures':
+        specifier: workspace:*
+        version: link:../../packages/test-fixtures
 
   apps/server: {}
 

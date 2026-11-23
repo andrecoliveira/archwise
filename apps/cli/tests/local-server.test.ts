@@ -5,15 +5,22 @@ import type { ArchitectureGraph } from '../src/graph.js';
 import type { ScanSummary } from '../src/inventory-output.js';
 
 const graph: ArchitectureGraph = {
-  version: 1,
+  version: 2,
+  gaps: [],
   nodes: [
     {
       id: 'package:package.json',
-      type: 'package',
+      type: 'module',
       label: 'example',
-      framework: null,
+      technology: null,
+      confidence: 'observed',
+      reasons: ['manifest-declared'],
+      outsideWorkspace: false,
+      aliases: [],
       origin: 'discovered',
-      evidence: [{ path: 'package.json', kind: 'package-manifest' }],
+      evidence: [
+        { path: 'package.json', kind: 'package-manifest', lines: null, analyzer: 'node-manifest' },
+      ],
     },
   ],
   edges: [],

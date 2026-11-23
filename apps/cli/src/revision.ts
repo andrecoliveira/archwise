@@ -86,7 +86,7 @@ export function buildGraphRevision(
 
   const nodeIds = new Map<string, string>();
   const nodes = graph.nodes.map((node) => {
-    const owned = ownerOf(node.id, node.evidence[0].path);
+    const owned = ownerOf(node.id, node.evidence[0]?.path ?? '');
     const id = `mod-${shortHash(keyOf(owned))}`;
     nodeIds.set(node.id, id);
     return {
@@ -105,7 +105,9 @@ export function buildGraphRevision(
     sourceId: nodeIds.get(edge.source) ?? edge.source,
     targetId: nodeIds.get(edge.target) ?? edge.target,
     confidence: { level: 'observed' as const, reasons: ['dependency-declared'] },
-    evidenceIds: [addEvidence('package-dependency', ownerOf(edge.source, edge.evidence[0].path))],
+    evidenceIds: [
+      addEvidence('package-dependency', ownerOf(edge.source, edge.evidence[0]?.path ?? '')),
+    ],
   }));
 
   const codes = [...new Set(graph.diagnostics.map(diagnosticCode))].sort();
