@@ -39,6 +39,19 @@ export default {
       },
     },
     {
+      name: 'analyzers-inward-only',
+      comment: 'Analyzers are pure: no Node built-ins, no filesystem, no apps or adapters.',
+      severity: 'error',
+      from: { path: '^packages/analyzers/src/' },
+      to: {
+        pathNot: [
+          '^packages/(analyzers|application|domain)/',
+          'node_modules/yaml/',
+          'node_modules/[.]pnpm/yaml@',
+        ],
+      },
+    },
+    {
       name: 'schemas-inward-only',
       severity: 'error',
       from: { path: '^packages/schemas/src/' },
