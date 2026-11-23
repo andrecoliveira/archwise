@@ -26,6 +26,7 @@
     type ScanSummaryView,
   } from './scan-summary.js';
   import { scanNotes } from './scan-notes.js';
+  import { initialMode, type StudioMode } from './studio-mode.js';
   import './studio.css';
 
   let graphData = $state<Graph | null>(null);
@@ -35,7 +36,8 @@
   let selectedId: string | null = $state(null);
   let filter = $state('');
   let catalogFilter = $state('');
-  let studioMode: 'explore' | 'sandbox' = $state('sandbox');
+  let studioMode: StudioMode = $state('sandbox');
+  let modeChosen = false;
   let addRequest: { id: number; preset: string } | null = $state(null);
   let catalogCounter = 0;
   const filteredCatalog = $derived(searchCatalog(catalogFilter));
@@ -142,6 +144,9 @@
         const chosen = chooseWorkspaceGraph(detail, payload);
         graphData = chosen.graph;
         graphView = initialView(chosen.graph);
+        // Only the first load picks the mode; later reloads keep the one the person chose.
+        if (!modeChosen) studioMode = initialMode(chosen.graph);
+        modeChosen = true;
         historical = chosen.historical;
         initialDocument = detail?.sandbox ?? null;
         sessionId = current.ok ? current.value.id : null;
@@ -305,6 +310,10 @@
             : 'Evidence from manifests, workspaces, Docker Compose and Prisma. Dashed items are inferred.'}</p>
         </div>
         <div class="workspace-actions">
+          <div class="studio-mode-switch" role="group" aria-label="Studio mode">
+            <button type="button" aria-pressed={studioMode === 'explore'} onclick={() => { studioMode = 'explore'; selectedId = null; }}>Explore</button>
+            <button type="button" aria-pressed={studioMode === 'sandbox'} onclick={() => { studioMode = 'sandbox'; selectedId = null; }}>Sandbox</button>
+          </div>
           {#if graph}
             <div class="graph-view-switch" role="group" aria-label="Graph view">
               <button type="button" aria-pressed={graphView === 'system'} onclick={() => (graphView = 'system')}>System</button>

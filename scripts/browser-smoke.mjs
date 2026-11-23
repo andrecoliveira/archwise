@@ -73,7 +73,7 @@ try {
 
   // The one-time bootstrap URL contains a private session token. Never log it.
   await page.goto(url, { waitUntil: 'networkidle' });
-  await page.getByRole('button', { name: 'Sandbox · Build' }).waitFor();
+  await page.getByRole('button', { name: 'Sandbox', exact: true }).click();
   await page.getByRole('button', { name: 'Add Client' }).click();
   await page.getByRole('button', { name: 'Add App Server' }).click();
   await page.getByRole('button', { name: 'Add SQL Database' }).click();
@@ -208,6 +208,9 @@ try {
   assert(before.draft.savedA && before.draft.savedB, 'Saved A/B snapshots must be persisted');
 
   await page.reload({ waitUntil: 'networkidle' });
+  // A project with components opens in Explore; the saved Sandbox is one tab away.
+  await page.getByRole('button', { name: 'Explore', exact: true, pressed: true }).waitFor();
+  await page.getByRole('button', { name: 'Sandbox', exact: true }).click();
   await page.waitForFunction(
     () => globalThis.document.querySelectorAll('.svelte-flow__node').length === 3,
   );
@@ -221,8 +224,8 @@ try {
   assert.deepEqual(after.draft.capacities, before.draft.capacities);
   assert.deepEqual(after.draft.replicas, before.draft.replicas);
 
-  await page.getByRole('button', { name: 'Explore · Inspect' }).click();
-  await page.getByRole('button', { name: 'Sandbox · Build' }).click();
+  await page.getByRole('button', { name: 'Explore', exact: true }).click();
+  await page.getByRole('button', { name: 'Sandbox', exact: true }).click();
   await page.waitForFunction(
     () => globalThis.document.querySelectorAll('.svelte-flow__edge').length === 2,
   );
@@ -297,7 +300,7 @@ try {
   const resumedPage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   resumedPage.on('pageerror', (error) => errors.push(error.message));
   await resumedPage.goto(secondUrl, { waitUntil: 'networkidle' });
-  await resumedPage.getByRole('button', { name: 'Sandbox · Build' }).waitFor();
+  await resumedPage.getByRole('button', { name: 'Sandbox', exact: true }).click();
   assert.equal(
     await resumedPage.locator('.svelte-flow__node').count(),
     0,
@@ -310,6 +313,8 @@ try {
   await row.getByText('A/B').waitFor();
   await row.getByText('Architecture changed').waitFor();
   await row.getByRole('button', { name: 'Resume' }).click();
+  // Resuming reloads the graph but keeps the mode the person chose.
+  await resumedPage.getByRole('button', { name: 'Sandbox', exact: true, pressed: true }).waitFor();
   await resumedPage.waitForFunction(
     () => globalThis.document.querySelectorAll('.svelte-flow__edge').length === 2,
   );
@@ -414,6 +419,7 @@ try {
     .locator('.save-indicator')
     .filter({ hasText: 'could not be restored' })
     .waitFor();
+  await resumedPage.getByRole('button', { name: 'Sandbox', exact: true }).click();
   await resumedPage.getByRole('button', { name: 'Add Worker' }).click();
   await resumedPage.waitForTimeout(1500);
   const untouched = await savedDocument(resumedPage);
@@ -442,7 +448,7 @@ try {
   const multiPage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   multiPage.on('pageerror', (error) => errors.push(error.message));
   await multiPage.goto(multiUrl, { waitUntil: 'networkidle' });
-  await multiPage.getByRole('button', { name: 'Explore · Inspect' }).click();
+  await multiPage.getByRole('button', { name: 'Explore', exact: true }).click();
   for (const [name, repository] of [
     ['@smoke/api', 'api'],
     ['@smoke/web', 'web'],
@@ -475,7 +481,7 @@ try {
     const systemPage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     systemPage.on('pageerror', (error) => errors.push(error.message));
     await systemPage.goto(systemUrl, { waitUntil: 'networkidle' });
-    await systemPage.getByRole('button', { name: 'Explore · Inspect' }).click();
+    await systemPage.getByRole('button', { name: 'Explore', exact: true }).click();
     const viewControl = systemPage.getByRole('group', { name: 'Graph view' });
     assert.equal(
       await viewControl.getByRole('button', { name: 'System' }).getAttribute('aria-pressed'),
