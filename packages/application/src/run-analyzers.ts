@@ -2,6 +2,7 @@ import { compareCodeUnits } from '@archwise/domain';
 import {
   isCoverageGap,
   isFact,
+  matchesInputName,
   type Analyzer,
   type Fact,
   type GapReason,
@@ -68,7 +69,10 @@ const baseName = (path: string): string => path.slice(path.lastIndexOf('/') + 1)
 function wants(analyzer: Analyzer, path: string): boolean {
   const name = baseName(path);
   const { fileNames, extensions } = analyzer.descriptor.inputs;
-  return fileNames.includes(name) || extensions.some((extension) => name.endsWith(extension));
+  return (
+    fileNames.some((pattern) => matchesInputName(name, pattern)) ||
+    extensions.some((extension) => name.endsWith(extension))
+  );
 }
 
 /** The union of every analyzer's declared inputs, sorted and unique. */

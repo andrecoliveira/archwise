@@ -11,11 +11,12 @@ import { basenamePosix, dirnamePosix, joinPosix, normalizePosix } from './paths.
 import { parseYaml } from './yaml.js';
 
 const BASE_FILES = ['compose.yaml', 'compose.yml', 'docker-compose.yaml', 'docker-compose.yml'];
-const OVERRIDE_FILES = [
-  'compose.override.yaml',
-  'compose.override.yml',
-  'docker-compose.override.yaml',
-  'docker-compose.override.yml',
+/** Overrides and environment variants (`compose.prod.yaml`, ...): reported, never merged. */
+const VARIANT_FILES = [
+  'compose.*.yaml',
+  'compose.*.yml',
+  'docker-compose.*.yaml',
+  'docker-compose.*.yml',
 ];
 
 type Mapping = Record<string, unknown>;
@@ -57,13 +58,13 @@ function dependencies(value: unknown): string[] {
 /**
  * Docker Compose as data. Reads only `image`, `build` and `depends_on` of each service;
  * environment, env files, secrets and commands are never looked at. Interpolation is not
- * resolved. Override files are reported as unsupported.
+ * resolved. Override and variant files (`compose.<name>.yaml`) are reported as unsupported.
  */
 export const dockerCompose: Analyzer = Object.freeze({
   descriptor: Object.freeze({
     id: 'docker-compose',
     version: '1.0.0',
-    inputs: Object.freeze({ fileNames: [...BASE_FILES, ...OVERRIDE_FILES].sort(), extensions: [] }),
+    inputs: Object.freeze({ fileNames: [...BASE_FILES, ...VARIANT_FILES].sort(), extensions: [] }),
     budget: Object.freeze({ timeMs: 3000, maxFiles: 200 }),
   }),
   analyze(input: AnalyzerInput): AnalyzerOutput {
@@ -71,7 +72,7 @@ export const dockerCompose: Analyzer = Object.freeze({
     const gaps: CoverageGap[] = [];
     const packages = new Map(input.packages.map((pkg) => [pkg.directory, pkg.path]));
     for (const file of input.files) {
-      if (OVERRIDE_FILES.includes(basenamePosix(file.path))) {
+      if (!BASE_FILES.includes(basenamePosix(file.path))) {
         gaps.push({ path: file.path, reason: 'unsupported' });
         continue;
       }

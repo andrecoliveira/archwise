@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest';
 import {
   isFact,
+  matchesInputName,
   runAnalyzers,
   type Analyzer,
   type AnalyzerDescriptor,
@@ -248,4 +249,30 @@ test('isFact rejects unknown keys', () => {
   expect(isFact({ ...relation, to: { compose: { file: 'compose.yaml', service: 'db' } } })).toBe(
     true,
   );
+});
+
+test('a file name with one wildcard routes matching names only', () => {
+  expect(matchesInputName('compose.prod.yaml', 'compose.*.yaml')).toBe(true);
+  expect(matchesInputName('compose.yaml', 'compose.*.yaml')).toBe(false);
+  expect(matchesInputName('docker-compose.yaml', 'compose.*.yaml')).toBe(false);
+  expect(matchesInputName('compose.yaml', 'compose.yaml')).toBe(true);
+  let seen: string[] = [];
+  runAnalyzers({
+    analyzers: [
+      analyzer(
+        (input) => {
+          seen = input.files.map((file) => file.path);
+          return { status: 'complete', facts: [], gaps: [] };
+        },
+        { inputs: { fileNames: ['compose.*.yaml'], extensions: [] } },
+      ),
+    ],
+    repositories: [
+      repo('repo-a', [
+        { path: 'compose.yaml', text: 'x', problem: null },
+        { path: 'deploy/compose.dev.yaml', text: 'x', problem: null },
+      ]),
+    ],
+  });
+  expect(seen).toEqual(['deploy/compose.dev.yaml']);
 });

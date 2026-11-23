@@ -13,12 +13,12 @@ test('BUILTIN_ANALYZERS are sorted, unique and versioned semver', () => {
 test('the built-in inputs are the exact sorted union', () => {
   expect(analyzerInputs(BUILTIN_ANALYZERS)).toEqual({
     fileNames: [
-      'compose.override.yaml',
-      'compose.override.yml',
+      'compose.*.yaml',
+      'compose.*.yml',
       'compose.yaml',
       'compose.yml',
-      'docker-compose.override.yaml',
-      'docker-compose.override.yml',
+      'docker-compose.*.yaml',
+      'docker-compose.*.yml',
       'docker-compose.yaml',
       'docker-compose.yml',
       'lerna.json',

@@ -114,7 +114,7 @@ export interface AnalyzerDescriptor {
   /** Semver; recorded in evidence and coverage. */
   readonly version: string;
   readonly inputs: {
-    /** Exact base names. */
+    /** Base names; one `*` matches one or more characters, as in `compose.*.yaml`. */
     readonly fileNames: readonly string[];
     /** Name suffixes such as '.prisma'. */
     readonly extensions: readonly string[];
@@ -142,6 +142,20 @@ export interface AnalyzerOutput {
 export interface Analyzer {
   readonly descriptor: AnalyzerDescriptor;
   analyze(input: AnalyzerInput): AnalyzerOutput;
+}
+
+/**
+ * True when a base name matches a declared file name. A pattern may contain one `*`, which
+ * matches one or more characters; anything else is compared exactly. Linear time.
+ */
+export function matchesInputName(name: string, pattern: string): boolean {
+  const star = pattern.indexOf('*');
+  if (star === -1) return name === pattern;
+  const prefix = pattern.slice(0, star);
+  const suffix = pattern.slice(star + 1);
+  return (
+    name.length > prefix.length + suffix.length && name.startsWith(prefix) && name.endsWith(suffix)
+  );
 }
 
 /** Cooperative stop check for long analyzers. */

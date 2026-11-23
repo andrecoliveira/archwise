@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import { discoveredEdge, discoveredNode, graphOf } from './graph-fixtures.js';
-import { graphForView, initialView, systemGraph } from './system-view.js';
+import { graphForView, initialView, showsNothingRecognized, systemGraph } from './system-view.js';
 
 const api = discoveredNode('api', { type: 'service', label: 'api' });
 const core = discoveredNode('core', { label: '@app/core' });
@@ -75,4 +75,13 @@ test('graphForView all returns the graph unchanged', () => {
   const graph = graphOf([api, core], [discoveredEdge('api', 'core')]);
   expect(graphForView(graph, 'all')).toBe(graph);
   expect(graphForView(graph, 'system').nodes).toEqual([api]);
+});
+
+test('the nothing-recognized notice is for current scans only', () => {
+  const librariesOnly = graphOf([core, db]);
+  expect(showsNothingRecognized(librariesOnly, false)).toBe(true);
+  // A resumed session's stored view predates the analyzers; the historical notice explains it.
+  expect(showsNothingRecognized(librariesOnly, true)).toBe(false);
+  expect(showsNothingRecognized(graphOf([api]), false)).toBe(false);
+  expect(showsNothingRecognized(graphOf([]), false)).toBe(false);
 });

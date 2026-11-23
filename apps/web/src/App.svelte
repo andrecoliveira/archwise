@@ -16,7 +16,7 @@
   import { CATALOG_GROUPS, searchCatalog } from './component-catalog.js';
   import { getCoachQuestions } from './architecture-coach.js';
   import { kindLabel, upgradeGraph, type Graph } from './graph-types.js';
-  import { graphForView, initialView, type StudioView } from './system-view.js';
+  import { graphForView, initialView, showsNothingRecognized, type StudioView } from './system-view.js';
   import {
     gapLines,
     isScanSummary,
@@ -74,7 +74,7 @@
   const graph = $derived(graphData);
   let graphView: StudioView = $state('system');
   /** True when the System view would be empty, so the Studio opened on All packages. */
-  const nothingRecognized = $derived(graph !== null && initialView(graph) === 'all');
+  const nothingRecognized = $derived(graph !== null && showsNothingRecognized(graph, historical));
   const shownGraph = $derived(graph ? graphForView(graph, graphView) : null);
   const visible = $derived(
     shownGraph?.nodes.filter((node) =>
@@ -314,7 +314,7 @@
           <button type="button" onclick={() => void loadGraph()}>Refresh graph</button>
         </div>
       </div>
-      {#if graph && nothingRecognized && graph.nodes.length > 0}
+      {#if nothingRecognized}
         <p class="view-notice" role="status">No frontends, services or infrastructure were recognized; showing all packages.</p>
       {/if}
       {#if loading}

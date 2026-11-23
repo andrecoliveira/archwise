@@ -130,7 +130,7 @@ The large tree exceeds the default entries budget, so the benchmark raises that 
 
 Phase 4 turns the inventory into a system-level graph ([spec](superpowers/specs/2026-11-23-architecture-discovery-design.md)). PR 1 of 3 is implemented: package roles, workspace membership, Docker Compose and Prisma. Source analysis of TypeScript and JavaScript (PR 2) and deployment manifests (PR 3) are not implemented yet.
 
-**Contract.** An analyzer implements `Analyzer` from `@archwise/application`. It is a pure, synchronous function that receives the text of the files it declares, by exact base name or name suffix, plus the repository's parsed `package.json` files. It returns facts, coverage gaps and a `complete` or `partial` status. Analyzers never touch the filesystem or execute anything. A boundary rule forbids Node built-ins in `@archwise/analyzers`. `packages/test-fixtures/src/demo-analyzer.ts` shows that an analyzer can be written outside the core with only the public contract.
+**Contract.** An analyzer implements `Analyzer` from `@archwise/application`. It is a pure, synchronous function that receives the text of the files it declares, by base name (one `*` wildcard allowed, as in `compose.*.yaml`) or name suffix, plus the repository's parsed `package.json` files. It returns facts, coverage gaps and a `complete` or `partial` status. Analyzers never touch the filesystem or execute anything. A boundary rule forbids Node built-ins in `@archwise/analyzers`. `packages/test-fixtures/src/demo-analyzer.ts` shows that an analyzer can be written outside the core with only the public contract.
 
 **Isolation.** The runner calls each analyzer once per repository, in ID order, with a time budget and a file budget. An analyzer fails for a repository when it throws, returns output that fails the fact schema, or finishes after its deadline. Its findings for that repository are then discarded, its coverage is `failed`, and the Studio shows `Analyzer failed: <id> in <repository>. Its findings were discarded.` Every other analyzer's findings, and every package, are kept.
 
@@ -140,7 +140,7 @@ Phase 4 turns the inventory into a system-level graph ([spec](superpowers/specs/
 |---|---|---|---|
 | `node-roles` | 1.0.0 | parsed `package.json` only | package roles and client-library infrastructure |
 | `node-workspace` | 1.0.0 | `pnpm-workspace.yaml`; `nx.json`, `project.json`, `lerna.json` as gaps | packages outside the declared workspace |
-| `docker-compose` | 1.0.0 | `compose.yaml`, `compose.yml`, `docker-compose.yaml`, `docker-compose.yml`; the four `*.override.*` names as gaps | Compose services, images and `depends_on` |
+| `docker-compose` | 1.0.0 | `compose.yaml`, `compose.yml`, `docker-compose.yaml`, `docker-compose.yml`; `compose.<name>.yaml` and `docker-compose.<name>.yml` variants as gaps | Compose services, images and `depends_on` |
 | `prisma-schema` | 1.0.0 | `*.prisma` | the `datasource` provider |
 
 The catalogs of frameworks, client libraries and container images live in `packages/analyzers/src/catalog.ts`.
@@ -155,7 +155,7 @@ The catalogs of frameworks, client libraries and container images live in `packa
 - A build context matching no package is a service with the gap `unmatched-build-context`.
 - Any other image is a service whose technology is the image name.
 - `depends_on`, in list or map form, becomes `observed` edges.
-- Override files (`docker-compose.override.yml` and its variants) are the gap `unsupported`. Other `compose.<name>.yaml` variants are not read.
+- Override and environment variants (`compose.<name>.yaml`, `compose.<name>.yml`, `docker-compose.<name>.yaml` and `docker-compose.<name>.yml`, such as `docker-compose.override.yml` or `compose.prod.yaml`) are the gap `unsupported`: they are listed under "Not analyzed", never merged.
 
 **Merging.** Infrastructure inferred from client libraries attaches to the Compose service of the same technology when the workspace has exactly one. With none, Archwise draws a workspace-wide node such as `datastore:postgresql`. With several, it draws that node, reports `Ambiguous resource: <label> (<candidates>)`, and draws no edge to any of the candidates.
 
@@ -163,7 +163,7 @@ The catalogs of frameworks, client libraries and container images live in `packa
 
 **Identity.** Package nodes keep their Phase 3 IDs. Compose nodes are `compose:<path>#<service>`, prefixed with the root ID when there are several roots. Workspace-wide technology nodes are `datastore:`, `queue:` or `external:` plus the technology. Edges between packages keep `dependency:<source>-><target>`, and every other edge is `<kind>:<source>-><target>`. In the revision, modules keep `mod-` IDs. Frontends, services, datastores, queues and external systems get `fe-`, `svc-`, `ds-`, `q-` and `ext-`.
 
-**Gaps.** Inputs that are recognized but not analyzed appear in the Studio's scan summary under "Not analyzed", and in the revision as `info` diagnostics. Gaps never make a revision `partial`. A failed analyzer does.
+**Gaps.** Inputs that are recognized but not analyzed appear in the Studio's scan summary under "Not analyzed", and in the revision as `info` diagnostics. A gap alone does not make a revision `partial`. A failed analyzer does, and so does an analyzer that stopped at its file budget (its coverage is `partial`, and the skipped files are `budget` gaps).
 
 | Gap reason | Revision code |
 |---|---|

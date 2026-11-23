@@ -516,6 +516,12 @@ describe('analyzer inputs', () => {
     expect(JSON.stringify(result)).not.toContain('SECRET');
   });
 
+  test('a wildcard input name reads matching files', async () => {
+    const root = await tree({ 'compose.yaml': 'a', 'compose.prod.yaml': 'b', 'other.yaml': 'c' });
+    const result = await scan(root, { inputs: { fileNames: ['compose.*.yaml'], extensions: [] } });
+    expect(result.files.map((file) => file.path)).toEqual(['compose.prod.yaml']);
+  });
+
   test('an oversized input is reported, not read', async () => {
     const root = await tree({ 'compose.yaml': 'services: {}\n# padding\n' });
     const result = await scan(root, { inputs, budgets: { bytesPerFile: 10 } });

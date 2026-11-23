@@ -193,3 +193,11 @@ test('override files are unsupported', () => {
   expect(output.gaps).toEqual([{ path: 'docker-compose.override.yml', reason: 'unsupported' }]);
   expect(output.facts).toEqual([]);
 });
+
+test('other Compose variants are unsupported, not silently skipped', () => {
+  for (const path of ['compose.dev.yaml', 'deploy/docker-compose.prod.yml']) {
+    const output = run('services:\n  db: { image: postgres }\n', { path });
+    expect(output.gaps).toEqual([{ path, reason: 'unsupported' }]);
+    expect(output.facts).toEqual([]);
+  }
+});

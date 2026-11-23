@@ -15,3 +15,13 @@ test.each<[string, string[], boolean]>([
 ])('%s matches %j → %s', (directory, patterns, expected) => {
   expect(matchesWorkspaceGlob(directory, patterns)).toBe(expected);
 });
+
+test('hostile patterns from an analyzed repository match in linear time', () => {
+  const deep = Array.from({ length: 30 }, (_, i) => `d${i}`).join('/');
+  const longName = `packages/${'a'.repeat(250)}`;
+  const started = performance.now();
+  expect(matchesWorkspaceGlob(deep, [Array(12).fill('**').join('/') + '/x'])).toBe(false);
+  expect(matchesWorkspaceGlob(longName, ['packages/a*a*a*a*a*a*a*a*b'])).toBe(false);
+  expect(matchesWorkspaceGlob(longName, ['packages/a*a*a*a*a*a*a*a*a'])).toBe(true);
+  expect(performance.now() - started).toBeLessThan(200);
+});

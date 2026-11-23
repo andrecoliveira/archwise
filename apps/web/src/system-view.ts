@@ -63,3 +63,12 @@ export function initialView(graph: Graph): StudioView {
 export function graphForView(graph: Graph, view: StudioView): Graph {
   return view === 'all' ? graph : systemGraph(graph);
 }
+
+/**
+ * True when the Studio should say nothing was recognized: a current scan with packages but no
+ * frontends, services or infrastructure. A resumed session's stored view may predate the
+ * analyzers, and the "architecture changed" notice already explains it.
+ */
+export function showsNothingRecognized(graph: Graph, historical: boolean): boolean {
+  return !historical && graph.nodes.length > 0 && initialView(graph) === 'all';
+}

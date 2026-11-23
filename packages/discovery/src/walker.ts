@@ -4,6 +4,7 @@ import { isAbsolute, join, relative } from 'node:path';
 import {
   DEFAULT_BUDGETS,
   InventoryRootError,
+  matchesInputName,
   type BudgetName,
   type InventoryBudgets,
   type InventoryFile,
@@ -96,12 +97,13 @@ export async function walkWorkspace(request: InventoryRequest): Promise<Inventor
   const repositories: RepositoryState[] = [];
   const manifests: InventoryManifest[] = [];
   const files: InventoryFile[] = [];
-  const inputNames = new Set(request.inputs?.fileNames ?? []);
+  const inputNames = request.inputs?.fileNames ?? [];
   const inputExtensions = request.inputs?.extensions ?? [];
   /** A declared analyzer input that is not a manifest and not on the deny list. */
   const isInput = (name: string, path: string): boolean =>
     name !== MANIFEST &&
-    (inputNames.has(name) || inputExtensions.some((extension) => name.endsWith(extension))) &&
+    (inputNames.some((pattern) => matchesInputName(name, pattern)) ||
+      inputExtensions.some((extension) => name.endsWith(extension))) &&
     !isDeniedInput(path);
   const diagnostics = new Set<string>();
   const skips = new Map<SkipReason, { count: number; examples: string[] }>();
