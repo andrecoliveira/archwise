@@ -2,7 +2,11 @@ import ELK from 'elkjs/lib/elk.bundled.js';
 import type { Node, Edge } from '@xyflow/svelte';
 
 const elk = new ELK();
-export async function layoutNodes(nodes: Node[], edges: Edge[]): Promise<Node[]> {
+export async function layoutNodes(
+  nodes: Node[],
+  edges: Edge[],
+  size: { readonly width: number; readonly height: number } = { width: 200, height: 72 },
+): Promise<Node[]> {
   if (nodes.length === 0) return nodes;
   const result = await elk.layout({
     id: 'root',
@@ -14,7 +18,7 @@ export async function layoutNodes(nodes: Node[], edges: Edge[]): Promise<Node[]>
       // Unconnected components (a frontend with no detected relation) get the same breathing room.
       'elk.spacing.componentComponent': '60',
     },
-    children: nodes.map((node) => ({ id: node.id, width: 200, height: 72 })),
+    children: nodes.map((node) => ({ id: node.id, width: size.width, height: size.height })),
     edges: edges.map((edge) => ({
       id: edge.id,
       sources: [edge.source],
