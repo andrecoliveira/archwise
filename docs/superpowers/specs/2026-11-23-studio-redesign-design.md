@@ -194,11 +194,12 @@ Rules for the catalog:
 
 The inspector has the same fixed order for every component:
 
-1. **Header:**
-   - a small copy of the piece;
+1. **Header,** text only:
    - the primary name (§5.6);
    - the kind with its swatch;
    - the summary line (§5.5).
+
+   The header shows no piece illustration. Owner decision, 2026-11-23: the canvas already shows the piece, and the inspector is for reading.
 2. **Confidence band:** level and readable reasons (§5.2, §5.3). This is the only place that explains why the component is of its kind.
 3. **Tabs.** Switching component keeps the active tab.
    - **Details:** the component's properties. Each shows its source (`compose.yaml:16`) as a quiet suffix, and its full evidence on hover or focus. A property without evidence is not shown. Aliases appear here as "Also called", each with its source.
@@ -432,6 +433,7 @@ The mockup was built before §5 was decided. These parts of it are wrong:
 - Its relation verbs are invented: "reads and writes data", "publishes jobs", "consumes jobs" (§5.7).
 - Its edge labels mix kinds and reasons (§5.7).
 - It names components by their short names ("api", "web") instead of package names (§5.6).
+- It shows a small piece illustration in the inspector header. The header is text only (§5.4).
 - Its counters have no units and do not filter (§5.9).
 - It uses amber for queues and for inferred text (§5.10).
 - It shows a revision timeline (§5.12).
