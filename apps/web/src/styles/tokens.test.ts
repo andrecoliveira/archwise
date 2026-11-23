@@ -46,6 +46,34 @@ for (const name of ['dark', 'light'] as const) {
   });
 }
 
+const NEW_TOKENS = [
+  '--kind-cache',
+  '--piece-screen',
+  '--piece-chrome',
+  '--piece-led',
+  '--piece-led-2',
+  '--piece-chip',
+  '--piece-stripe',
+  '--piece-text',
+  '--piece-belt',
+  '--piece-slat',
+];
+for (const name of ['dark', 'light'] as const) {
+  test(`${name}: piece tokens are defined`, () => {
+    const tokens = theme(name);
+    for (const token of NEW_TOKENS) expect(tokens[token], token).toBeDefined();
+  });
+  test(`${name}: piece outlines stand out from the plinth`, () => {
+    const tokens = theme(name);
+    const outline = tokens['--outline']!.startsWith('#') ? tokens['--outline']! : '#e9e4da';
+    expect(contrast(outline, tokens['--plinth']!)).toBeGreaterThanOrEqual(3);
+  });
+  test(`${name}: cache card text meets AA`, () => {
+    const tokens = theme(name);
+    expect(contrast(tokens['--on-fill']!, tokens['--kind-cache']!)).toBeGreaterThanOrEqual(4.5);
+  });
+}
+
 test('card text is drawn at full strength, never faded below AA', () => {
   for (const rule of ['.discovered-kind', '.discovered-detail']) {
     const body = studio.match(new RegExp(`\\${rule}\\s*\\{([^}]*)\\}`))?.[1] ?? '';

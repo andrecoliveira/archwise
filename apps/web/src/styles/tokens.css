@@ -39,6 +39,19 @@
   --warn: #f2916b; /* never the accent amber: amber means selection only */
   --danger: #e58f8f;
   --overlay: rgba(7, 8, 10, 0.55);
+  /* Isometric pieces (spec §4.3). --lift/--sink light and shade faces. */
+  --lift: #ffffff;
+  --sink: #000000;
+  --kind-cache: #e6c86e;
+  --piece-screen: #10131a;
+  --piece-chrome: #2a2f3b;
+  --piece-led: #8fe07a;
+  --piece-led-2: #e8b04b;
+  --piece-chip: #d9b45a;
+  --piece-stripe: #2a2e38;
+  --piece-text: #4a5163;
+  --piece-belt: #2a2e38;
+  --piece-slat: #3b4150;
   /* Sandbox connection intents (a separate vocabulary from component kinds). */
   --intent-req: #60a5fa;
   --intent-cache: #34d399;
@@ -76,6 +89,18 @@
   --warn: #9a6a12;
   --danger: #b4423f;
   --overlay: rgba(31, 28, 24, 0.35);
+  --lift: #ffffff;
+  --sink: #000000;
+  --kind-cache: #f1dea0;
+  --piece-screen: #2a2e38;
+  --piece-chrome: #3a404e;
+  --piece-led: #3d8a2f;
+  --piece-led-2: #d9902a;
+  --piece-chip: #b8932f;
+  --piece-stripe: #2a2e38;
+  --piece-text: #9aa0ae;
+  --piece-belt: #3a3f4b;
+  --piece-slat: #555b68;
   --intent-req: #2f6fc4;
   --intent-cache: #1f8a62;
   --intent-db: #c1591a;

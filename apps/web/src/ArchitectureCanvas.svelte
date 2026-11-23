@@ -164,7 +164,6 @@
       interactionWidth: 28,
       data: { origin: 'proposed', intent: edge.intent ?? 'REQ' },
       label: edge.intent ?? 'REQ',
-      labelStyle: 'fill:#e2e8f0;font-weight:700;',
       style: `stroke:${CONNECTION_STYLES[edge.intent ?? 'REQ'].color};stroke-width:2;`,
     }));
     counter = Math.max(
@@ -424,7 +423,6 @@
         interactionWidth: 28,
         data: { origin: 'proposed', intent },
         label: intent,
-        labelStyle: 'fill:#e2e8f0;font-weight:700;',
         style: `stroke:${CONNECTION_STYLES[intent].color};stroke-width:2;`,
         ariaLabel: `${source.data.label} to ${target.data.label}: ${intent}`,
       },
