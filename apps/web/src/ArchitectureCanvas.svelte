@@ -13,6 +13,8 @@
   import IsoNode from './IsoNode.svelte';
   import DiscoveredEdge from './DiscoveredEdge.svelte';
   import { focusSet } from './focus.js';
+  import CanvasKeys from './CanvasKeys.svelte';
+  import { canvasKeyAction } from './canvas-keys.js';
   import { NODE_SIZE, type NodeStyle } from './node-style.js';
   import { kindLabel } from './graph-types.js';
   import FitViewOnLayout from './FitViewOnLayout.svelte';
@@ -88,6 +90,14 @@
   const nodeTypes = { architecture: ArchitectureNode, discovered: DiscoveredNode, iso: IsoNode };
   const shown = $derived(view ?? graph);
   const edgeTypes = { semantic: ArchitectureEdge, discovered: DiscoveredEdge };
+  let keys: CanvasKeys | null = $state(null);
+  /** Canvas keys run in the capture phase so arrow keys pan the view and never move a node. */
+  function onCanvasKey(event: KeyboardEvent): void {
+    if (keys?.apply(canvasKeyAction(event))) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }
 
   /** Focus decoration: dim what is not connected to the selection; animate only what is. */
   function decorate(list: Node[], links: Edge[], selected: string | null): { nodes: Node[]; edges: Edge[] } {
@@ -566,7 +576,9 @@
   <div class="persistence-status" role="status">{persistenceStatus}</div>
 {/if}
 {#if layoutError}<div role="alert" class="alert">{layoutError}</div>{/if}
-<div class="viewport" role="region" aria-label="Interactive architecture graph">
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<div class="viewport" role="region" aria-label="Interactive architecture graph" tabindex="0"
+  aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown + - 0 Enter" onkeydowncapture={onCanvasKey}>
   {#if mode === 'sandbox' && proposedNodes.length === 0}
     <div class="canvas-empty-state" role="status">
       <strong>Your canvas is ready</strong>
@@ -598,6 +610,7 @@
     <MiniMap />
     <Controls />
     <FitViewOnLayout trigger={fitTrigger} />
+    <CanvasKeys bind:this={keys} onSelect={(id) => { selectedId = id; selectedEdgeId = null; }} />
   </SvelteFlow>
   {#if mode === 'sandbox' && selectedProposed}
     <section class="floating-inspector" aria-label="Selected component properties">
