@@ -1,6 +1,6 @@
 # Useful architecture discovery: Phase 4
 
-Status: draft for owner review. The owner asked Claude to write the spec directly, without a question round. Every decision below is Claude's call unless it says otherwise. A builder check raised four identity and compatibility questions. They are answered below and marked "(builder check)".
+Status: approved by the owner on 2026-11-23. The owner asked Claude to write the spec directly, without a question round. Every decision below is Claude's call unless it says otherwise. A builder check raised four identity and compatibility questions. They are answered below and marked "(builder check)".
 
 ## Intent
 
