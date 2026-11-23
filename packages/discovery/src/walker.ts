@@ -4,8 +4,10 @@ import { isAbsolute, join, relative } from 'node:path';
 import {
   DEFAULT_BUDGETS,
   InventoryRootError,
+  matchesInputName,
   type BudgetName,
   type InventoryBudgets,
+  type InventoryFile,
   type InventoryManifest,
   type InventoryRepository,
   type InventoryRequest,
@@ -15,7 +17,8 @@ import {
 } from '@archwise/application';
 import { checkRelativePath, compareCodeUnits } from '@archwise/domain';
 import { isIgnored, parseGitignore, type IgnoreRules } from './gitignore.js';
-import { parseManifest } from './manifest.js';
+import { isDeniedInput } from './deny-list.js';
+import { looksBinary, parseManifest } from './manifest.js';
 import {
   labelOf,
   makeLabelsUnique,
@@ -93,6 +96,15 @@ export async function walkWorkspace(request: InventoryRequest): Promise<Inventor
 
   const repositories: RepositoryState[] = [];
   const manifests: InventoryManifest[] = [];
+  const files: InventoryFile[] = [];
+  const inputNames = request.inputs?.fileNames ?? [];
+  const inputExtensions = request.inputs?.extensions ?? [];
+  /** A declared analyzer input that is not a manifest and not on the deny list. */
+  const isInput = (name: string, path: string): boolean =>
+    name !== MANIFEST &&
+    (inputNames.some((pattern) => matchesInputName(name, pattern)) ||
+      inputExtensions.some((extension) => name.endsWith(extension))) &&
+    !isDeniedInput(path);
   const diagnostics = new Set<string>();
   const skips = new Map<SkipReason, { count: number; examples: string[] }>();
   let listedEntries = 0;
@@ -256,6 +268,36 @@ export async function walkWorkspace(request: InventoryRequest): Promise<Inventor
           continue;
         }
         if (entry.isFile() || stats?.isFile()) {
+          if (isInput(entry.name, childRoot)) {
+            const owner = { repositoryId: frame.repository.id, rootId: frame.root.id };
+            const size = (await lstat(childAbsolute)).size;
+            if (size > budgets.bytesPerFile) {
+              skip('too-large', childRoot);
+              files.push({ ...owner, path: childRoot, text: null, problem: 'too-large' });
+              continue;
+            }
+            let bytes: Buffer;
+            try {
+              bytes = await readBounded(childAbsolute, size);
+            } catch (error) {
+              if (error instanceof Truncated || (error as Error).name === 'AbortError') throw error;
+              skip('unreadable', childRoot);
+              files.push({ ...owner, path: childRoot, text: null, problem: 'unreadable' });
+              continue;
+            }
+            if (looksBinary(bytes)) {
+              skip('binary', childRoot);
+              files.push({ ...owner, path: childRoot, text: null, problem: 'binary' });
+            } else {
+              files.push({
+                ...owner,
+                path: childRoot,
+                text: bytes.toString('utf8'),
+                problem: null,
+              });
+            }
+            continue;
+          }
           if (entry.name !== MANIFEST) continue;
           const size = (await lstat(childAbsolute)).size;
           if (size > budgets.bytesPerFile) {
@@ -369,6 +411,7 @@ export async function walkWorkspace(request: InventoryRequest): Promise<Inventor
       }))
       .sort(byRootThenPath),
     manifests: manifests.sort(byRootThenPath),
+    files: files.sort(byRootThenPath),
     listedEntries,
     bytesRead,
     skipped,

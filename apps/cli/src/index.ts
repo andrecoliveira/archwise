@@ -46,7 +46,7 @@ export function parseCli(args: readonly string[], version = 'development'): CliC
         exitCode: 0,
         stdout:
           'Usage: archwise [--path DIRECTORY | --repo DIRECTORY... | --workspace FILE] [--json | --graph | --sessions | --serve [--no-open] [--no-store | --resume latest|SESSION_ID]] [--help | --version]\n' +
-          'Read-only inventory of local Node.js package manifests. --graph emits a deterministic evidence-backed graph.\n' +
+          'Read-only architecture discovery: package manifests, workspaces, Docker Compose and Prisma. --graph emits a deterministic evidence-backed graph.\n' +
           '--repo may repeat to compose several repositories into one workspace (--path is an alias).\n' +
           '--workspace reads a reviewed archwise.workspace JSON file that lists the repositories.\n' +
           '--sessions lists saved Sandbox sessions for this project. --serve opens the local Studio and records\n' +

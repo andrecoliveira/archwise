@@ -37,3 +37,5 @@ export async function createFixture(files: Readonly<Record<string, string>>): Pr
     throw error;
   }
 }
+export * from './system-fixture.js';
+export * from './demo-analyzer.js';

@@ -1,4 +1,4 @@
-import { isGraph, type Graph } from './graph-types.js';
+import { upgradeGraph, type Graph } from './graph-types.js';
 
 /**
  * Chooses which graph the workspace renders. A session based on an older discovery revision
@@ -9,8 +9,8 @@ export function chooseWorkspaceGraph(
   detail: { readonly baseIsCurrent: boolean; readonly view: unknown } | null,
   current: Graph,
 ): { readonly graph: Graph; readonly historical: boolean } {
-  if (!detail || detail.baseIsCurrent || !isGraph(detail.view)) {
-    return { graph: current, historical: false };
-  }
-  return { graph: detail.view, historical: true };
+  const stored = detail && !detail.baseIsCurrent ? upgradeGraph(detail.view) : null;
+  return stored === null
+    ? { graph: current, historical: false }
+    : { graph: stored, historical: true };
 }

@@ -312,3 +312,7 @@ describe('enum values from untyped callers are reported, never thrown', () => {
     expect(issuesOf(mutate)).toContainEqual({ code: 'invalid-value', path });
   });
 });
+
+test('accepts a frontend node', () => {
+  expect(issuesOf((r) => ((r.nodes[0] as { kind: string }).kind = 'frontend'))).toEqual([]);
+});

@@ -7,6 +7,7 @@ export const NODE_KINDS = [
   'system',
   'repository',
   'service',
+  'frontend',
   'module',
   'api',
   'job',

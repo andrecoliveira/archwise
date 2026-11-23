@@ -9,6 +9,8 @@
   import { findCatalogComponent } from './component-catalog.js';
   import SimulationPanel from './SimulationPanel.svelte';
   import ArchitectureNode from './ArchitectureNode.svelte';
+  import DiscoveredNode from './DiscoveredNode.svelte';
+  import FitViewOnLayout from './FitViewOnLayout.svelte';
   import ArchitectureEdge from './ArchitectureEdge.svelte';
   import { validateProposedConnection, CONNECTION_HELP_TEXT } from './connection-validation.js';
   import {
@@ -21,7 +23,6 @@
   } from './sandbox-persistence.js';
   import type { SimulatedKind } from './simulation.js';
   import type { Graph } from './graph-types.js';
-  import { nodeDisplayLabel } from './scan-summary.js';
   import {
     CONNECTION_INTENTS,
     CONNECTION_STYLES,
@@ -33,6 +34,7 @@
   type Mode = 'explore' | 'sandbox';
   let {
     graph,
+    view = null,
     visibleIds,
     selectedId = $bindable(null),
     mode = $bindable<Mode>('sandbox'),
@@ -41,7 +43,10 @@
     onDocumentChange = () => {},
     onRestoreFailed = () => {},
   }: {
+    /** The discovered graph; the Sandbox signature always hashes this full graph. */
     graph: Graph;
+    /** What the canvas draws (the System view, for example); defaults to `graph`. */
+    view?: Graph | null;
     visibleIds: Set<string>;
     selectedId: string | null;
     mode: Mode;
@@ -65,12 +70,15 @@
   let nodes: Node[] = $state.raw([]);
   let edges: Edge[] = $state.raw([]);
   let layoutNonce = $state(0);
+  /** Bumped after each automatic layout in Explore, so the viewport refits. */
+  let fitTrigger = $state(0);
   let layoutError: string | null = $state(null);
   let draft: SimulationDraft = $state.raw(defaultSimulationDraft());
   let storageReady = $state(false);
   let persistenceStatus = $state('');
   const signature = $derived(projectSignature(graph));
-  const nodeTypes = { architecture: ArchitectureNode };
+  const nodeTypes = { architecture: ArchitectureNode, discovered: DiscoveredNode };
+  const shown = $derived(view ?? graph);
   const edgeTypes = { semantic: ArchitectureEdge };
   const selectedProposed = $derived(proposedNodes.find((node) => node.id === selectedId));
   const selectedPreset = $derived(findCatalogComponent(String(selectedProposed?.data.preset ?? '')));
@@ -264,18 +272,17 @@
 
   $effect(() => {
     const nonce = layoutNonce;
-    const discoveredNodes: Node[] = graph.nodes
+    const discoveredNodes: Node[] = shown.nodes
       .filter((item) => visibleIds.has(item.id))
       .map((item) => ({
         id: item.id,
         position: { x: 0, y: 0 },
-        data: { label: nodeDisplayLabel(item) },
-        type: 'default',
+        data: { node: item },
+        type: 'discovered',
         draggable: true,
-        style: 'border:1px solid #3b82f6;background:#13233c;color:#eaf2ff;border-radius:8px;',
       }));
     const visible = new Set(discoveredNodes.map((item) => item.id));
-    const discoveredEdges: Edge[] = graph.edges
+    const discoveredEdges: Edge[] = shown.edges
       .filter((edge) => visible.has(edge.source) && visible.has(edge.target))
       .map((edge) => ({
         id: edge.id,
@@ -283,6 +290,7 @@
         target: edge.target,
         type: 'smoothstep',
         data: { origin: 'discovered' },
+        ...(edge.confidence === 'inferred' ? { style: 'stroke-dasharray: 6 4' } : {}),
       }));
     const decoratedProposed = proposedNodes.map((node) => {
       const feedback = visualFeedback.get(node.id);
@@ -328,6 +336,7 @@
       .then((placed) => {
         if (!cancelled && nonce === layoutNonce) {
           nodes = placed;
+          if (mode === 'explore') fitTrigger += 1;
           if (mode === 'sandbox') {
             const positions = new Map(placed.map((item) => [item.id, item.position]));
             proposedNodes = proposedNodes.map((item) => ({ ...item, position: positions.get(item.id) ?? item.position }));
@@ -531,6 +540,7 @@
     <Background />
     <MiniMap />
     <Controls />
+    <FitViewOnLayout trigger={fitTrigger} />
   </SvelteFlow>
   {#if mode === 'sandbox' && selectedProposed}
     <section class="floating-inspector" aria-label="Selected component properties">

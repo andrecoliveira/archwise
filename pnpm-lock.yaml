@@ -47,6 +47,9 @@ importers:
 
   apps/cli:
     dependencies:
+      '@archwise/analyzers':
+        specifier: workspace:*
+        version: link:../../packages/analyzers
       '@archwise/application':
         specifier: workspace:*
         version: link:../../packages/application
@@ -62,6 +65,10 @@ importers:
       '@archwise/storage':
         specifier: workspace:*
         version: link:../../packages/storage
+    devDependencies:
+      '@archwise/test-fixtures':
+        specifier: workspace:*
+        version: link:../../packages/test-fixtures
 
   apps/server: {}
 
@@ -92,6 +99,18 @@ importers:
       vite:
         specifier: 8.3.7
         version: 8.3.7(@types/node@24.19.2)(yaml@2.9.1)
+
+  packages/analyzers:
+    dependencies:
+      '@archwise/application':
+        specifier: workspace:*
+        version: link:../application
+      '@archwise/domain':
+        specifier: workspace:*
+        version: link:../domain
+      yaml:
+        specifier: 2.9.1
+        version: 2.9.1
 
   packages/application:
     dependencies:
@@ -138,7 +157,11 @@ importers:
         specifier: workspace:*
         version: link:../schemas
 
-  packages/test-fixtures: {}
+  packages/test-fixtures:
+    dependencies:
+      '@archwise/application':
+        specifier: workspace:*
+        version: link:../application
 
 packages:
 

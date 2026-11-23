@@ -29,8 +29,20 @@ const result: InventoryResult = {
       path: 'apps/api/package.json',
       name: '@shop/api',
       framework: 'fastify',
-      dependencies: ['fastify'],
+      dependencies: ['fastify', 'vitest'],
+      runtimeDependencies: ['fastify'],
+      devDependencies: ['vitest'],
+      workspaces: null,
       sha256: 'a'.repeat(64),
+    },
+  ],
+  files: [
+    {
+      repositoryId: 'repo-root',
+      rootId: 'repo-root',
+      path: 'compose.yaml',
+      text: 'services: {}',
+      problem: null,
     },
   ],
   listedEntries: 120,
@@ -92,6 +104,21 @@ test('portable JSON is an allowlist without the root or timing', () => {
   expect(text).toContain('a'.repeat(64));
 });
 
+test('portable --json manifests keep the Phase 3 fields only', () => {
+  const portable = portableInventory(result) as { manifests: Record<string, unknown>[] };
+  expect(Object.keys(portable.manifests[0]!)).toEqual([
+    'repositoryId',
+    'rootId',
+    'path',
+    'name',
+    'framework',
+    'dependencies',
+    'sha256',
+  ]);
+  expect('files' in portable).toBe(false);
+  expect(JSON.stringify(portable)).not.toContain('services: {}');
+});
+
 test.each([
   ['not-found', 'Workspace root not found: ./x. Pass an existing directory with --path.'],
   ['not-directory', 'Workspace root is not a directory: ./x. Pass a directory with --path.'],
@@ -150,6 +177,18 @@ test('the scan record carries counts and codes only', () => {
     analyzers: [{ id: 'node-manifest', version: '1.0.0' }],
   });
   expect(JSON.stringify(record)).not.toContain('/');
+});
+
+test('the scan record lists every analyzer version, sorted', () => {
+  const record = scanRecord(result, 'a', 'b', [
+    { id: 'prisma-schema', version: '1.0.0' },
+    { id: 'docker-compose', version: '1.0.0' },
+  ]);
+  expect(record.analyzers).toEqual([
+    { id: 'docker-compose', version: '1.0.0' },
+    { id: 'node-manifest', version: '1.0.0' },
+    { id: 'prisma-schema', version: '1.0.0' },
+  ]);
 });
 
 test('the session list shows the last scan', () => {

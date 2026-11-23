@@ -120,9 +120,14 @@ test('sessions persist across launches without touching the analyzed tree', asyn
     assert.deepEqual(await snapshot(root), before);
     assert.ok(existsSync(join(dataDir, 'archwise.db')));
   } finally {
-    server?.child.kill();
-    await rm(root, { recursive: true, force: true });
-    await rm(dataDir, { recursive: true, force: true });
+    // Wait for the server to exit: on Windows its open store file blocks deletion (EBUSY).
+    if (server && server.child.exitCode === null && server.child.signalCode === null) {
+      const exited = new Promise((accept) => server.child.once('exit', accept));
+      server.child.kill();
+      await exited;
+    }
+    await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+    await rm(dataDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   }
 });
 
@@ -138,8 +143,8 @@ test('an unusable data directory stops --serve with an actionable message', asyn
     assert.equal(result.status, 2, result.stdout + result.stderr);
     assert.match(result.stderr, /ARCHWISE_DATA_DIR/);
   } finally {
-    await rm(root, { recursive: true, force: true });
-    await rm(parent, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+    await rm(parent, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   }
 });
 
@@ -181,8 +186,8 @@ test('--resume latest fails clearly on an empty store and resumes the newest ses
     assert.deepEqual(resumed, { id: current.id, persisted: true, storeEnabled: true });
   } finally {
     server?.child.kill();
-    await rm(root, { recursive: true, force: true });
-    await rm(dataDir, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+    await rm(dataDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   }
 });
 
@@ -206,8 +211,8 @@ test('a single root with a submodule records one revision across runs', async ()
     assert.equal(await count(dataDir, 'revisions'), 1);
     assert.equal(await count(dataDir, 'workspaces'), 1);
   } finally {
-    await rm(root, { recursive: true, force: true });
-    await rm(dataDir, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+    await rm(dataDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   }
 });
 
@@ -232,8 +237,8 @@ test('several repositories are their own workspace and stay byte-identical', asy
     assert.equal(await count(dataDir, 'workspaces'), 2);
     assert.deepEqual([await snapshot(first), await snapshot(second)], before);
   } finally {
-    await rm(first, { recursive: true, force: true });
-    await rm(second, { recursive: true, force: true });
-    await rm(dataDir, { recursive: true, force: true });
+    await rm(first, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+    await rm(second, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+    await rm(dataDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   }
 });

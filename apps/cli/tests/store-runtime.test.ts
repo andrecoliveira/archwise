@@ -6,10 +6,11 @@ import type { ArchitectureGraph } from '../src/graph.js';
 import { prepareStore } from '../src/store-runtime.js';
 
 const graph: ArchitectureGraph = {
-  version: 1,
+  version: 2,
   nodes: [],
   edges: [],
   diagnostics: [],
+  gaps: [],
   inspectedEntries: 0,
 };
 const cleanups: (() => void)[] = [];

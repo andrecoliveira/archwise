@@ -183,3 +183,43 @@ test('--workspace prints the resolved repository labels before scanning', async 
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+async function systemFixture() {
+  const { SYSTEM_FIXTURE, createFixture } = await import(
+    new URL('../../packages/test-fixtures/dist/index.js', import.meta.url).href
+  );
+  return createFixture(SYSTEM_FIXTURE);
+}
+
+test('--graph on the system fixture prints a version 2 graph with a frontend, a service and a datastore', async () => {
+  const fixture = await systemFixture();
+  try {
+    const run = spawnSync(process.execPath, [entry, '--path', fixture.root, '--graph'], {
+      encoding: 'utf8',
+    });
+    assert.equal(run.status, 0, run.stderr);
+    const graph = JSON.parse(run.stdout);
+    assert.equal(graph.version, 2);
+    assert.ok(graph.nodes.some((n) => n.type === 'frontend'));
+    assert.ok(graph.nodes.some((n) => n.type === 'service'));
+    assert.ok(graph.nodes.some((n) => n.id === 'compose:compose.yaml#db'));
+    assert.doesNotMatch(run.stdout, /secret|DATABASE_URL|example-only/);
+  } finally {
+    await fixture.dispose();
+  }
+});
+
+test('--json output on the system fixture has no files or contents', async () => {
+  const fixture = await systemFixture();
+  try {
+    const run = spawnSync(process.execPath, [entry, '--path', fixture.root, '--json'], {
+      encoding: 'utf8',
+    });
+    assert.equal(run.status, 0, run.stderr);
+    const parsed = JSON.parse(run.stdout);
+    assert.equal('files' in parsed, false);
+    assert.doesNotMatch(run.stdout, /secret|services:|postgresql/);
+  } finally {
+    await fixture.dispose();
+  }
+});

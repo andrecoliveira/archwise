@@ -1,3 +1,4 @@
+import { compareCodeUnits } from '@archwise/domain';
 import {
   InventoryRootError,
   SKIP_REASONS,
@@ -80,7 +81,17 @@ export function portableInventory(result: InventoryResult): object {
         skipped,
       }),
     ),
-    manifests: result.manifests,
+    manifests: result.manifests.map(
+      ({ repositoryId, rootId, path, name, framework, dependencies, sha256 }) => ({
+        repositoryId,
+        rootId,
+        path,
+        name,
+        framework,
+        dependencies,
+        sha256,
+      }),
+    ),
     listedEntries: result.listedEntries,
     skipped: result.skipped,
     truncated: result.truncated,
@@ -128,6 +139,7 @@ export function scanRecord(
   result: InventoryResult,
   startedAt: string,
   finishedAt: string,
+  analyzers: readonly { readonly id: string; readonly version: string }[] = [],
 ): Omit<StoredScan, 'id' | 'workspaceId' | 'revisionId'> {
   const skipped: Partial<Record<(typeof SKIP_REASONS)[number], number>> = {};
   for (const reason of SKIP_REASONS) {
@@ -141,7 +153,9 @@ export function scanRecord(
     bytesRead: result.bytesRead,
     skipped,
     truncated: result.truncated,
-    analyzers: [{ id: MANIFEST_ANALYZER.id, version: MANIFEST_ANALYZER.version }],
+    analyzers: [{ id: MANIFEST_ANALYZER.id, version: MANIFEST_ANALYZER.version }, ...analyzers]
+      .map(({ id, version }) => ({ id, version }))
+      .sort((a, b) => compareCodeUnits(a.id, b.id)),
   };
 }
 

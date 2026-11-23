@@ -5,10 +5,11 @@ import { startLocalGraphServer, type LocalServer } from '../src/local-server.js'
 import { buildGraphRevision } from '../src/revision.js';
 
 const graph: ArchitectureGraph = {
-  version: 1,
+  version: 2,
   nodes: [],
   edges: [],
   diagnostics: [],
+  gaps: [],
   inspectedEntries: 0,
 };
 

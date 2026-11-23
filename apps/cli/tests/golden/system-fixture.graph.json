@@ -1,0 +1,375 @@
+{
+  "version": 2,
+  "nodes": [
+    {
+      "id": "compose:compose.yaml#cache",
+      "type": "datastore",
+      "label": "cache",
+      "technology": "Redis",
+      "confidence": "observed",
+      "reasons": ["compose-image"],
+      "outsideWorkspace": false,
+      "aliases": [],
+      "origin": "discovered",
+      "evidence": [
+        {
+          "path": "compose.yaml",
+          "kind": "compose-image",
+          "lines": null,
+          "analyzer": "docker-compose"
+        }
+      ]
+    },
+    {
+      "id": "compose:compose.yaml#db",
+      "type": "datastore",
+      "label": "db",
+      "technology": "PostgreSQL",
+      "confidence": "observed",
+      "reasons": ["compose-image"],
+      "outsideWorkspace": false,
+      "aliases": [],
+      "origin": "discovered",
+      "evidence": [
+        {
+          "path": "compose.yaml",
+          "kind": "compose-image",
+          "lines": null,
+          "analyzer": "docker-compose"
+        }
+      ]
+    },
+    {
+      "id": "external:stripe",
+      "type": "external-system",
+      "label": "Stripe",
+      "technology": "Stripe",
+      "confidence": "inferred",
+      "reasons": ["client-library"],
+      "outsideWorkspace": false,
+      "aliases": [],
+      "origin": "discovered",
+      "evidence": [
+        {
+          "path": "apps/api/package.json",
+          "kind": "client-library",
+          "lines": null,
+          "analyzer": "node-roles"
+        }
+      ]
+    },
+    {
+      "id": "package:apps/api/package.json",
+      "type": "service",
+      "label": "@shop/api",
+      "technology": "fastify",
+      "confidence": "observed",
+      "reasons": ["compose-build:api", "framework-dependency:fastify"],
+      "outsideWorkspace": false,
+      "aliases": ["api"],
+      "origin": "discovered",
+      "evidence": [
+        {
+          "path": "apps/api/package.json",
+          "kind": "package-manifest",
+          "lines": null,
+          "analyzer": "node-manifest"
+        },
+        {
+          "path": "apps/api/package.json",
+          "kind": "framework-dependency",
+          "lines": null,
+          "analyzer": "node-roles"
+        },
+        {
+          "path": "compose.yaml",
+          "kind": "compose-build",
+          "lines": null,
+          "analyzer": "docker-compose"
+        }
+      ]
+    },
+    {
+      "id": "package:apps/web/package.json",
+      "type": "frontend",
+      "label": "@shop/web",
+      "technology": "next",
+      "confidence": "inferred",
+      "reasons": ["framework-dependency:next"],
+      "outsideWorkspace": false,
+      "aliases": [],
+      "origin": "discovered",
+      "evidence": [
+        {
+          "path": "apps/web/package.json",
+          "kind": "package-manifest",
+          "lines": null,
+          "analyzer": "node-manifest"
+        },
+        {
+          "path": "apps/web/package.json",
+          "kind": "framework-dependency",
+          "lines": null,
+          "analyzer": "node-roles"
+        }
+      ]
+    },
+    {
+      "id": "package:apps/worker/package.json",
+      "type": "service",
+      "label": "@shop/worker",
+      "technology": null,
+      "confidence": "observed",
+      "reasons": ["compose-build:worker"],
+      "outsideWorkspace": false,
+      "aliases": ["worker"],
+      "origin": "discovered",
+      "evidence": [
+        {
+          "path": "apps/worker/package.json",
+          "kind": "package-manifest",
+          "lines": null,
+          "analyzer": "node-manifest"
+        },
+        {
+          "path": "compose.yaml",
+          "kind": "compose-build",
+          "lines": null,
+          "analyzer": "docker-compose"
+        }
+      ]
+    },
+    {
+      "id": "package:examples/demo/package.json",
+      "type": "service",
+      "label": "demo",
+      "technology": "express",
+      "confidence": "inferred",
+      "reasons": ["framework-dependency:express"],
+      "outsideWorkspace": true,
+      "aliases": [],
+      "origin": "discovered",
+      "evidence": [
+        {
+          "path": "examples/demo/package.json",
+          "kind": "package-manifest",
+          "lines": null,
+          "analyzer": "node-manifest"
+        },
+        {
+          "path": "examples/demo/package.json",
+          "kind": "framework-dependency",
+          "lines": null,
+          "analyzer": "node-roles"
+        }
+      ]
+    },
+    {
+      "id": "package:package.json",
+      "type": "module",
+      "label": "shop",
+      "technology": null,
+      "confidence": "observed",
+      "reasons": ["manifest-declared"],
+      "outsideWorkspace": false,
+      "aliases": [],
+      "origin": "discovered",
+      "evidence": [
+        {
+          "path": "package.json",
+          "kind": "package-manifest",
+          "lines": null,
+          "analyzer": "node-manifest"
+        }
+      ]
+    },
+    {
+      "id": "package:packages/db/package.json",
+      "type": "module",
+      "label": "@shop/db",
+      "technology": null,
+      "confidence": "observed",
+      "reasons": ["manifest-declared"],
+      "outsideWorkspace": false,
+      "aliases": [],
+      "origin": "discovered",
+      "evidence": [
+        {
+          "path": "packages/db/package.json",
+          "kind": "package-manifest",
+          "lines": null,
+          "analyzer": "node-manifest"
+        }
+      ]
+    },
+    {
+      "id": "queue:bullmq",
+      "type": "queue",
+      "label": "BullMQ",
+      "technology": "BullMQ",
+      "confidence": "inferred",
+      "reasons": ["client-library"],
+      "outsideWorkspace": false,
+      "aliases": [],
+      "origin": "discovered",
+      "evidence": [
+        {
+          "path": "apps/worker/package.json",
+          "kind": "client-library",
+          "lines": null,
+          "analyzer": "node-roles"
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "dependency:package:apps/api/package.json->package:packages/db/package.json",
+      "type": "depends-on",
+      "source": "package:apps/api/package.json",
+      "target": "package:packages/db/package.json",
+      "confidence": "observed",
+      "reasons": ["dependency-declared"],
+      "origin": "discovered",
+      "evidence": [
+        {
+          "path": "apps/api/package.json",
+          "kind": "package-dependency",
+          "lines": null,
+          "analyzer": "node-manifest"
+        }
+      ]
+    },
+    {
+      "id": "dependency:package:apps/worker/package.json->package:packages/db/package.json",
+      "type": "depends-on",
+      "source": "package:apps/worker/package.json",
+      "target": "package:packages/db/package.json",
+      "confidence": "observed",
+      "reasons": ["dependency-declared"],
+      "origin": "discovered",
+      "evidence": [
+        {
+          "path": "apps/worker/package.json",
+          "kind": "package-dependency",
+          "lines": null,
+          "analyzer": "node-manifest"
+        }
+      ]
+    },
+    {
+      "id": "depends-on:package:apps/api/package.json->compose:compose.yaml#cache",
+      "type": "depends-on",
+      "source": "package:apps/api/package.json",
+      "target": "compose:compose.yaml#cache",
+      "confidence": "observed",
+      "reasons": ["compose-depends-on"],
+      "origin": "discovered",
+      "evidence": [
+        {
+          "path": "compose.yaml",
+          "kind": "compose-depends-on",
+          "lines": null,
+          "analyzer": "docker-compose"
+        }
+      ]
+    },
+    {
+      "id": "depends-on:package:apps/api/package.json->compose:compose.yaml#db",
+      "type": "depends-on",
+      "source": "package:apps/api/package.json",
+      "target": "compose:compose.yaml#db",
+      "confidence": "observed",
+      "reasons": ["compose-depends-on"],
+      "origin": "discovered",
+      "evidence": [
+        {
+          "path": "compose.yaml",
+          "kind": "compose-depends-on",
+          "lines": null,
+          "analyzer": "docker-compose"
+        }
+      ]
+    },
+    {
+      "id": "depends-on:package:apps/api/package.json->external:stripe",
+      "type": "depends-on",
+      "source": "package:apps/api/package.json",
+      "target": "external:stripe",
+      "confidence": "inferred",
+      "reasons": ["client-library:stripe"],
+      "origin": "discovered",
+      "evidence": [
+        {
+          "path": "apps/api/package.json",
+          "kind": "client-library",
+          "lines": null,
+          "analyzer": "node-roles"
+        }
+      ]
+    },
+    {
+      "id": "depends-on:package:apps/worker/package.json->compose:compose.yaml#cache",
+      "type": "depends-on",
+      "source": "package:apps/worker/package.json",
+      "target": "compose:compose.yaml#cache",
+      "confidence": "observed",
+      "reasons": ["compose-depends-on"],
+      "origin": "discovered",
+      "evidence": [
+        {
+          "path": "compose.yaml",
+          "kind": "compose-depends-on",
+          "lines": null,
+          "analyzer": "docker-compose"
+        }
+      ]
+    },
+    {
+      "id": "depends-on:package:apps/worker/package.json->queue:bullmq",
+      "type": "depends-on",
+      "source": "package:apps/worker/package.json",
+      "target": "queue:bullmq",
+      "confidence": "inferred",
+      "reasons": ["client-library:bullmq"],
+      "origin": "discovered",
+      "evidence": [
+        {
+          "path": "apps/worker/package.json",
+          "kind": "client-library",
+          "lines": null,
+          "analyzer": "node-roles"
+        }
+      ]
+    },
+    {
+      "id": "depends-on:package:packages/db/package.json->compose:compose.yaml#db",
+      "type": "depends-on",
+      "source": "package:packages/db/package.json",
+      "target": "compose:compose.yaml#db",
+      "confidence": "inferred",
+      "reasons": ["client-library:@prisma/client", "client-library:pg", "prisma-datasource"],
+      "origin": "discovered",
+      "evidence": [
+        {
+          "path": "packages/db/package.json",
+          "kind": "client-library",
+          "lines": null,
+          "analyzer": "node-roles"
+        },
+        {
+          "path": "packages/db/prisma/schema.prisma",
+          "kind": "prisma-datasource",
+          "lines": {
+            "start": 2,
+            "end": 2
+          },
+          "analyzer": "prisma-schema"
+        }
+      ]
+    }
+  ],
+  "diagnostics": [],
+  "gaps": [],
+  "inspectedEntries": 19
+}

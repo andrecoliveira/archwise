@@ -11,7 +11,7 @@ import {
 } from '@archwise/application';
 import { openStore, type OpenedStore, type StoreUnavailableReason } from '@archwise/storage';
 import type { ArchitectureGraph } from './graph.js';
-import { buildGraphRevision, type RevisionScan } from './revision.js';
+import { buildGraphRevision, type RevisionAnalysis, type RevisionScan } from './revision.js';
 
 export type StoreRuntime =
   | { readonly kind: 'disabled'; readonly notices: readonly string[] }
@@ -32,6 +32,8 @@ export interface PrepareStoreOptions {
   /** Scan metadata to record with the revision (counts and codes only). */
   readonly scanRecord?: DiscoveryInput['scan'];
   readonly graph: ArchitectureGraph;
+  /** Analyzer coverage, failures and gaps recorded in the revision. */
+  readonly analysis?: RevisionAnalysis;
 }
 
 /**
@@ -85,7 +87,7 @@ export async function prepareStore(options: PrepareStoreOptions): Promise<StoreR
         rootPath: workspaceKey(options.rootPaths),
         view: JSON.stringify(options.graph),
         viewIdentity: JSON.stringify({ ...options.graph, inspectedEntries: 0 }),
-        build: (ids) => buildGraphRevision(options.graph, options.scan, ids),
+        build: (ids) => buildGraphRevision(options.graph, options.scan, ids, options.analysis),
         ...(options.scanRecord ? { scan: options.scanRecord } : {}),
       },
     );
