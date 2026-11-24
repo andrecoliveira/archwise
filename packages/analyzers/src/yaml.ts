@@ -1,4 +1,14 @@
-import { LineCounter, isMap, isScalar, isSeq, parseDocument, type Node } from 'yaml';
+import {
+  LineCounter,
+  isAlias,
+  isMap,
+  isScalar,
+  isSeq,
+  parseDocument,
+  type Node,
+  type Pair,
+  type YAMLMap,
+} from 'yaml';
 
 export type YamlResult = { readonly ok: true; readonly value: unknown } | { readonly ok: false };
 
@@ -35,14 +45,40 @@ export function parseYamlWithLines(text: string): YamlLinesResult {
     });
     if (document.errors.length > 0 || document.warnings.length > 0) return { ok: false };
     const value = document.toJS({ maxAliasCount: 100 }) as unknown;
+    /** Follows aliases to the node they name (bounded, like `maxAliasCount`). */
+    const resolved = (node: unknown): unknown => {
+      let current = node;
+      for (let hops = 0; isAlias(current) && hops < 100; hops += 1) {
+        current = current.resolve(document);
+      }
+      return current;
+    };
+    /** The pair for a key: the map's own key wins, then `<<` merges, depth-first. */
+    const pairOf = (map: YAMLMap, key: string, depth = 0): Pair | undefined => {
+      const own = map.items.find((item) => isScalar(item.key) && String(item.key.value) === key);
+      if (own || depth > 16) return own;
+      for (const item of map.items) {
+        // With `merge: true` the parser marks a merge key's value as the symbol `<<`.
+        const marker: unknown = isScalar(item.key) ? item.key.value : undefined;
+        if (marker !== '<<' && !(typeof marker === 'symbol' && marker.description === '<<')) {
+          continue;
+        }
+        const value = resolved(item.value);
+        const sources = isSeq(value) ? value.items.map(resolved) : [value];
+        for (const source of sources) {
+          const found = isMap(source) ? pairOf(source, key, depth + 1) : undefined;
+          if (found) return found;
+        }
+      }
+      return undefined;
+    };
     const lines = (path: readonly (string | number)[]): LineRange | null => {
       let node: unknown = document.contents;
       let from: number | undefined;
       for (const segment of path) {
+        node = resolved(node);
         if (isMap(node)) {
-          const pair = node.items.find(
-            (item) => isScalar(item.key) && String(item.key.value) === String(segment),
-          );
+          const pair = pairOf(node, String(segment));
           if (!pair || !isScalar(pair.key) || !pair.key.range) return null;
           from = pair.key.range[0];
           node = pair.value;
@@ -53,7 +89,7 @@ export function parseYamlWithLines(text: string): YamlLinesResult {
           return null;
         }
       }
-      const range = (node as Node | null)?.range;
+      const range = (resolved(node) as Node | null)?.range;
       if (!range) return null;
       const start = from ?? range[0];
       let end = range[1];

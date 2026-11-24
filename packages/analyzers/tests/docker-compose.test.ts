@@ -276,3 +276,25 @@ test('image properties keep names that look like keys', () => {
     'quay.io/keycloak/keycloak:21.1',
   ]);
 });
+
+test('keys inherited through merge keys cite the lines where they are written', () => {
+  const output = run(
+    [
+      'x-base: &base',
+      '  image: postgres:16',
+      '  ports: ["5432"]',
+      'services:',
+      '  db:',
+      '    <<: *base',
+      '    depends_on: [cache]',
+      '  cache:',
+      '    image: redis:7',
+    ].join('\n'),
+  );
+  const db = ofType(output, 'compose-property').filter((fact) => fact.compose.service === 'db');
+  expect(db.map((fact) => [fact.name, fact.value, fact.evidence[0]?.lines])).toEqual([
+    ['image', 'postgres:16', { start: 2, end: 2 }],
+    ['ports', '5432', { start: 3, end: 3 }],
+    ['depends_on', 'cache', { start: 7, end: 7 }],
+  ]);
+});
