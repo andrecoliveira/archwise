@@ -25,6 +25,16 @@ await writeManifest('apps/web/package.json', {
 await writeManifest('apps/api/package.json', { name: '@smoke/api' });
 
 let runner;
+/** Re-evaluates `predicate` in the page until it is true or `timeout` ms pass. */
+async function until(target, predicate, timeout = 5_000) {
+  const end = Date.now() + timeout;
+  while (Date.now() < end) {
+    if (await target.evaluate(predicate)) return true;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  return false;
+}
+
 function startServer(roots = ['--path', fixtureRoot]) {
   runner = spawn(process.execPath, ['apps/cli/dist/bin.js', '--serve', '--no-open', ...roots], {
     cwd: process.cwd(),
@@ -67,6 +77,28 @@ try {
       ? { channel: process.env.ARCHWISE_BROWSER_CHANNEL }
       : {}),
   });
+  // The Studio's CSP forbids eval, and Playwright's page-side polling for waitForFunction needs it
+  // whenever the predicate starts out false. Poll from Node instead, so the real CSP stays on.
+  const pollFromNode = (page) => {
+    page.waitForFunction = async (predicate, arg, options = {}) => {
+      const end = Date.now() + (options.timeout ?? 30_000);
+      while (Date.now() < end) {
+        if (await page.evaluate(predicate, arg)) return;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      throw new Error(`waitForFunction timed out: ${String(predicate).slice(0, 160)}`);
+    };
+    return page;
+  };
+  const openPage = browser.newPage.bind(browser);
+  browser.newPage = async (options) => pollFromNode(await openPage(options));
+  const openContext = browser.newContext.bind(browser);
+  browser.newContext = async (options) => {
+    const context = await openContext(options);
+    const contextPage = context.newPage.bind(context);
+    context.newPage = async () => pollFromNode(await contextPage());
+    return context;
+  };
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
@@ -182,8 +214,9 @@ try {
     'Every proposed piece says Proposed',
   );
   // Switching style re-frames the view (positions stay): every proposed piece is visible.
-  await page.waitForFunction(
-    () => {
+  // Polled from Node: page-side polling would need eval, which the Studio's CSP forbids.
+  assert.ok(
+    await until(page, () => {
       const pane = globalThis.document.querySelector('.svelte-flow')?.getBoundingClientRect();
       const pieces = [...globalThis.document.querySelectorAll('.iso-node.proposed')];
       return (
@@ -199,9 +232,8 @@ try {
           );
         })
       );
-    },
-    undefined,
-    { timeout: 5_000 },
+    }),
+    'Every proposed piece is framed after the style switch',
   );
   assert.equal(
     await page.locator('.pl .hatched').count(),
@@ -730,6 +762,66 @@ try {
     await canvasNodes.filter({ hasText: '@shop/worker' }).first().focus();
     await systemPage.keyboard.press('Enter');
     await discoveredInspector.getByRole('heading', { name: '@shop/worker' }).waitFor();
+    assert.equal(
+      await canvasNodes
+        .filter({ hasText: '@shop/worker' })
+        .first()
+        .locator('.selring.selected')
+        .count(),
+      1,
+      'Enter lights the plinth of the component it selected',
+    );
+    assert.equal(
+      await systemPage.locator('.selring.selected').count(),
+      1,
+      'Only one plinth is lit',
+    );
+    // Escape clears the selection; a click in the list lights the plinth too.
+    await systemPage.keyboard.press('Escape');
+    await discoveredInspector
+      .getByText('Select a component on the canvas or in the list')
+      .waitFor();
+    assert.equal(
+      await systemPage.locator('.selring.selected').count(),
+      0,
+      'Escape clears the selection',
+    );
+    await systemPage
+      .getByRole('navigation', { name: 'Discovered components' })
+      .getByRole('button', { name: /@shop\/worker/ })
+      .click();
+    await systemPage.waitForFunction(
+      () => globalThis.document.querySelectorAll('.selring.selected').length === 1,
+    );
+    // Tab from the canvas reaches components before anything else (relations are not tab stops).
+    await systemPage.locator('.viewport').focus();
+    await systemPage.keyboard.press('Tab');
+    assert.ok(
+      await systemPage.evaluate(
+        () => globalThis.document.activeElement?.closest('.svelte-flow__node') !== null,
+      ),
+      'Tab from the canvas reaches a component first',
+    );
+    // Screen-reader help matches this canvas.
+    const help = await systemPage.evaluate(() => {
+      const node = globalThis.document.querySelector('.svelte-flow__node');
+      const id = node?.getAttribute('aria-describedby');
+      return id ? (globalThis.document.getElementById(id)?.textContent ?? '') : '';
+    });
+    assert.ok(
+      help.includes('Enter') && !/delete|move the node/i.test(help),
+      `Node help text fits the canvas: ${help}`,
+    );
+    // The zoom range is 25%-300%.
+    for (let i = 0; i < 20; i += 1) await systemPage.keyboard.press('-');
+    const scale = await systemPage.evaluate(() => {
+      const t = globalThis.getComputedStyle(
+        globalThis.document.querySelector('.svelte-flow__viewport'),
+      ).transform;
+      return Number(t.match(/matrix\(([^,]+)/)?.[1] ?? 1);
+    });
+    assert.ok(scale >= 0.249, `Zoom never goes below 25% (got ${scale})`);
+    await systemPage.keyboard.press('0');
 
     // Pieces or cards: the choice persists across a reload.
     await systemPage
@@ -738,6 +830,26 @@ try {
       .click();
     await systemPage.waitForFunction(
       () => globalThis.document.querySelectorAll('.iso-piece').length === 0,
+    );
+    // Cards show keyboard focus (after the re-layout that follows the switch has settled).
+    await canvasNodes.first().locator('.discovered-node').waitFor();
+    await systemPage.waitForTimeout(600);
+    await systemPage.locator('.viewport').focus();
+    await systemPage.keyboard.press('Tab');
+    assert.notEqual(
+      await systemPage.evaluate(() => {
+        const card = globalThis.document.activeElement?.querySelector('.discovered-node');
+        return card ? globalThis.getComputedStyle(card).outlineStyle : 'no focused card';
+      }),
+      'none',
+      'A focused card shows a focus outline',
+    );
+    assert.notEqual(
+      await systemPage.evaluate(() =>
+        globalThis.document.activeElement?.querySelector('.discovered-node') ? 'card' : 'none',
+      ),
+      'none',
+      'A card has focus',
     );
     await systemPage.reload({ waitUntil: 'networkidle' });
     await canvasNodes.first().waitFor();

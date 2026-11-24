@@ -23,6 +23,15 @@ function luminance(hex: string): number {
     .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
   return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
 }
+/** A token colour as seen over a background: blends rgba(..., alpha) onto it. */
+function opaque(color: string, over: string): string {
+  const m = color.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
+  if (!m) return color;
+  const alpha = Number(m[4]);
+  const base = [1, 3, 5].map((i) => parseInt(over.slice(i, i + 2), 16));
+  const mixed = [1, 2, 3].map((i, k) => Math.round(Number(m[i]) * alpha + base[k]! * (1 - alpha)));
+  return `#${mixed.map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+}
 const contrast = (a: string, b: string): number => {
   const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p);
   return (x! + 0.05) / (y! + 0.05);
@@ -65,8 +74,9 @@ for (const name of ['dark', 'light'] as const) {
   });
   test(`${name}: piece outlines stand out from the plinth`, () => {
     const tokens = theme(name);
-    const outline = tokens['--outline']!.startsWith('#') ? tokens['--outline']! : '#e9e4da';
-    expect(contrast(outline, tokens['--plinth']!)).toBeGreaterThanOrEqual(3);
+    expect(
+      contrast(opaque(tokens['--outline']!, tokens['--plinth']!), tokens['--plinth']!),
+    ).toBeGreaterThanOrEqual(3);
   });
   test(`${name}: cache card text meets AA`, () => {
     const tokens = theme(name);
@@ -79,4 +89,16 @@ test('card text is drawn at full strength, never faded below AA', () => {
     const body = studio.match(new RegExp(`\\${rule}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
     expect(body, rule).not.toMatch(/opacity/);
   }
+});
+
+for (const name of ['dark', 'light'] as const) {
+  test(`${name}: the selection ring stands out from the plinth`, () => {
+    const tokens = theme(name);
+    expect(tokens['--ring'], '--ring').toBeDefined();
+    expect(contrast(tokens['--ring']!, tokens['--plinth']!)).toBeGreaterThanOrEqual(3);
+  });
+}
+
+test('relation confidence is shown by line style only, never by colour', () => {
+  expect(studio).not.toMatch(/\.relation\.inferred\s*\{[^}]*stroke:/);
 });

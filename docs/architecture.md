@@ -84,7 +84,9 @@ Svelte 5 renders the application shell; Svelte Flow renders interactive graphs (
   - arrow keys pan;
   - `+` and `-` zoom;
   - `0` fits;
-  - Enter selects the focused component.
+  - Enter or Space selects the focused component;
+  - Esc clears the selection.
+- The Studio's selection is the only source of what the canvas marks as selected, whether it comes from a click, the list or the keyboard. Zoom stays between 25% and 300%.
 
 The design decisions are in the [Studio redesign spec](superpowers/specs/2026-11-23-studio-redesign-design.md). The words the UI uses are in [`CONTEXT.md`](../CONTEXT.md).
 

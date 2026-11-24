@@ -12,7 +12,7 @@
   import DiscoveredNode from './DiscoveredNode.svelte';
   import IsoNode from './IsoNode.svelte';
   import DiscoveredEdge from './DiscoveredEdge.svelte';
-  import { focusSet } from './focus.js';
+  import { CANVAS_A11Y, decorate } from './canvas-decoration.js';
   import CanvasKeys from './CanvasKeys.svelte';
   import { canvasKeyAction } from './canvas-keys.js';
   import { NODE_SIZE, type NodeStyle } from './node-style.js';
@@ -109,36 +109,10 @@
     }
   }
 
-  /** Focus decoration: dim what is not connected to the selection; animate only what is. */
-  function decorate(list: Node[], links: Edge[], selected: string | null): { nodes: Node[]; edges: Edge[] } {
-    const focus = focusSet(links.filter((edge) => edge.data?.origin === 'discovered'), selected);
-    const inFocus = (id: string): boolean => focus === null || focus.nodes.has(id);
-    return {
-      nodes: list.map((item) =>
-        item.type === 'iso' || item.type === 'discovered'
-          ? { ...item, data: { ...item.data, dimmed: !inFocus(item.id), animated: inFocus(item.id) } }
-          : item,
-      ),
-      edges: links.map((edge) =>
-        edge.data?.origin === 'discovered'
-          ? {
-              ...edge,
-              data: {
-                ...edge.data,
-                focused: focus?.edges.has(`${edge.source}->${edge.target}`) ?? false,
-                dimmed: focus !== null && !focus.edges.has(`${edge.source}->${edge.target}`),
-                animated: true,
-              },
-            }
-          : edge,
-      ),
-    };
-  }
-
   $effect(() => {
-    const selected = mode === 'explore' ? selectedId : null;
+    const options = { selected: selectedId, focus: mode === 'explore' };
     untrack(() => {
-      const next = decorate(nodes, edges, selected);
+      const next = decorate(nodes, edges, options);
       nodes = next.nodes;
       edges = next.edges;
     });
@@ -396,7 +370,7 @@
       ...item,
       position: previous.get(item.id) ?? item.position,
     }));
-    const decorated = decorate(positioned, links, untrack(() => (mode === 'explore' ? selectedId : null)));
+    const decorated = decorate(positioned, links, untrack(() => ({ selected: selectedId, focus: mode === 'explore' })));
     nodes = decorated.nodes;
     edges = decorated.edges;
     if (mode === 'sandbox') {
@@ -407,7 +381,7 @@
     void layoutNodes(positioned, links, NODE_SIZE[nodeStyle])
       .then((placed) => {
         if (!cancelled && nonce === layoutNonce) {
-          nodes = decorate(placed, untrack(() => edges), untrack(() => (mode === 'explore' ? selectedId : null))).nodes;
+          nodes = decorate(placed, untrack(() => edges), untrack(() => ({ selected: selectedId, focus: mode === 'explore' }))).nodes;
           if (mode === 'explore') fitTrigger += 1;
           if (mode === 'sandbox') {
             const positions = new Map(placed.map((item) => [item.id, item.position]));
@@ -608,8 +582,10 @@
     elementsSelectable
     clickConnect
     deleteKey={null}
-    minZoom={0.15}
-    maxZoom={2}
+    minZoom={0.25}
+    maxZoom={3}
+    edgesFocusable={mode === 'sandbox'}
+    ariaLabelConfig={CANVAS_A11Y}
     onnodeclick={({ node }) => { selectedId = node.id; selectedEdgeId = null; }}
     onnodedragstop={({ targetNode }) => { if (targetNode) rememberDragPosition(targetNode); }}
     onpaneclick={() => { selectedId = null; selectedEdgeId = null; connectionNotice = ''; }}
@@ -620,7 +596,8 @@
     <MiniMap />
     <Controls />
     <FitViewOnLayout trigger={fitTrigger} />
-    <CanvasKeys bind:this={keys} onSelect={(id) => { selectedId = id; selectedEdgeId = null; }} />
+    <CanvasKeys bind:this={keys} onSelect={(id) => { selectedId = id; selectedEdgeId = null; }}
+      onClear={() => { selectedId = null; selectedEdgeId = null; }} />
   </SvelteFlow>
   {#if mode === 'sandbox' && selectedProposed}
     <section class="floating-inspector" aria-label="Selected component properties">

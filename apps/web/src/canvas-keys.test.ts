@@ -60,3 +60,14 @@ test('a held modifier leaves the key to the browser', () => {
 test('other keys do nothing', () => {
   expect(canvasKeyAction(key('a'))).toBeNull();
 });
+
+test('Space on a node selects it, like Enter', () => {
+  const node = document.createElement('div');
+  node.className = 'svelte-flow__node';
+  node.dataset.id = 'queue:bullmq';
+  expect(canvasKeyAction(key(' ', node))).toEqual({ select: 'queue:bullmq' });
+});
+
+test('Escape clears the selection', () => {
+  expect(canvasKeyAction(key('Escape'))).toEqual({ clear: true });
+});

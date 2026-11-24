@@ -1,6 +1,6 @@
 /*
- * Canvas keyboard (spec §4.5): arrows pan, + and - zoom, 0 fits, Enter selects the focused
- * component. Never while typing in a field, and never with a modifier held (those belong to the
+ * Canvas keyboard (spec §4.5): arrows pan, + and - zoom, 0 fits, Enter or Space selects the
+ * focused component and Escape clears the selection. Never while typing in a field, and never with a modifier held (those belong to the
  * browser, such as Cmd+0 to reset page zoom).
  */
 
@@ -9,6 +9,7 @@ export type CanvasKeyAction =
   | { readonly zoom: 'in' | 'out' }
   | { readonly fit: true }
   | { readonly select: string }
+  | { readonly clear: true }
   | null;
 
 const PAN = 80;
@@ -35,7 +36,8 @@ export function canvasKeyAction(
   if (event.key === '+' || event.key === '=') return { zoom: 'in' };
   if (event.key === '-') return { zoom: 'out' };
   if (event.key === '0') return { fit: true };
-  if (event.key === 'Enter' && event.target instanceof Element) {
+  if (event.key === 'Escape') return { clear: true };
+  if ((event.key === 'Enter' || event.key === ' ') && event.target instanceof Element) {
     const id = event.target.closest<HTMLElement>('.svelte-flow__node[data-id]')?.dataset.id;
     return id ? { select: id } : null;
   }

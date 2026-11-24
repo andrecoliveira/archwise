@@ -26,6 +26,8 @@
   --accent: #e8b04b;
   --accent-ink: #1b1408;
   --on-fill: #1b1408;
+  /* Selection ring on a plinth: the accent, darkened in light mode to keep 3:1. */
+  --ring: #e8b04b;
   --plinth: #2c313d;
   --msg: #f1ece2;
   --kind-frontend: #6cc4b4;
@@ -76,6 +78,7 @@
   --accent: #d9902a;
   --accent-ink: #1b1408;
   --on-fill: #1b1408;
+  --ring: #9a5f0c;
   --plinth: #e7ddcc;
   --msg: #ffffff;
   --kind-frontend: #9fd8cc;

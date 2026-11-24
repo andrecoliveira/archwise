@@ -1218,7 +1218,7 @@ aside {
   stroke-width: 3;
 }
 .selring.selected {
-  stroke: var(--accent);
+  stroke: var(--ring);
 }
 .pl .hatch {
   stroke: var(--outline);
@@ -1423,9 +1423,6 @@ aside {
   stroke: var(--ink-2);
   stroke-width: 1.8;
 }
-.relation.inferred {
-  stroke: var(--ink-3);
-}
 .relation.focused {
   stroke: var(--accent);
   stroke-width: 2.4;
@@ -1447,4 +1444,11 @@ aside {
 .iso-node.dimmed,
 .discovered-node.dimmed {
   opacity: 0.35;
+}
+
+/* Keyboard focus on cards (Svelte Flow removes the outline); selection keeps its own ring. */
+.svelte-flow__node:focus-visible .discovered-node,
+.svelte-flow__node:focus-visible .archwise-node {
+  outline: 2px dashed var(--accent);
+  outline-offset: 4px;
 }

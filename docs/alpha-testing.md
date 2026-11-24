@@ -44,7 +44,7 @@ To see several repositories as one system, pass `--repo` once per repository, fo
 4. Zoom, pan and automatic layout work on the Svelte Flow canvas.
    - **Pieces and cards.** The System view draws each component as an isometric piece (a server cabinet for a service, a laptop for a frontend, disks for a datastore, a conveyor belt for a queue, a globe for an external service), each on its own plinth. **Cards** in the top bar switches to flat cards, and your choice is remembered for that view. All packages and Sandbox start in cards.
    - **Selection.** Selecting a component lights its plinth in amber and dims everything it does not connect to. Its relations turn amber, and a dot travels along each one, stopping before the arrowhead. Inferred pieces and relations are dashed.
-   - **Keyboard.** Click or Tab into the canvas. Arrow keys pan the view (they never move a component), `+` and `-` zoom, and `0` fits everything. Tab moves through components, and Enter selects one.
+   - **Keyboard.** Click or Tab into the canvas. Arrow keys pan the view (they never move a component), `+` and `-` zoom between 25% and 300%, and `0` fits everything. Tab moves through components (relations are not tab stops in Explore), Enter or Space selects one and lights its plinth, and Esc clears the selection. Selecting from the list lights the plinth too.
    - **Reduced motion.** With your operating system's "reduce motion" setting on, nothing animates.
 5. Switching to Sandbox permits proposed nodes and connections, visibly distinct from discovered items. In pieces, proposed components stand on a hatched plinth with a **Proposed** tag.
 6. Switching back to Explore shows the source-backed graph without the proposed items.
