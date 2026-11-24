@@ -58,7 +58,8 @@ const SENTENCES: Readonly<Record<string, Sentence>> = {
   'framework-dependency': (param, { subject }) => {
     const names = param.split(',').filter((name) => name !== '');
     const role = subject.type === 'frontend' ? 'frontend' : 'server';
-    if (names.length <= 1) {
+    if (names.length === 0) return [plain(`depends on a ${role} framework`)];
+    if (names.length === 1) {
       return [plain('depends on '), strong(names[0] ?? ''), plain(`, a ${role} framework`)];
     }
     const parts: SentencePart[] = [plain('depends on ')];

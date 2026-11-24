@@ -109,3 +109,9 @@ test('evidenceKey distinguishes path, kind, analyzer and lines', () => {
   expect(evidenceKey(a)).not.toBe(evidenceKey({ ...a, analyzer: 'other' }));
   expect(evidenceKey({ ...a, excerptId: 'x' })).toBe(evidenceKey(a));
 });
+
+test('a framework reason without a parameter still reads as a sentence', () => {
+  expect(text(describeReason('framework-dependency:', { subject: api, evidence: [] }))).toBe(
+    'depends on a server framework',
+  );
+});

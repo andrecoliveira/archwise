@@ -123,7 +123,7 @@
     </header>
 
     <section class={`confidence-band ${level}`} aria-label="Confidence">
-      <p class="band-level"><strong>{levelWord(level)} because:</strong></p>
+      <p class="band-level"><strong>{levelWord(level)} because:</strong>{node.reasons.length === 0 ? ' no reason recorded' : ''}</p>
       <ReasonList reasons={node.reasons} context={{ subject: node, evidence: node.evidence }} />
       {#if level !== 'observed'}
         <p class="band-caution">No file states this directly. Check before relying on it.</p>
@@ -182,7 +182,7 @@
                     </button>
                   {/if}
                   <p class="relation-wording">{edge.indirect ? `${relationWording(edge.type)} · through ${edge.indirect.through.join(', ')}` : relationWording(edge.type)}</p>
-                  <p class="band-level"><strong>{levelWord(edgeLevel)} because:</strong></p>
+                  <p class="band-level"><strong>{levelWord(edgeLevel)} because:</strong>{!edge.indirect && edge.reasons.length === 0 ? ' no reason recorded' : ''}</p>
                   {#if edge.indirect}
                     <ol class="chain">
                       {#each edge.indirect.steps as step (step.id)}

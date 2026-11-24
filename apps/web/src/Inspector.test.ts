@@ -252,3 +252,11 @@ test('empty state copy', () => {
     ),
   ).toBeTruthy();
 });
+
+test('a relation without reasons says so instead of an empty list', () => {
+  const bare = discoveredEdge('web', 'api', { reasons: [] });
+  const view = graphOf([api, pg, web], [toPg, bare]);
+  const { container } = render(Inspector, { props: props({ tab: 'relations', view, full: view }) });
+  const panel = container.querySelector('[role="tabpanel"]')!;
+  expect(panel.textContent).toContain('Observed because: no reason recorded');
+});
