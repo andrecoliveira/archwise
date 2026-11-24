@@ -97,3 +97,18 @@ export function lineStyle(level: ConfidenceLevel): 'solid' | 'dashed' | 'dotted'
 export function levelWord(level: ConfidenceLevel): 'Observed' | 'Inferred' | 'Unknown' {
   return level === 'observed' ? 'Observed' : level === 'inferred' ? 'Inferred' : 'Unknown';
 }
+
+const KIND_TOKENS: Readonly<Record<string, string>> = {
+  frontend: 'var(--kind-frontend)',
+  service: 'var(--kind-service)',
+  module: 'var(--kind-module)',
+  datastore: 'var(--kind-datastore)',
+  queue: 'var(--kind-queue)',
+  'external-system': 'var(--kind-external)',
+  job: 'var(--kind-job)',
+};
+
+/** The kind's fill token, for swatches: fill answers "what is it?" (spec §5.10). */
+export function kindToken(type: string): string {
+  return KIND_TOKENS[type] ?? 'var(--kind-module)';
+}

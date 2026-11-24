@@ -686,8 +686,13 @@ try {
     const discoveredInspector = systemPage.getByRole('complementary', {
       name: 'Component inspector',
     });
-    await discoveredInspector.getByText('Kind: Service').waitFor();
-    await discoveredInspector.getByText('Compose services: api').waitFor();
+    // The inspector header states claims only; the band explains the level with sentences.
+    await discoveredInspector
+      .getByText('Service · fastify · runs in compose.yaml', { exact: false })
+      .first()
+      .waitFor();
+    await discoveredInspector.getByText('Observed because:').waitFor();
+    await discoveredInspector.getByText('Also called api', { exact: false }).waitFor();
 
     // The System view draws pieces; the selection dims what is not connected to it.
     assert.ok(

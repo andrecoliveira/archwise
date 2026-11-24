@@ -1,0 +1,109 @@
+import type { Graph, GraphEvidence } from './graph-types.js';
+import { evidenceKey } from './reason-catalog.js';
+
+/*
+ * "Show lines" (spec §5.11, ADR 0008): the browser asks the local server for an excerpt by the
+ * opaque id the latest scan gave an evidence item. Results live only in component state.
+ */
+
+export type UnavailableReason =
+  'denied' | 'outside-root' | 'too-long' | 'too-large' | 'not-utf8' | 'unreadable';
+
+export type ExcerptResult =
+  | {
+      readonly status: 'ok';
+      readonly path: string;
+      readonly start: number;
+      readonly end: number;
+      readonly lines: readonly string[];
+    }
+  | { readonly status: 'changed' }
+  | { readonly status: 'unavailable'; readonly reason: UnavailableReason }
+  | { readonly status: 'error' };
+
+const REASONS: Readonly<Record<UnavailableReason, string>> = {
+  denied: 'Not shown: this file is on the deny list.',
+  'outside-root': 'Not shown: the file is outside the scanned folder or behind a link.',
+  'too-long': 'Not shown: the cited range is longer than 40 lines.',
+  'too-large': "Not shown: the file is larger than the scan's size limit.",
+  'not-utf8': 'Not shown: the file is not UTF-8 text.',
+  unreadable: 'Not shown: the file could not be read.',
+};
+
+const ID = /^[0-9a-f]{64}$/;
+type Shape = Record<string, unknown>;
+const isRecord = (value: unknown): value is Shape =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+
+function parse(value: unknown): ExcerptResult {
+  if (!isRecord(value)) return { status: 'error' };
+  if (value.status === 'changed') return { status: 'changed' };
+  if (
+    value.status === 'unavailable' &&
+    typeof value.reason === 'string' &&
+    Object.hasOwn(REASONS, value.reason)
+  ) {
+    return { status: 'unavailable', reason: value.reason as UnavailableReason };
+  }
+  if (
+    value.status === 'ok' &&
+    typeof value.path === 'string' &&
+    Number.isInteger(value.start) &&
+    Number.isInteger(value.end) &&
+    Array.isArray(value.lines) &&
+    value.lines.every((line) => typeof line === 'string')
+  ) {
+    return {
+      status: 'ok',
+      path: value.path,
+      start: value.start as number,
+      end: value.end as number,
+      lines: value.lines,
+    };
+  }
+  return { status: 'error' };
+}
+
+export async function fetchExcerpt(
+  id: string,
+  fetcher: typeof fetch = fetch,
+): Promise<ExcerptResult> {
+  if (!ID.test(id)) return { status: 'error' };
+  try {
+    const response = await fetcher(`/api/v1/evidence/excerpt/${id}`, {
+      credentials: 'same-origin',
+    });
+    if (response.status !== 200 && response.status !== 422) return { status: 'error' };
+    return parse(await response.json());
+  } catch {
+    return { status: 'error' };
+  }
+}
+
+/** The sentence shown instead of lines; null when there are lines to show. */
+export function excerptMessage(result: ExcerptResult): string | null {
+  switch (result.status) {
+    case 'ok':
+      return null;
+    case 'changed':
+      return 'This file changed since the scan.';
+    case 'unavailable':
+      return REASONS[result.reason];
+    case 'error':
+      return 'Could not load the lines. Try again.';
+  }
+}
+
+/** Evidence key → excerpt id, from the latest served graph (nodes, properties and edges). */
+export function excerptIdsFrom(graph: Graph | null): Map<string, string> {
+  const ids = new Map<string, string>();
+  const add = (item: GraphEvidence): void => {
+    if (item.excerptId !== undefined) ids.set(evidenceKey(item), item.excerptId);
+  };
+  for (const node of graph?.nodes ?? []) {
+    node.evidence.forEach(add);
+    node.properties?.forEach((property) => add(property.evidence));
+  }
+  for (const edge of graph?.edges ?? []) edge.evidence.forEach(add);
+  return ids;
+}

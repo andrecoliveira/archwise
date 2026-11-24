@@ -24,10 +24,16 @@
   import { applyTheme, nextTheme, readTheme, safeStorage, writeTheme, type Theme } from './theme.js';
   import { nodeStyleFor, readNodeStyle, writeNodeStyle, type NodeStyle, type StyleView } from './node-style.js';
   import ScanNotes from './ScanNotes.svelte';
+  import Inspector, { type InspectorTab } from './Inspector.svelte';
+  import { excerptIdsFrom } from './excerpt-client.js';
   import StudioTopBar from './StudioTopBar.svelte';
   import './studio.css';
 
   let graphData = $state<Graph | null>(null);
+  /** The latest served graph: its evidence carries the excerpt ids "Show lines" uses. */
+  let latestGraph = $state<Graph | null>(null);
+  let inspectorTab: InspectorTab = $state('details');
+  const excerptIds = $derived(excerptIdsFrom(latestGraph));
   let scan = $state<ScanSummaryView | null>(null);
   let loading = $state(true);
   let loadError = $state<string | null>(null);
@@ -141,8 +147,6 @@
     writeNodeStyle(safeStorage(), styleView, style);
     styleRevision += 1;
   }
-  const lineOf = (item: { path: string; lines: { start: number } | null }): string =>
-    item.lines === null ? item.path : `${item.path}:${item.lines.start}`;
   const coachQuestions = $derived(graph ? getCoachQuestions(graph, selectedId) : []);
   let questionIndex = $state(0);
   const currentQuestion = $derived(coachQuestions[questionIndex % Math.max(coachQuestions.length, 1)]);
@@ -196,6 +200,7 @@
       if (!signal.aborted) {
         const chosen = chooseWorkspaceGraph(detail, payload);
         graphData = chosen.graph;
+        latestGraph = payload;
         graphView = initialView(chosen.graph);
         // Only the first load picks the mode; later reloads keep the one the person chose.
         if (!modeChosen) studioMode = initialMode(chosen.graph);
@@ -404,25 +409,12 @@
     <aside aria-label="Component inspector" class="discovered-inspector" id="inspector-column" class:drawer-open={!wide && rightShown}>
       {#if !wide}<button type="button" class="drawer-close" bind:this={rightClose} onclick={() => void closeDrawers()}>Close inspector</button>{/if}
       <h1>Inspector</h1>
-      {#if selected}
-        <h2>{selected.label}</h2>
-        <p>Kind: {kindLabel(selected.type)}</p>
-        <p>Technology: {selected.technology ?? 'Not identified'}</p>
-        <p>Confidence: {selected.confidence}</p>
-        <ul class="reasons">{#each selected.reasons as reason (reason)}<li>{reason}</li>{/each}</ul>
-        {#if selected.aliases.length > 0}<p>Compose services: {selected.aliases.join(', ')}</p>{/if}
-        {#if selected.outsideWorkspace}<p>Outside the declared workspace</p>{/if}
-        {#if selected.repository}<p>Repository: {selected.repository.label}</p>{/if}
-        <p>Outgoing relations: {shownGraph?.edges.filter((edge) => edge.source === selected.id).length ?? 0}</p>
-        <h2>Evidence</h2>
-        <ul>{#each selected.evidence as item, i (i)}
-          <li><code>{lineOf(item)}</code> <small>— {item.analyzer} / {item.kind}</small></li>
-        {/each}</ul>
-      {:else if selectedId?.startsWith('sandbox-')}
+      {#if selectedId?.startsWith('sandbox-')}
         <h2>Hypothetical component</h2>
         <p>This component exists only in Sandbox; it does not modify repository files.</p>
-      {:else}
-        <p>Select a component on the canvas or in the list to see what it is, what it relates to, and why.</p>
+      {:else if graph && shownGraph}
+        <Inspector node={selected} view={shownGraph} full={graph} {excerptIds} {historical}
+          bind:tab={inspectorTab} onSelect={(id) => (selectedId = id)} />
       {/if}
       {#if currentQuestion}
         <section aria-label="Architecture Coach">
