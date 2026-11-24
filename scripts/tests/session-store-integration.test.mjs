@@ -242,3 +242,47 @@ test('several repositories are their own workspace and stay byte-identical', asy
     await rm(dataDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   }
 });
+
+test('the served graph carries excerpt ids; nothing the store persists does', async () => {
+  const root = await fixture();
+  const dataDir = await mkdtemp(join(tmpdir(), 'archwise-session-data-'));
+  const env = { ARCHWISE_DATA_DIR: dataDir };
+  let server;
+  try {
+    server = await serve(root, env);
+    const origin = new URL(server.bootstrapUrl).origin;
+    const cookie = (await fetch(server.bootstrapUrl, { redirect: 'manual' })).headers
+      .get('set-cookie')
+      .split(';')[0];
+    const served = await (await fetch(`${origin}/api/v1/graph`, { headers: { cookie } })).text();
+    assert.match(served, /"excerptId":"[0-9a-f]{64}"/);
+    const exited = new Promise((accept) => server.child.once('exit', accept));
+    server.child.kill();
+    await exited;
+    server = undefined;
+
+    const { DatabaseSync } = await import('node:sqlite');
+    const db = new DatabaseSync(join(dataDir, 'archwise.db'), { readOnly: true });
+    try {
+      const tables = db
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'table'")
+        .all()
+        .map((row) => row.name);
+      assert.ok(tables.length > 0);
+      for (const table of tables) {
+        const rows = JSON.stringify(db.prepare(`SELECT * FROM "${table}"`).all());
+        assert.doesNotMatch(rows, /excerptId/, `table ${table} stores no excerpt ids`);
+      }
+    } finally {
+      db.close();
+    }
+  } finally {
+    if (server && server.child.exitCode === null && server.child.signalCode === null) {
+      const exited = new Promise((accept) => server.child.once('exit', accept));
+      server.child.kill();
+      await exited;
+    }
+    await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+    await rm(dataDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+  }
+});

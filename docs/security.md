@@ -49,9 +49,9 @@ The Studio's "Show lines" reads the lines an evidence item cites, through `GET /
 4. **Short range.** The cited range is at most 40 lines. A whole-file item shows its first 40 lines.
 5. **No links.** No path segment from the root to the file is a symbolic link (checked with `lstat`), and the file is a regular file.
 6. **Small enough.** The file is no larger than the inventory's per-file budget (1 MiB).
-7. **Unchanged.** The file's sha256 still equals the one the scan recorded. Otherwise the response says "changed" and returns no lines.
-8. **Text.** The file decodes as UTF-8, strictly.
-9. **Masked.** Every returned line is masked like a Compose value (keys and flags named like secrets, URL credentials, bearer tokens, payment keys and the patterns of [Secret handling](#secret-handling)). The continuation lines of a YAML block scalar that a secret-named key opens are masked too, even when the block starts above the cited range.
+7. **Text.** The file decodes as UTF-8, strictly. This is checked before the hash, so a file that was never valid UTF-8 reads as "not UTF-8", not as "changed".
+8. **Unchanged.** The file's sha256 still equals the one the scan recorded. Otherwise the response says "changed" and returns no lines.
+9. **Masked and bounded.** Every returned line is masked like a Compose value (keys and flags named like secrets, URL credentials, bearer tokens, payment keys and the patterns of [Secret handling](#secret-handling)). The continuation lines of a YAML block scalar that a secret-named key opens are masked too, even when the block starts above the cited range. Lines split on `\n`, `\r\n` or `\r`, and each shown line is cut at 400 characters after masking, so a minified file cannot return one huge line.
 
 An evidence item whose repository cannot be determined in a multi-root workspace gets no id. In a resumed historical session, the Studio reuses an id only for the same component citing the same item in the latest scan. So the Studio never shows lines from the wrong repository. Responses use `Cache-Control: no-store`. Excerpts are never logged, stored in sessions or exported. The route requires the local session cookie and refuses query strings, like every API route.
 
