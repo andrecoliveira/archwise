@@ -20,6 +20,7 @@ function props(overrides: Record<string, unknown> = {}) {
     onRetrySave: vi.fn(),
     storeEnabled: true,
     sessionsOpen: false,
+    nodeStyle: 'pieces' as const,
     ...overrides,
   };
 }
@@ -70,4 +71,13 @@ test('Sessions appears only with the store enabled', () => {
 test('the revision chip text is shown', () => {
   render(StudioTopBar, props());
   expect(screen.getByText(/scanned just now · complete/)).toBeTruthy();
+});
+
+test('node style buttons switch and expose pressed state', async () => {
+  render(StudioTopBar, props());
+  const group = screen.getByRole('group', { name: 'Node style' });
+  expect(screen.getByRole('button', { name: 'Pieces' }).getAttribute('aria-pressed')).toBe('true');
+  await fireEvent.click(screen.getByRole('button', { name: 'Cards' }));
+  expect(screen.getByRole('button', { name: 'Cards' }).getAttribute('aria-pressed')).toBe('true');
+  expect(group).toBeTruthy();
 });

@@ -22,6 +22,7 @@
   import { placeholderChip, revisionChip, workspaceName } from './scan-status.js';
   import { initialMode, isSearchShortcut, type StudioMode } from './studio-mode.js';
   import { applyTheme, nextTheme, readTheme, safeStorage, writeTheme, type Theme } from './theme.js';
+  import { nodeStyleFor, readNodeStyle, writeNodeStyle, type NodeStyle, type StyleView } from './node-style.js';
   import ScanNotes from './ScanNotes.svelte';
   import StudioTopBar from './StudioTopBar.svelte';
   import './studio.css';
@@ -127,6 +128,19 @@
     graph ? revisionChip({ scan, graph, storeEnabled, historical, now }) : null,
   );
   const notes = $derived(graph ? scanNotes(graph) : null);
+  // Pieces or cards: derived per view (System, All packages, Sandbox); a person's choice is remembered.
+  const styleView: StyleView = $derived.by(() =>
+    studioMode === 'sandbox' ? 'sandbox' : graphView === 'all' ? 'all' : 'system',
+  );
+  let styleRevision = $state(0);
+  const nodeStyle: NodeStyle = $derived.by(() => {
+    void styleRevision;
+    return nodeStyleFor(styleView, shownGraph?.nodes.length ?? 0, readNodeStyle(safeStorage(), styleView));
+  });
+  function chooseNodeStyle(style: NodeStyle): void {
+    writeNodeStyle(safeStorage(), styleView, style);
+    styleRevision += 1;
+  }
   const lineOf = (item: { path: string; lines: { start: number } | null }): string =>
     item.lines === null ? item.path : `${item.path}:${item.lines.start}`;
   const coachQuestions = $derived(graph ? getCoachQuestions(graph, selectedId) : []);
@@ -283,7 +297,8 @@
   <div class="topbar-wrap" inert={drawerOpen}>
   <StudioTopBar workspace={workspaceName(scan)} chip={chip ?? placeholderChip(loading)}
     {scan} bind:mode={studioMode} bind:search={filter} bind:searchInput {theme} onToggleTheme={toggleTheme}
-    {saveStatus} onRetrySave={() => autosave?.retry()} {storeEnabled} bind:sessionsOpen />
+    {saveStatus} onRetrySave={() => autosave?.retry()} {storeEnabled} bind:sessionsOpen
+    bind:nodeStyle={() => nodeStyle, chooseNodeStyle} />
   </div>
   <SessionsPanel bind:open={sessionsOpen} currentId={sessionId}
     onResume={resume} onNew={startNew} onDelete={remove} onRename={rename} />
@@ -380,7 +395,7 @@
           </div>
         {/if}
         {#key workspaceKey}
-          <ArchitectureCanvas {graph} view={shownGraph} {visibleIds} bind:selectedId bind:mode={studioMode} {addRequest}
+          <ArchitectureCanvas {graph} view={shownGraph} {visibleIds} bind:selectedId bind:mode={studioMode} {addRequest} {nodeStyle}
             {initialDocument} onDocumentChange={(text) => autosave?.schedule(text)}
             onRestoreFailed={restoreFailed} />
         {/key}

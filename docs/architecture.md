@@ -75,6 +75,19 @@ Svelte 5 renders the application shell; Svelte Flow renders interactive graphs (
 - Every colour is a token in `apps/web/src/styles/tokens.css`, with a dark theme (the default) and a light theme. A test fails on any literal colour elsewhere.
 - The tokens follow one rule: the fill colour says what a component is, the line style says how sure Archwise is, and the accent marks only selection and focus.
 
+**Pieces and cards.**
+- Components are drawn as isometric **pieces** (`apps/web/src/iso/`) or as flat **cards**. A pure geometry kit (`iso/kit.ts`) projects true 30° isometric shapes, and one Svelte component draws each kind.
+- Pieces are the default in the System view; cards are the default in All packages, in Sandbox and in any view with more than 80 components. A person's choice is remembered per view.
+- Selecting a component lights its plinth and dims what it does not connect to. Focused relations show a dot that stops before the arrowhead.
+- Animations are decorative. They never encode data, and they never run when the operating system asks for reduced motion.
+- The canvas region is focusable:
+  - arrow keys pan;
+  - `+` and `-` zoom;
+  - `0` fits;
+  - Enter or Space selects the focused component;
+  - Esc clears the selection.
+- The Studio's selection is the only source of what the canvas marks as selected, whether it comes from a click, the list or the keyboard. Zoom stays between 25% and 300%.
+
 The design decisions are in the [Studio redesign spec](superpowers/specs/2026-11-23-studio-redesign-design.md). The words the UI uses are in [`CONTEXT.md`](../CONTEXT.md).
 
 Large-graph strategies remain future work: hierarchical aggregation, server-side filtering, progressive expansion, stable layout caching and viewport virtualization.

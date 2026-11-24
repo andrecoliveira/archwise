@@ -10,6 +10,13 @@
   import SimulationPanel from './SimulationPanel.svelte';
   import ArchitectureNode from './ArchitectureNode.svelte';
   import DiscoveredNode from './DiscoveredNode.svelte';
+  import IsoNode from './IsoNode.svelte';
+  import DiscoveredEdge from './DiscoveredEdge.svelte';
+  import { CANVAS_A11Y, decorate } from './canvas-decoration.js';
+  import CanvasKeys from './CanvasKeys.svelte';
+  import { canvasKeyAction } from './canvas-keys.js';
+  import { NODE_SIZE, type NodeStyle } from './node-style.js';
+  import { kindLabel } from './graph-types.js';
   import FitViewOnLayout from './FitViewOnLayout.svelte';
   import ArchitectureEdge from './ArchitectureEdge.svelte';
   import { validateProposedConnection, CONNECTION_HELP_TEXT } from './connection-validation.js';
@@ -42,6 +49,7 @@
     initialDocument = null,
     onDocumentChange = () => {},
     onRestoreFailed = () => {},
+    nodeStyle = 'cards',
   }: {
     /** The discovered graph; the Sandbox signature always hashes this full graph. */
     graph: Graph;
@@ -57,6 +65,8 @@
     onDocumentChange?: (text: string) => void;
     /** Called when the saved Sandbox cannot be restored, so it is never overwritten. */
     onRestoreFailed?: (message: string) => void;
+    /** Isometric pieces or flat cards (spec §4.3). */
+    nodeStyle?: NodeStyle;
   } = $props();
   let counter = $state(0);
   // A remount (session switch) must not replay a catalog request the previous canvas handled.
@@ -77,9 +87,36 @@
   let storageReady = $state(false);
   let persistenceStatus = $state('');
   const signature = $derived(projectSignature(graph));
-  const nodeTypes = { architecture: ArchitectureNode, discovered: DiscoveredNode };
+  const nodeTypes = { architecture: ArchitectureNode, discovered: DiscoveredNode, iso: IsoNode };
   const shown = $derived(view ?? graph);
-  const edgeTypes = { semantic: ArchitectureEdge };
+  const edgeTypes = { semantic: ArchitectureEdge, discovered: DiscoveredEdge };
+  // Switching pieces/cards re-frames the view. Explore also re-lays out; Sandbox keeps positions.
+  let previousStyle = untrack(() => nodeStyle);
+  $effect(() => {
+    const style = nodeStyle;
+    untrack(() => {
+      if (style === previousStyle) return;
+      previousStyle = style;
+      if (mode === 'sandbox') fitTrigger += 1;
+    });
+  });
+  let keys: CanvasKeys | null = $state(null);
+  /** Canvas keys run in the capture phase so arrow keys pan the view and never move a node. */
+  function onCanvasKey(event: KeyboardEvent): void {
+    if (keys?.apply(canvasKeyAction(event))) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }
+
+  $effect(() => {
+    const options = { selected: selectedId, focus: mode === 'explore' };
+    untrack(() => {
+      const next = decorate(nodes, edges, options);
+      nodes = next.nodes;
+      edges = next.edges;
+    });
+  });
   const selectedProposed = $derived(proposedNodes.find((node) => node.id === selectedId));
   const selectedPreset = $derived(findCatalogComponent(String(selectedProposed?.data.preset ?? '')));
 
@@ -164,7 +201,6 @@
       interactionWidth: 28,
       data: { origin: 'proposed', intent: edge.intent ?? 'REQ' },
       label: edge.intent ?? 'REQ',
-      labelStyle: 'fill:#e2e8f0;font-weight:700;',
       style: `stroke:${CONNECTION_STYLES[edge.intent ?? 'REQ'].color};stroke-width:2;`,
     }));
     counter = Math.max(
@@ -272,14 +308,16 @@
 
   $effect(() => {
     const nonce = layoutNonce;
+    const pieces = nodeStyle === 'pieces';
     const discoveredNodes: Node[] = shown.nodes
       .filter((item) => visibleIds.has(item.id))
       .map((item) => ({
         id: item.id,
         position: { x: 0, y: 0 },
-        data: { node: item },
-        type: 'discovered',
+        data: { node: item, animated: true },
+        type: pieces ? 'iso' : 'discovered',
         draggable: true,
+        ariaLabel: `${item.label}, ${kindLabel(item.type)}, ${item.confidence}`,
       }));
     const visible = new Set(discoveredNodes.map((item) => item.id));
     const discoveredEdges: Edge[] = shown.edges
@@ -288,23 +326,30 @@
         id: edge.id,
         source: edge.source,
         target: edge.target,
-        type: 'smoothstep',
-        data: { origin: 'discovered' },
-        ...(edge.confidence === 'inferred' ? { style: 'stroke-dasharray: 6 4' } : {}),
+        type: 'discovered',
+        data: { origin: 'discovered', confidence: edge.confidence },
       }));
     const decoratedProposed = proposedNodes.map((node) => {
       const feedback = visualFeedback.get(node.id);
+      const label = String(node.data.label ?? node.id);
+      const preset = String(node.data.preset ?? '');
+      const modeled = {
+        status: feedback?.status ?? 'normal',
+        utilization: feedback?.utilization ?? 0,
+        droppedRps: feedback?.droppedRps ?? 0,
+      };
       return {
         ...node,
-        type: 'architecture',
-        data: {
-          ...node.data,
-          name: node.data.label,
-          status: feedback?.status ?? 'normal',
-          utilization: feedback?.utilization ?? 0,
-          droppedRps: feedback?.droppedRps ?? 0,
-          replicas: replicaCount(node.data.kind as SimulatedKind, String(node.data.preset ?? ''), draft.replicas[node.id]),
-        },
+        type: pieces ? 'iso' : 'architecture',
+        ariaLabel: `${label}, ${findCatalogComponent(preset)?.name ?? 'component'}, proposed`,
+        data: pieces
+          ? { ...node.data, animated: true, proposed: { label, preset, ...modeled } }
+          : {
+              ...node.data,
+              name: node.data.label,
+              ...modeled,
+              replicas: replicaCount(node.data.kind as SimulatedKind, preset, draft.replicas[node.id]),
+            },
       };
     });
     const current = mode === 'sandbox' ? decoratedProposed : discoveredNodes;
@@ -325,17 +370,18 @@
       ...item,
       position: previous.get(item.id) ?? item.position,
     }));
-    nodes = positioned;
-    edges = links;
+    const decorated = decorate(positioned, links, untrack(() => ({ selected: selectedId, focus: mode === 'explore' })));
+    nodes = decorated.nodes;
+    edges = decorated.edges;
     if (mode === 'sandbox') {
       if (nonce === hasRequestedLayout) return;
       hasRequestedLayout = nonce;
     }
     let cancelled = false;
-    void layoutNodes(positioned, links)
+    void layoutNodes(positioned, links, NODE_SIZE[nodeStyle])
       .then((placed) => {
         if (!cancelled && nonce === layoutNonce) {
-          nodes = placed;
+          nodes = decorate(placed, untrack(() => edges), untrack(() => ({ selected: selectedId, focus: mode === 'explore' }))).nodes;
           if (mode === 'explore') fitTrigger += 1;
           if (mode === 'sandbox') {
             const positions = new Map(placed.map((item) => [item.id, item.position]));
@@ -424,7 +470,6 @@
         interactionWidth: 28,
         data: { origin: 'proposed', intent },
         label: intent,
-        labelStyle: 'fill:#e2e8f0;font-weight:700;',
         style: `stroke:${CONNECTION_STYLES[intent].color};stroke-width:2;`,
         ariaLabel: `${source.data.label} to ${target.data.label}: ${intent}`,
       },
@@ -515,7 +560,9 @@
   <div class="persistence-status" role="status">{persistenceStatus}</div>
 {/if}
 {#if layoutError}<div role="alert" class="alert">{layoutError}</div>{/if}
-<div class="viewport" role="region" aria-label="Interactive architecture graph">
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<div class="viewport" role="region" aria-label="Interactive architecture graph" tabindex="0"
+  aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown + - 0 Enter" onkeydowncapture={onCanvasKey}>
   {#if mode === 'sandbox' && proposedNodes.length === 0}
     <div class="canvas-empty-state" role="status">
       <strong>Your canvas is ready</strong>
@@ -535,8 +582,10 @@
     elementsSelectable
     clickConnect
     deleteKey={null}
-    minZoom={0.15}
-    maxZoom={2}
+    minZoom={0.25}
+    maxZoom={3}
+    edgesFocusable={mode === 'sandbox'}
+    ariaLabelConfig={CANVAS_A11Y}
     onnodeclick={({ node }) => { selectedId = node.id; selectedEdgeId = null; }}
     onnodedragstop={({ targetNode }) => { if (targetNode) rememberDragPosition(targetNode); }}
     onpaneclick={() => { selectedId = null; selectedEdgeId = null; connectionNotice = ''; }}
@@ -547,6 +596,8 @@
     <MiniMap />
     <Controls />
     <FitViewOnLayout trigger={fitTrigger} />
+    <CanvasKeys bind:this={keys} onSelect={(id) => { selectedId = id; selectedEdgeId = null; }}
+      onClear={() => { selectedId = null; selectedEdgeId = null; }} />
   </SvelteFlow>
   {#if mode === 'sandbox' && selectedProposed}
     <section class="floating-inspector" aria-label="Selected component properties">

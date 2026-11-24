@@ -5,6 +5,7 @@
   import type { ScanSummaryView } from './scan-summary.js';
   import type { StudioMode } from './studio-mode.js';
   import type { Theme } from './theme.js';
+  import type { NodeStyle } from './node-style.js';
 
   let {
     workspace,
@@ -19,6 +20,7 @@
     onRetrySave,
     storeEnabled,
     sessionsOpen = $bindable(false),
+    nodeStyle = $bindable<NodeStyle>('cards'),
   }: {
     workspace: string;
     chip: Chip;
@@ -32,6 +34,7 @@
     onRetrySave: () => void;
     storeEnabled: boolean;
     sessionsOpen: boolean;
+    nodeStyle?: NodeStyle;
   } = $props();
 
   const otherTheme = $derived(theme === 'dark' ? 'light' : 'dark');
@@ -50,6 +53,10 @@
   <div class="topbar-modes" role="group" aria-label="Studio mode">
     <button type="button" aria-pressed={mode === 'explore'} onclick={() => (mode = 'explore')}>Explore</button>
     <button type="button" aria-pressed={mode === 'sandbox'} onclick={() => (mode = 'sandbox')}>Sandbox</button>
+  </div>
+  <div class="topbar-modes topbar-style" role="group" aria-label="Node style">
+    <button type="button" aria-pressed={nodeStyle === 'pieces'} onclick={() => (nodeStyle = 'pieces')}>Pieces</button>
+    <button type="button" aria-pressed={nodeStyle === 'cards'} onclick={() => (nodeStyle = 'cards')}>Cards</button>
   </div>
   <div class="topbar-spacer"></div>
   {#if mode === 'explore'}

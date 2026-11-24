@@ -25,6 +25,16 @@ await writeManifest('apps/web/package.json', {
 await writeManifest('apps/api/package.json', { name: '@smoke/api' });
 
 let runner;
+/** Re-evaluates `predicate` in the page until it is true or `timeout` ms pass. */
+async function until(target, predicate, timeout = 5_000) {
+  const end = Date.now() + timeout;
+  while (Date.now() < end) {
+    if (await target.evaluate(predicate)) return true;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  return false;
+}
+
 function startServer(roots = ['--path', fixtureRoot]) {
   runner = spawn(process.execPath, ['apps/cli/dist/bin.js', '--serve', '--no-open', ...roots], {
     cwd: process.cwd(),
@@ -67,6 +77,28 @@ try {
       ? { channel: process.env.ARCHWISE_BROWSER_CHANNEL }
       : {}),
   });
+  // The Studio's CSP forbids eval, and Playwright's page-side polling for waitForFunction needs it
+  // whenever the predicate starts out false. Poll from Node instead, so the real CSP stays on.
+  const pollFromNode = (page) => {
+    page.waitForFunction = async (predicate, arg, options = {}) => {
+      const end = Date.now() + (options.timeout ?? 30_000);
+      while (Date.now() < end) {
+        if (await page.evaluate(predicate, arg)) return;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      throw new Error(`waitForFunction timed out: ${String(predicate).slice(0, 160)}`);
+    };
+    return page;
+  };
+  const openPage = browser.newPage.bind(browser);
+  browser.newPage = async (options) => pollFromNode(await openPage(options));
+  const openContext = browser.newContext.bind(browser);
+  browser.newContext = async (options) => {
+    const context = await openContext(options);
+    const contextPage = context.newPage.bind(context);
+    context.newPage = async () => pollFromNode(await contextPage());
+    return context;
+  };
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
@@ -168,6 +200,60 @@ try {
       path: join(process.env.ARCHWISE_SMOKE_SCREENSHOT_DIR, 'sandbox-connections.png'),
     });
   }
+  // Sandbox in pieces: proposed components stand on hatched plinths with a Proposed tag.
+  await page
+    .getByRole('group', { name: 'Node style' })
+    .getByRole('button', { name: 'Pieces' })
+    .click();
+  await page.waitForFunction(
+    () => globalThis.document.querySelectorAll('.iso-node.proposed').length === 3,
+  );
+  assert.equal(
+    await page.locator('.proposed-tag').count(),
+    3,
+    'Every proposed piece says Proposed',
+  );
+  // Switching style re-frames the view (positions stay): every proposed piece is visible.
+  // Polled from Node: page-side polling would need eval, which the Studio's CSP forbids.
+  assert.ok(
+    await until(page, () => {
+      const pane = globalThis.document.querySelector('.svelte-flow')?.getBoundingClientRect();
+      const pieces = [...globalThis.document.querySelectorAll('.iso-node.proposed')];
+      return (
+        pane !== undefined &&
+        pieces.length === 3 &&
+        pieces.every((n) => {
+          const b = n.getBoundingClientRect();
+          return (
+            b.top >= pane.top - 1 &&
+            b.bottom <= pane.bottom + 1 &&
+            b.left >= pane.left - 1 &&
+            b.right <= pane.right + 1
+          );
+        })
+      );
+    }),
+    'Every proposed piece is framed after the style switch',
+  );
+  assert.equal(
+    await page.locator('.pl .hatched').count(),
+    3,
+    'Proposed pieces stand on hatched plinths',
+  );
+  // Connections survive the style switch (they re-render with the new nodes).
+  await page.waitForFunction(
+    () => globalThis.document.querySelectorAll('.svelte-flow__edge').length === 2,
+  );
+  if (process.env.ARCHWISE_SMOKE_SCREENSHOT_DIR) {
+    await page.screenshot({
+      path: join(process.env.ARCHWISE_SMOKE_SCREENSHOT_DIR, 'sandbox-pieces.png'),
+    });
+  }
+  await page
+    .getByRole('group', { name: 'Node style' })
+    .getByRole('button', { name: 'Cards' })
+    .click();
+  await page.locator('.archwise-node-head').first().waitFor();
   if (dragFallbacks > 0) {
     console.warn(
       `${dragFallbacks} connections required click-to-connect; drag remains unverified.`,
@@ -602,8 +688,202 @@ try {
     });
     await discoveredInspector.getByText('Kind: Service').waitFor();
     await discoveredInspector.getByText('Compose services: api').waitFor();
+
+    // The System view draws pieces; the selection dims what is not connected to it.
+    assert.ok(
+      (await systemPage.locator('.iso-piece').count()) >= 7,
+      'The System view draws pieces',
+    );
+    await systemPage.waitForFunction(
+      () => globalThis.document.querySelectorAll('.iso-node.dimmed').length > 0,
+    );
+    // Focused relations carry a dot (r = 5) whose centre stays 22 units from the end, so it never
+    // covers the 16.8-unit arrowhead.
+    const closest = await systemPage.evaluate(async () => {
+      const doc = globalThis.document;
+      let min = Infinity;
+      for (let i = 0; i < 40; i += 1) {
+        for (const group of doc.querySelectorAll('.relation-group')) {
+          const line = group.querySelector('path.relation.focused');
+          const dot = group.querySelector('circle.relation-dot');
+          if (!line || !dot) continue;
+          const end = line.getPointAtLength(line.getTotalLength());
+          const m = line.getScreenCTM();
+          const ex = m.a * end.x + m.c * end.y + m.e;
+          const ey = m.b * end.x + m.d * end.y + m.f;
+          const box = dot.getBoundingClientRect();
+          const distance =
+            Math.hypot(box.x + box.width / 2 - ex, box.y + box.height / 2 - ey) / m.a;
+          min = Math.min(min, distance);
+        }
+        await new Promise((resolve) => globalThis.setTimeout(resolve, 50));
+      }
+      return min;
+    });
+    assert.ok(
+      closest !== Infinity && closest >= 21.5,
+      `The focus dot stays off the arrowhead (closest ${closest})`,
+    );
+
+    // Keyboard: + zooms, arrows pan without moving nodes, 0 fits, Enter selects.
+    const transform = () =>
+      systemPage.evaluate(
+        () =>
+          globalThis.getComputedStyle(globalThis.document.querySelector('.svelte-flow__viewport'))
+            .transform,
+      );
+    const firstNodeAt = () =>
+      systemPage.evaluate(
+        () => globalThis.document.querySelector('.svelte-flow__node').style.transform,
+      );
+    await systemPage.locator('.viewport').focus();
+    const zoomBefore = await transform();
+    await systemPage.keyboard.press('+');
+    assert.notEqual(await transform(), zoomBefore, '+ zooms in');
+    const nodeBefore = await firstNodeAt();
+    const panBefore = await transform();
+    await systemPage.keyboard.press('ArrowLeft');
+    assert.notEqual(await transform(), panBefore, 'An arrow key pans the view');
+    assert.equal(await firstNodeAt(), nodeBefore, 'An arrow key never moves a node');
+    await systemPage.keyboard.press('0');
+    await systemPage.waitForFunction(() => {
+      const pane = globalThis.document.querySelector('.svelte-flow')?.getBoundingClientRect();
+      return [...globalThis.document.querySelectorAll('.svelte-flow__node')].every((n) => {
+        const b = n.getBoundingClientRect();
+        return (
+          pane &&
+          b.left >= pane.left - 1 &&
+          b.right <= pane.right + 1 &&
+          b.top >= pane.top - 1 &&
+          b.bottom <= pane.bottom + 1
+        );
+      });
+    });
+    await canvasNodes.filter({ hasText: '@shop/worker' }).first().focus();
+    await systemPage.keyboard.press('Enter');
+    await discoveredInspector.getByRole('heading', { name: '@shop/worker' }).waitFor();
+    assert.equal(
+      await canvasNodes
+        .filter({ hasText: '@shop/worker' })
+        .first()
+        .locator('.selring.selected')
+        .count(),
+      1,
+      'Enter lights the plinth of the component it selected',
+    );
+    assert.equal(
+      await systemPage.locator('.selring.selected').count(),
+      1,
+      'Only one plinth is lit',
+    );
+    // Escape clears the selection; a click in the list lights the plinth too.
+    await systemPage.keyboard.press('Escape');
+    await discoveredInspector
+      .getByText('Select a component on the canvas or in the list')
+      .waitFor();
+    assert.equal(
+      await systemPage.locator('.selring.selected').count(),
+      0,
+      'Escape clears the selection',
+    );
+    await systemPage
+      .getByRole('navigation', { name: 'Discovered components' })
+      .getByRole('button', { name: /@shop\/worker/ })
+      .click();
+    await systemPage.waitForFunction(
+      () => globalThis.document.querySelectorAll('.selring.selected').length === 1,
+    );
+    // Tab from the canvas reaches components before anything else (relations are not tab stops).
+    await systemPage.locator('.viewport').focus();
+    await systemPage.keyboard.press('Tab');
+    assert.ok(
+      await systemPage.evaluate(
+        () => globalThis.document.activeElement?.closest('.svelte-flow__node') !== null,
+      ),
+      'Tab from the canvas reaches a component first',
+    );
+    // Screen-reader help matches this canvas.
+    const help = await systemPage.evaluate(() => {
+      const node = globalThis.document.querySelector('.svelte-flow__node');
+      const id = node?.getAttribute('aria-describedby');
+      return id ? (globalThis.document.getElementById(id)?.textContent ?? '') : '';
+    });
+    assert.ok(
+      help.includes('Enter') && !/delete|move the node/i.test(help),
+      `Node help text fits the canvas: ${help}`,
+    );
+    // The zoom range is 25%-300%.
+    for (let i = 0; i < 20; i += 1) await systemPage.keyboard.press('-');
+    const scale = await systemPage.evaluate(() => {
+      const t = globalThis.getComputedStyle(
+        globalThis.document.querySelector('.svelte-flow__viewport'),
+      ).transform;
+      return Number(t.match(/matrix\(([^,]+)/)?.[1] ?? 1);
+    });
+    assert.ok(scale >= 0.249, `Zoom never goes below 25% (got ${scale})`);
+    await systemPage.keyboard.press('0');
+
+    // Pieces or cards: the choice persists across a reload.
+    await systemPage
+      .getByRole('group', { name: 'Node style' })
+      .getByRole('button', { name: 'Cards' })
+      .click();
+    await systemPage.waitForFunction(
+      () => globalThis.document.querySelectorAll('.iso-piece').length === 0,
+    );
+    // Cards show keyboard focus (after the re-layout that follows the switch has settled).
+    await canvasNodes.first().locator('.discovered-node').waitFor();
+    await systemPage.waitForTimeout(600);
+    await systemPage.locator('.viewport').focus();
+    await systemPage.keyboard.press('Tab');
+    assert.notEqual(
+      await systemPage.evaluate(() => {
+        const card = globalThis.document.activeElement?.querySelector('.discovered-node');
+        return card ? globalThis.getComputedStyle(card).outlineStyle : 'no focused card';
+      }),
+      'none',
+      'A focused card shows a focus outline',
+    );
+    assert.notEqual(
+      await systemPage.evaluate(() =>
+        globalThis.document.activeElement?.querySelector('.discovered-node') ? 'card' : 'none',
+      ),
+      'none',
+      'A card has focus',
+    );
+    await systemPage.reload({ waitUntil: 'networkidle' });
+    await canvasNodes.first().waitFor();
+    assert.equal(await systemPage.locator('.iso-piece').count(), 0, 'Cards survive a reload');
+    await systemPage
+      .getByRole('group', { name: 'Node style' })
+      .getByRole('button', { name: 'Pieces' })
+      .click();
+    await systemPage.waitForFunction(
+      () => globalThis.document.querySelectorAll('.iso-piece').length >= 7,
+    );
+
+    // Reduced motion: nothing animates.
+    const calm = await browser.newContext({
+      reducedMotion: 'reduce',
+      viewport: { width: 1440, height: 900 },
+    });
+    await calm.addCookies(await systemPage.context().cookies());
+    const calmPage = await calm.newPage();
+    calmPage.on('pageerror', (error) => errors.push(error.message));
+    await calmPage.goto(origin + '/', { waitUntil: 'networkidle' });
+    await calmPage.locator('.iso-piece').first().waitFor();
+    await calmPage.locator('.svelte-flow__node').filter({ hasText: '@shop/api' }).first().click();
+    await calmPage.waitForTimeout(500);
+    assert.equal(
+      await calmPage.locator('animate, animateTransform, animateMotion').count(),
+      0,
+      'Reduced motion renders no animation',
+    );
+    await calm.close();
+
     await viewControl.getByRole('button', { name: 'All packages' }).click();
     await canvasNodes.filter({ hasText: '@shop/db' }).first().waitFor();
+    assert.equal(await systemPage.locator('.iso-piece').count(), 0, 'All packages opens in cards');
     const scanNotesPanel = systemPage.getByRole('region', { name: 'Scan notes' });
     await scanNotesPanel.getByText('1 file not analyzed').waitFor();
     await scanNotesPanel.getByText('compose.prod.yaml').waitFor();

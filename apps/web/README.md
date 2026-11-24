@@ -10,6 +10,13 @@ The simulator, persistence and coach live here temporarily during the Alpha; ADR
 - `src/styles/no-literal-colors.test.ts` fails on any literal colour elsewhere.
 - JetBrains Mono is bundled from `@fontsource/jetbrains-mono`, so the Studio never fetches a remote font.
 
+**Canvas:**
+
+- `iso/` holds the isometric geometry kit, the pieces and `piece-map.ts`.
+- `IsoNode.svelte` draws pieces, and `DiscoveredNode.svelte` draws cards.
+- `node-style.ts` chooses between pieces and cards per view.
+- `DiscoveredEdge.svelte` draws relations, `focus.ts` computes the focus, and `canvas-keys.ts` with `CanvasKeys.svelte` handles the keyboard.
+
 **The shell:**
 
 - `StudioTopBar.svelte` (top bar);

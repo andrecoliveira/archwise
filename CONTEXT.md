@@ -14,6 +14,14 @@ _Avoid_: Discover (as a mode name), inspect mode, real view
 The Studio mode for hypothetical changes, kept apart from the discovered architecture and never written into analyzed repositories.
 _Avoid_: Playground, draft, design mode
 
+**Piece**:
+The isometric drawing that shows a component's kind on the canvas, such as a server cabinet for a service or a cylinder for a datastore.
+_Avoid_: Icon, tile, block
+
+**Card**:
+The flat rectangle form of a component on the canvas, used where density matters.
+_Avoid_: Tile, box, node card
+
 **System view**:
 The Explore view that shows frontends, services and infrastructure and hides internal libraries. **All packages** is the view that shows every package.
 _Avoid_: Simplified view, overview

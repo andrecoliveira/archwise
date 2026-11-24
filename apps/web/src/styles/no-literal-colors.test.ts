@@ -34,13 +34,23 @@ function styledLines(path: string): { line: number; text: string }[] {
     );
   const out: { line: number; text: string }[] = [];
   let inStyle = false;
+  let inScript = false;
   lines.forEach((text, i) => {
-    if (/<style[\s>]/.test(text)) inStyle = true;
+    if (/<style[\s>]/i.test(text)) inStyle = true;
+    if (/<script[\s>]/i.test(text)) inScript = true;
     if (inStyle) out.push({ line: i + 1, text });
+    else if (inScript)
+      for (const m of text.matchAll(/'([^'\n]*)'|`([^`\n]*)`|"([^"\n]*)"/g))
+        out.push({ line: i + 1, text: m[1] ?? m[2] ?? m[3] ?? '' });
+    else
+      // SVG paint attributes in markup are colours too.
+      for (const m of text.matchAll(/(?:fill|stroke|stop-color)="([^"]*)"/g))
+        out.push({ line: i + 1, text: m[1]! });
+    if (/<\/script[^>]*>/i.test(text)) inScript = false;
     else
       for (const match of text.matchAll(/style(?::[\w-]+)?="([^"]*)"/g))
         out.push({ line: i + 1, text: match[1]! });
-    if (/<\/style>/.test(text)) inStyle = false;
+    if (/<\/style[^>]*>/i.test(text)) inStyle = false;
   });
   return out;
 }
