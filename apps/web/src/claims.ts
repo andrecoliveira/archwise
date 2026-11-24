@@ -1,3 +1,4 @@
+import { describeReason, type ReasonView } from './reason-catalog.js';
 import {
   NODE_TYPES,
   kindLabel,
@@ -19,9 +20,10 @@ export function primaryName(node: GraphNode): string {
   return node.label;
 }
 
+/** The package folder; the repository root has none worth showing. */
 const dirname = (path: string): string => {
   const slash = path.lastIndexOf('/');
-  return slash === -1 ? '.' : path.slice(0, slash);
+  return slash === -1 ? '' : path.slice(0, slash);
 };
 
 /** "fastify · apps/api": technology, package folder, then repository in multi-root workspaces. */
@@ -111,4 +113,42 @@ const KIND_TOKENS: Readonly<Record<string, string>> = {
 /** The kind's fill token, for swatches: fill answers "what is it?" (spec §5.10). */
 export function kindToken(type: string): string {
   return KIND_TOKENS[type] ?? 'var(--kind-module)';
+}
+
+const sentenceOf = (view: ReasonView): string => view.parts.map((part) => part.text).join('');
+
+/** "Inferred because: <first reason>" for anything not Observed; null when Observed. */
+export function nodeReasonLine(node: GraphNode): string | null {
+  const level = confidenceLevel(node);
+  if (level === 'observed') return null;
+  const first = node.reasons[0];
+  const reason =
+    first === undefined
+      ? 'no reason recorded'
+      : sentenceOf(describeReason(first, { subject: node, evidence: node.evidence }));
+  return `${levelWord(level)} because: ${reason}`;
+}
+
+/**
+ * A relation's canvas label (spec §5.7, §5.8): its wording, plus the hidden libraries an
+ * indirect relation runs through; in focus it adds "because <first reason sentence>".
+ */
+export function edgeLabels(
+  edge: GraphEdge,
+  nodes: ReadonlyMap<string, GraphNode>,
+): { label: string; focusLabel: string } {
+  const label = edge.indirect
+    ? `${relationWording(edge.type)} · through ${edge.indirect.through.join(', ')}`
+    : relationWording(edge.type);
+  const step = edge.indirect ? edge.indirect.steps[0] : edge;
+  const code = step?.reasons[0];
+  const subject = step ? nodes.get(step.source) : undefined;
+  if (!step || code === undefined || !subject) return { label, focusLabel: label };
+  const target = nodes.get(step.target);
+  const view = describeReason(code, {
+    subject,
+    ...(target ? { target } : {}),
+    evidence: step.evidence,
+  });
+  return { label, focusLabel: `${label} · because ${sentenceOf(view)}` };
 }

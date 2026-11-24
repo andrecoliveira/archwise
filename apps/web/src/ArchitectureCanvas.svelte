@@ -17,6 +17,7 @@
   import { canvasKeyAction } from './canvas-keys.js';
   import { NODE_SIZE, type NodeStyle } from './node-style.js';
   import { kindLabel } from './graph-types.js';
+  import { edgeLabels } from './claims.js';
   import FitViewOnLayout from './FitViewOnLayout.svelte';
   import ArchitectureEdge from './ArchitectureEdge.svelte';
   import { validateProposedConnection, CONNECTION_HELP_TEXT } from './connection-validation.js';
@@ -306,6 +307,9 @@
     selectedNodeInsight = selected?.detail ?? '';
   });
 
+  /** Every known component, including hidden libraries, for relation labels. */
+  const labelNodes = $derived(new Map([...graph.nodes, ...shown.nodes].map((item) => [item.id, item])));
+
   $effect(() => {
     const nonce = layoutNonce;
     const pieces = nodeStyle === 'pieces';
@@ -327,7 +331,7 @@
         source: edge.source,
         target: edge.target,
         type: 'discovered',
-        data: { origin: 'discovered', confidence: edge.confidence },
+        data: { origin: 'discovered', confidence: edge.confidence, ...edgeLabels(edge, labelNodes) },
       }));
     const decoratedProposed = proposedNodes.map((node) => {
       const feedback = visualFeedback.get(node.id);

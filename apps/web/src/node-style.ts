@@ -11,8 +11,8 @@ export const NODE_STYLE_LIMIT = 80;
 export const NODE_SIZE: Readonly<
   Record<NodeStyle, { readonly width: number; readonly height: number }>
 > = {
-  pieces: { width: 232, height: 220 },
-  cards: { width: 200, height: 72 },
+  pieces: { width: 232, height: 236 },
+  cards: { width: 200, height: 92 },
 };
 
 export function nodeStyleFor(view: StyleView, count: number, stored: NodeStyle | null): NodeStyle {

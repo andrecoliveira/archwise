@@ -1,7 +1,10 @@
 import { describe, expect, test } from 'vitest';
 import { discoveredEdge, discoveredNode, graphOf } from './graph-fixtures.js';
 import type { GraphEvidence, GraphNode } from './graph-types.js';
+import { systemGraph } from './system-view.js';
 import {
+  edgeLabels,
+  nodeReasonLine,
   confidenceLevel,
   levelWord,
   lineStyle,
@@ -104,8 +107,8 @@ test('primaryName is the package, service or technology name', () => {
 test('secondLine shows technology and folder', () => {
   expect(secondLine(api)).toBe('fastify · apps/api');
   expect(secondLine(db)).toBe('PostgreSQL');
-  const root = discoveredNode('root', { technology: null });
-  expect(secondLine(root)).toBe('.');
+  const root = discoveredNode('root', { technology: 'next' });
+  expect(secondLine(root)).toBe('next');
   const multi = discoveredNode('m', {
     technology: 'next',
     evidence: [at('web/package.json', 'package-manifest')],
@@ -134,4 +137,52 @@ test('confidence levels, words and line styles', () => {
   expect(levelWord('observed')).toBe('Observed');
   expect(levelWord('inferred')).toBe('Inferred');
   expect(levelWord('unknown')).toBe('Unknown');
+});
+
+describe('canvas text', () => {
+  const pg = discoveredNode('pg', {
+    type: 'datastore',
+    label: 'PostgreSQL',
+    technology: 'PostgreSQL',
+    confidence: 'inferred',
+    reasons: ['client-library'],
+  });
+
+  test('an inferred node reads its first reason', () => {
+    expect(nodeReasonLine(pg)).toBe('Inferred because: a package depends on its client library');
+    expect(nodeReasonLine(api)).toBeNull();
+  });
+
+  test('a relation is labelled by its wording and expands with its first reason', () => {
+    const edge = discoveredEdge('api', 'pg', {
+      confidence: 'inferred',
+      reasons: ['client-library:pg'],
+    });
+    const nodes = new Map([api, pg].map((node) => [node.id, node]));
+    expect(edgeLabels(edge, nodes)).toEqual({
+      label: 'depends on',
+      focusLabel: 'depends on · because depends on pg, a PostgreSQL client library',
+    });
+    expect(edgeLabels(discoveredEdge('api', 'pg', { reasons: [] }), nodes).focusLabel).toBe(
+      'depends on',
+    );
+  });
+
+  test('an indirect relation names the libraries it runs through', () => {
+    const lib = discoveredNode('lib', { label: '@shop/db' });
+    const full = graphOf(
+      [api, lib, pg],
+      [
+        discoveredEdge('api', 'lib'),
+        discoveredEdge('lib', 'pg', { confidence: 'inferred', reasons: ['client-library:pg'] }),
+      ],
+    );
+    const edge = systemGraph(full).edges[0]!;
+    const nodes = new Map(full.nodes.map((node) => [node.id, node]));
+    expect(edgeLabels(edge, nodes)).toEqual({
+      label: 'depends on · through @shop/db',
+      focusLabel:
+        'depends on · through @shop/db · because package.json lists @shop/db as a dependency',
+    });
+  });
 });

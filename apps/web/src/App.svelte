@@ -17,13 +17,14 @@
   import { getCoachQuestions } from './architecture-coach.js';
   import { kindLabel, matchesSearch, upgradeGraph, type Graph } from './graph-types.js';
   import { graphForView, initialView, showsNothingRecognized, type StudioView } from './system-view.js';
-  import { isScanSummary, nodeDisplayLabel, type ScanSummaryView } from './scan-summary.js';
+  import { isScanSummary, type ScanSummaryView } from './scan-summary.js';
   import { scanNotes } from './scan-notes.js';
   import { placeholderChip, revisionChip, workspaceName } from './scan-status.js';
   import { initialMode, isSearchShortcut, type StudioMode } from './studio-mode.js';
   import { applyTheme, nextTheme, readTheme, safeStorage, writeTheme, type Theme } from './theme.js';
   import { nodeStyleFor, readNodeStyle, writeNodeStyle, type NodeStyle, type StyleView } from './node-style.js';
   import ScanNotes from './ScanNotes.svelte';
+  import ComponentList from './ComponentList.svelte';
   import Inspector, { type InspectorTab } from './Inspector.svelte';
   import { excerptIdsFrom } from './excerpt-client.js';
   import StudioTopBar from './StudioTopBar.svelte';
@@ -344,12 +345,7 @@
         {#if shownGraph}
           <p class="list-count">{visible.length} of {shownGraph.nodes.length} components</p>
         {/if}
-        <nav aria-label="Discovered components">
-          {#each visible as node (node.id)}
-            <button type="button" class="node-item" class:active={selectedId === node.id}
-              title={nodeDisplayLabel(node)} onclick={() => (selectedId = node.id)}>{nodeDisplayLabel(node)}</button>
-          {/each}
-        </nav>
+        <ComponentList nodes={visible} {selectedId} onSelect={(id) => (selectedId = id)} />
         {#if notes}<ScanNotes view={notes} />{/if}
       {/if}
     </aside>

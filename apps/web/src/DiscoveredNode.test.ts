@@ -23,11 +23,38 @@ test('inferred card is dashed and labelled, not recolored', () => {
       type: 'datastore',
       confidence: 'inferred',
       label: 'PostgreSQL',
+      reasons: ['client-library'],
     }),
   );
   expect(element.dataset.confidence).toBe('inferred');
   expect(element.dataset.kind).toBe('datastore');
-  expect(screen.getByText('inferred')).toBeTruthy();
+  expect(
+    screen.getByText('Inferred because: a package depends on its client library'),
+  ).toBeTruthy();
+  expect(element.classList.contains('dashed')).toBe(true);
+});
+
+test('second line shows technology and folder', () => {
+  card(
+    discoveredNode('package:apps/api/package.json', {
+      type: 'service',
+      label: '@shop/api',
+      technology: 'fastify',
+      evidence: [
+        { path: 'apps/api/package.json', kind: 'package-manifest', lines: null, analyzer: 'm' },
+      ],
+    }),
+  );
+  expect(screen.getByText('fastify · apps/api')).toBeTruthy();
+});
+
+test('marker uses the level line style', () => {
+  const unknown = card({
+    ...discoveredNode('k8s', { label: 'cluster' }),
+    type: 'kubernetes',
+  } as unknown as GraphNode);
+  expect(unknown.classList.contains('dotted')).toBe(true);
+  expect(card(discoveredNode('a')).classList.contains('solid')).toBe(true);
 });
 
 test('observed card has no inferred label', () => {
@@ -35,7 +62,7 @@ test('observed card has no inferred label', () => {
     discoveredNode('package:apps/api/package.json', { type: 'service', label: '@shop/api' }),
   );
   expect(element.dataset.confidence).toBe('observed');
-  expect(screen.queryByText('inferred')).toBeNull();
+  expect(screen.queryByText(/Inferred because/)).toBeNull();
 });
 
 test('the card names its kind', () => {

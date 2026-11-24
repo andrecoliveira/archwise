@@ -186,7 +186,9 @@ aside {
   border-radius: 12px;
 }
 .node-item {
-  display: block;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   width: 100%;
   padding: 6px 8px;
   border: 1px solid transparent;
@@ -194,9 +196,39 @@ aside {
   text-align: left;
   color: var(--ink);
   background: transparent;
+}
+.node-item-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.node-item-text > * {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.node-item-text small {
+  color: var(--ink-2);
+  font-size: 11px;
+}
+.node-item-text .node-item-reason {
+  white-space: normal;
+  color: var(--ink-2);
+}
+/* Level markers: line style only — solid Observed, dashed Inferred, dotted Unknown. */
+.level-marker {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-top: 4px;
+  border: 1.8px solid var(--ink-2);
+  border-radius: 50%;
+}
+.level-marker.dashed {
+  border-style: dashed;
+}
+.level-marker.dotted {
+  border-style: dotted;
 }
 .node-item:hover {
   background: var(--panel-2);
@@ -964,7 +996,7 @@ aside {
 }
 
 /*
- * Discovered components as flat cards. Fill = kind; dashed outline + "inferred" = deduced;
+ * Discovered components as flat cards. Fill = kind; dashed outline + "Inferred because: …" = deduced;
  * accent outline = selected. Width matches the 200 px the automatic layout reserves.
  */
 .discovered-node {
@@ -1025,9 +1057,36 @@ aside {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.discovered-inferred {
-  text-decoration: underline dashed;
-  text-underline-offset: 3px;
+.discovered-reason,
+.iso-pill .iso-reason {
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.discovered-node.dotted {
+  border-style: dotted;
+}
+/* Relation labels: the wording in neutral ink; in focus, the first reason too (§5.7). */
+.svelte-flow__edge-label.relation-label {
+  max-width: 260px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--ink-2);
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+.svelte-flow__edge-label.relation-label.focused {
+  color: var(--ink);
+  max-width: 420px;
+}
+.svelte-flow__edge-label.relation-label.dimmed {
+  opacity: 0.4;
 }
 .graph-view-switch {
   display: inline-flex;

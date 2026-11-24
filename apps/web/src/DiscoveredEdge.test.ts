@@ -5,6 +5,7 @@ const motion = vi.hoisted(() => ({ prefersReducedMotion: { current: false } }));
 vi.mock('svelte/motion', () => motion);
 vi.mock('@xyflow/svelte', async () => ({
   BaseEdge: (await import('./test-support/PathEdge.svelte')).default,
+  EdgeLabel: (await import('./test-support/PlainLabel.svelte')).default,
   getSmoothStepPath: () => ['M0 0L200 0', 100, 0],
   Position: { Left: 'left', Right: 'right' },
 }));
@@ -75,4 +76,27 @@ test('a dimmed relation is marked', () => {
   expect(
     edge({ confidence: 'observed', dimmed: true }).querySelector('g.relation-group.dimmed'),
   ).not.toBeNull();
+});
+
+test('shows the wording as its label', () => {
+  const container = edge({ confidence: 'observed', label: 'depends on', focusLabel: 'x' });
+  expect(container.querySelector('.relation-label')!.textContent).toBe('depends on');
+});
+
+test('expands to the because label when focused', () => {
+  const container = edge({
+    confidence: 'inferred',
+    focused: true,
+    label: 'depends on',
+    focusLabel: 'depends on · because depends on pg, a PostgreSQL client library',
+  });
+  expect(container.querySelector('.relation-label')!.textContent).toBe(
+    'depends on · because depends on pg, a PostgreSQL client library',
+  );
+});
+
+test('labels are text, never markup', () => {
+  const container = edge({ confidence: 'observed', label: 'depends on <i>x</i>' });
+  expect(container.querySelector('.relation-label i')).toBeNull();
+  expect(container.querySelector('.relation-label')!.textContent).toBe('depends on <i>x</i>');
 });

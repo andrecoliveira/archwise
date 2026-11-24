@@ -25,6 +25,22 @@ test('renders the piece for its kind', () => {
   expect(screen.getByText('Datastore · PostgreSQL')).toBeTruthy();
 });
 
+test('second line shows technology and folder', () => {
+  render(IsoNode, {
+    data: {
+      node: discoveredNode('package:apps/api/package.json', {
+        type: 'service',
+        label: '@shop/api',
+        technology: 'fastify',
+        evidence: [
+          { path: 'apps/api/package.json', kind: 'package-manifest', lines: null, analyzer: 'm' },
+        ],
+      }),
+    },
+  });
+  expect(screen.getByText('Service · fastify · apps/api')).toBeTruthy();
+});
+
 test('selected lights the plinth', () => {
   const { container } = render(IsoNode, {
     data: { node: discoveredNode('a', { type: 'service' }) },
@@ -41,11 +57,14 @@ test('inferred dashes the piece and says inferred', () => {
         label: 'BullMQ',
         technology: 'BullMQ',
         confidence: 'inferred',
+        reasons: ['client-library'],
       }),
     },
   });
   expect(container.querySelector('g.iso-piece.inferred')).not.toBeNull();
-  expect(screen.getByText('Queue · BullMQ · inferred')).toBeTruthy();
+  expect(screen.getByText('Queue · BullMQ')).toBeTruthy();
+  const reason = screen.getByText('Inferred because: a package depends on its client library');
+  expect(reason.getAttribute('title')).toBe(reason.textContent);
 });
 
 test('long labels truncate with a title', () => {
