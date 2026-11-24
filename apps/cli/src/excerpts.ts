@@ -13,6 +13,8 @@ import type { ArchitectureGraph, ViewEvidence } from './graph.js';
  */
 
 export const EXCERPT_MAX_LINES = 40;
+/** A minified file is one huge line; each line shows at most this many characters. */
+export const EXCERPT_MAX_LINE_CHARS = 400;
 
 export interface ExcerptEntry {
   /** Canonical absolute user root. */
@@ -40,7 +42,10 @@ export type ExcerptResult =
     };
 
 export interface ExcerptIndex {
-  /** A copy of the graph whose evidence items carry `excerptId` where an excerpt can be read. */
+  /**
+   * A copy of the graph whose evidence items carry `excerptId` where an excerpt can be read.
+   * Only ids of the graph the index was built from exist; another graph only reuses them.
+   */
   decorate(graph: ArchitectureGraph): ArchitectureGraph;
   lookup(id: string): ExcerptEntry | undefined;
 }
@@ -90,16 +95,22 @@ export function buildExcerptIndex(
     const holders = [...hashes].filter(([, files]) => files.has(item.path));
     return holders.length === 1 ? holders[0]![0] : undefined;
   };
+  // Building registers the scan graph's evidence; afterwards decorating only looks ids up.
+  let building = true;
   const decorateItem = (hint: string | undefined, item: ViewEvidence): ViewEvidence => {
     const root = locate(hint, item);
     if (root === undefined) return item;
     const id = idOf(root, item);
-    entries.set(id, {
-      root,
-      path: item.path,
-      lines: item.lines,
-      sha256: hashes.get(root)!.get(item.path)!,
-    });
+    if (building) {
+      entries.set(id, {
+        root,
+        path: item.path,
+        lines: item.lines,
+        sha256: hashes.get(root)!.get(item.path)!,
+      });
+    } else if (!entries.has(id)) {
+      return item;
+    }
     return { ...item, excerptId: id };
   };
   const decorate = (target: ArchitectureGraph): ArchitectureGraph => ({
@@ -125,6 +136,7 @@ export function buildExcerptIndex(
     }),
   });
   decorate(graph);
+  building = false;
   return { decorate, lookup: (id) => entries.get(id) };
 }
 
@@ -167,19 +179,25 @@ export async function readExcerpt(
     return unavailable('unreadable');
   }
   if (bytes.length > limits.bytesPerFile) return unavailable('too-large');
-  if (sha256(bytes) !== entry.sha256) return { status: 'changed' };
+  // Decode first: the scan hashed invalid UTF-8 as lossy text, which would read as "changed".
   let text: string;
   try {
-    text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes);
   } catch {
     return unavailable('not-utf8');
   }
-  const all = text.replace(/\r?\n$/, '').split(/\r?\n/);
+  if (sha256(bytes) !== entry.sha256) return { status: 'changed' };
+  const all = text.replace(/(?:\r\n|\r|\n)$/, '').split(/\r\n|\r|\n/);
   const start = entry.lines?.start ?? 1;
   const end = entry.lines?.end ?? Math.min(all.length, EXCERPT_MAX_LINES);
   if (start > all.length) return { status: 'changed' };
   // Mask from the top of the file, so a secret block scalar that starts above the range is known.
   const masked = maskConfigLines(all.slice(0, Math.min(end, all.length)));
-  const lines = masked.slice(start - 1);
+  // Mask whole lines first, then cut long ones, so a cut never exposes part of a secret.
+  const lines = masked
+    .slice(start - 1)
+    .map((line) =>
+      line.length > EXCERPT_MAX_LINE_CHARS ? `${line.slice(0, EXCERPT_MAX_LINE_CHARS)}…` : line,
+    );
   return { status: 'ok', path: entry.path, start, end: start + lines.length - 1, lines };
 }

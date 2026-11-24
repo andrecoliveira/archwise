@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import type { InventoryResult } from '@archwise/application';
 import type { ArchitectureGraph, ArchitectureNode, ViewEvidence } from '../src/graph.js';
 import {
+  EXCERPT_MAX_LINE_CHARS,
   EXCERPT_MAX_LINES,
   buildExcerptIndex,
   readExcerpt,
@@ -296,4 +297,56 @@ test('a secret block scalar that opens above the range stays masked', async () =
   await put(base, 'compose.yaml', text);
   const result = await readExcerpt(entry(base, 'compose.yaml', text, { start: 5, end: 5 }), LIMITS);
   expect(result).toMatchObject({ status: 'ok', lines: ['        [redacted]'] });
+});
+
+test('decorating another graph only reuses ids from the scan graph', async () => {
+  await put(base, 'package.json', '{}');
+  await put(base, 'compose.yaml', 'services: {}\n');
+  const scanned = graphOf([node('p', [evidence('package.json', 'package-manifest')])]);
+  const index = buildExcerptIndex(
+    scanned,
+    singleRoot(base, { 'package.json': '{}' }, { 'compose.yaml': 'services: {}\n' }),
+  );
+  // A stored graph citing a file the scan graph never cited gets no id, and nothing new resolves.
+  const stored = graphOf([
+    node('p', [evidence('compose.yaml', 'compose-image', { start: 1, end: 1 })]),
+  ]);
+  const decorated = index.decorate(stored);
+  expect('excerptId' in decorated.nodes[0]!.evidence[0]!).toBe(false);
+  const would = createHash('sha256')
+    .update(`${base}\0compose.yaml\0compose-image\x001-1`)
+    .digest('hex');
+  expect(index.lookup(would)).toBeUndefined();
+  // The scan graph's own evidence still resolves.
+  expect(index.decorate(scanned).nodes[0]!.evidence[0]!.excerptId).toBeDefined();
+});
+
+test('CR-only line endings split into lines', async () => {
+  const text = 'a\rb\rc';
+  await put(base, 'compose.yaml', text);
+  expect(await readExcerpt(entry(base, 'compose.yaml', text), LIMITS)).toMatchObject({
+    status: 'ok',
+    start: 1,
+    end: 3,
+    lines: ['a', 'b', 'c'],
+  });
+});
+
+test('a very long line is cut at the character cap', async () => {
+  const text = `{"name":"${'x'.repeat(5000)}"}`;
+  await put(base, 'package.json', text);
+  const result = await readExcerpt(entry(base, 'package.json', text), LIMITS);
+  expect(result.status).toBe('ok');
+  const line = result.status === 'ok' ? result.lines[0]! : '';
+  expect(line).toHaveLength(EXCERPT_MAX_LINE_CHARS + 1);
+  expect(line.endsWith('…')).toBe(true);
+});
+
+test('invalid UTF-8 is reported as such even when the scan hashed the lossy text', async () => {
+  const bytes = Buffer.from([0x61, 0xff, 0x62]);
+  await put(base, 'compose.yaml', bytes);
+  const lossy = createHash('sha256').update(bytes.toString('utf8')).digest('hex');
+  expect(
+    await readExcerpt({ root: base, path: 'compose.yaml', lines: null, sha256: lossy }, LIMITS),
+  ).toEqual({ status: 'unavailable', reason: 'not-utf8' });
 });
