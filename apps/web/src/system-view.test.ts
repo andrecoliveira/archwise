@@ -148,3 +148,12 @@ test('the nothing-recognized notice is for current scans only', () => {
   expect(showsNothingRecognized(graphOf([api]), false)).toBe(false);
   expect(showsNothingRecognized(graphOf([]), false)).toBe(false);
 });
+
+test('the System view is computed once per graph', () => {
+  const graph = graphOf(
+    [api, core, pg],
+    [discoveredEdge('api', 'core'), discoveredEdge('core', 'pg')],
+  );
+  expect(systemGraph(graph)).toBe(systemGraph(graph));
+  expect(graphForView(graph, 'system')).toBe(systemGraph(graph));
+});

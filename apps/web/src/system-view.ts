@@ -77,12 +77,25 @@ class ChainHeap {
  * the weakest step's confidence and the union of the steps' evidence. A direct relation always
  * wins over an indirect one.
  */
+const cache = new WeakMap<Graph, Graph>();
+
+/** Graphs are immutable here, so the System view is computed once per graph object. */
 export function systemGraph(graph: Graph): Graph {
+  const known = cache.get(graph);
+  if (known) return known;
+  const computed = computeSystemGraph(graph);
+  cache.set(graph, computed);
+  return computed;
+}
+
+function computeSystemGraph(graph: Graph): Graph {
   const nodes = new Map(graph.nodes.map((node) => [node.id, node]));
   const shown = new Set(graph.nodes.filter(visible).map((node) => node.id));
   const outgoing = new Map<string, GraphEdge[]>();
   for (const edge of [...graph.edges].sort(byId)) {
-    outgoing.set(edge.source, [...(outgoing.get(edge.source) ?? []), edge]);
+    const list = outgoing.get(edge.source);
+    if (list) list.push(edge);
+    else outgoing.set(edge.source, [edge]);
   }
   const kept = graph.edges.filter((edge) => shown.has(edge.source) && shown.has(edge.target));
   const direct = new Set(kept.map((edge) => `${edge.source}\u0000${edge.target}`));
