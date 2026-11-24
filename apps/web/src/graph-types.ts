@@ -74,6 +74,16 @@ export interface GraphNode {
   readonly properties?: readonly GraphProperty[];
 }
 
+/** A System-view relation drawn across hidden libraries (spec §5.8); browser-side only. */
+export interface IndirectRelation {
+  /** The discovered relations of the chain used, in order. */
+  readonly steps: readonly GraphEdge[];
+  /** Labels of the hidden libraries in that chain. */
+  readonly through: readonly string[];
+  /** The `through` lists of other chains between the same two components, sorted. */
+  readonly others: readonly (readonly string[])[];
+}
+
 export interface GraphEdge {
   readonly id: string;
   readonly type: EdgeType;
@@ -83,6 +93,7 @@ export interface GraphEdge {
   readonly reasons: readonly string[];
   readonly origin: 'discovered';
   readonly evidence: readonly GraphEvidence[];
+  readonly indirect?: IndirectRelation;
 }
 
 export interface GraphGap {
