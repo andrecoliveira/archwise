@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import { discoveredEdge, discoveredNode, graphOf } from './graph-fixtures.js';
-import { isGraph, upgradeGraph } from './graph-types.js';
+import { isGraph, kindLabel, matchesSearch, upgradeGraph, type NodeType } from './graph-types.js';
 import { projectSignature } from './sandbox-persistence.js';
 
 /** A view graph as Phase 3 stored it in sessions. */
@@ -155,4 +155,19 @@ test('rejects a non-string excerptId or category', () => {
   const evidence = [{ ...node.evidence[0]!, excerptId: 7 as never }];
   expect(isGraph(graphOf([{ ...node, evidence }]))).toBe(false);
   expect(isGraph(graphOf([{ ...node, category: 3 as never }]))).toBe(false);
+});
+
+test('search matches aliases as well as names and technology', () => {
+  const node = discoveredNode('package:apps/api/package.json', {
+    label: '@shop/api',
+    technology: 'fastify',
+    aliases: ['backend'],
+  });
+  expect(matchesSearch(node, 'BACKEND')).toBe(true);
+  expect(matchesSearch(node, 'fastify')).toBe(true);
+  expect(matchesSearch(node, 'worker')).toBe(false);
+});
+
+test('an unknown kind has a label', () => {
+  expect(kindLabel('kubernetes' as NodeType)).toBe('Unknown kind');
 });

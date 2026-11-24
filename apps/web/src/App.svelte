@@ -15,7 +15,7 @@
   import { chooseWorkspaceGraph } from './session-view.js';
   import { CATALOG_GROUPS, searchCatalog } from './component-catalog.js';
   import { getCoachQuestions } from './architecture-coach.js';
-  import { kindLabel, upgradeGraph, type Graph } from './graph-types.js';
+  import { kindLabel, matchesSearch, upgradeGraph, type Graph } from './graph-types.js';
   import { graphForView, initialView, showsNothingRecognized, type StudioView } from './system-view.js';
   import { isScanSummary, nodeDisplayLabel, type ScanSummaryView } from './scan-summary.js';
   import { scanNotes } from './scan-notes.js';
@@ -119,7 +119,7 @@
   const shownGraph = $derived(graph ? graphForView(graph, graphView) : null);
   const visible = $derived(
     shownGraph?.nodes.filter((node) =>
-      `${node.label} ${node.technology ?? ''} ${node.id}`.toLowerCase().includes(filter.toLowerCase()),
+      matchesSearch(node, filter),
     ) ?? [],
   );
   const visibleIds = $derived(new Set(visible.map((node) => node.id)));

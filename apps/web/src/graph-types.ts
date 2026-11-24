@@ -111,7 +111,13 @@ const KIND_LABELS: Readonly<Record<NodeType, string>> = {
 };
 
 export function kindLabel(type: NodeType): string {
-  return KIND_LABELS[type];
+  return KIND_LABELS[type] ?? 'Unknown kind';
+}
+
+/** Search over names, technology, aliases (spec §5.6) and the id; case-insensitive. */
+export function matchesSearch(node: GraphNode, query: string): boolean {
+  const text = [node.label, node.technology ?? '', ...node.aliases, node.id].join(' ');
+  return text.toLowerCase().includes(query.toLowerCase());
 }
 
 type Shape = Record<string, unknown>;
