@@ -17,7 +17,7 @@
       {
         "repositoryId": "repo-root",
         "analyzerId": "docker-compose",
-        "analyzerVersion": "1.0.0",
+        "analyzerVersion": "1.1.0",
         "status": "complete"
       },
       {
@@ -29,7 +29,7 @@
       {
         "repositoryId": "repo-root",
         "analyzerId": "node-roles",
-        "analyzerVersion": "1.0.0",
+        "analyzerVersion": "1.1.0",
         "status": "complete"
       },
       {
@@ -47,19 +47,10 @@
     ],
     "evidence": [
       {
-        "id": "ev-1ab32e9147675916",
-        "repositoryId": "repo-root",
-        "analyzerId": "docker-compose",
-        "analyzerVersion": "1.0.0",
-        "ruleId": "compose-image",
-        "path": "compose.yaml",
-        "lines": null
-      },
-      {
         "id": "ev-26eea040748bfcfb",
         "repositoryId": "repo-root",
         "analyzerId": "node-roles",
-        "analyzerVersion": "1.0.0",
+        "analyzerVersion": "1.1.0",
         "ruleId": "framework-dependency",
         "path": "examples/demo/package.json",
         "lines": null
@@ -68,7 +59,7 @@
         "id": "ev-37f89fe25ee83d35",
         "repositoryId": "repo-root",
         "analyzerId": "node-roles",
-        "analyzerVersion": "1.0.0",
+        "analyzerVersion": "1.1.0",
         "ruleId": "framework-dependency",
         "path": "apps/api/package.json",
         "lines": null
@@ -83,31 +74,61 @@
         "lines": null
       },
       {
-        "id": "ev-3e8e4a34f2a263e2",
+        "id": "ev-47bbf006487dd222",
         "repositoryId": "repo-root",
         "analyzerId": "docker-compose",
-        "analyzerVersion": "1.0.0",
-        "ruleId": "compose-depends-on",
+        "analyzerVersion": "1.1.0",
+        "ruleId": "compose-image",
         "path": "compose.yaml",
-        "lines": null
+        "lines": {
+          "start": 6,
+          "end": 7
+        }
       },
       {
-        "id": "ev-6d887993cf333fd0",
+        "id": "ev-484ed33af61a48fa",
         "repositoryId": "repo-root",
         "analyzerId": "docker-compose",
-        "analyzerVersion": "1.0.0",
+        "analyzerVersion": "1.1.0",
+        "ruleId": "compose-image",
+        "path": "compose.yaml",
+        "lines": {
+          "start": 2,
+          "end": 5
+        }
+      },
+      {
+        "id": "ev-4ec971dd896dc0ea",
+        "repositoryId": "repo-root",
+        "analyzerId": "docker-compose",
+        "analyzerVersion": "1.1.0",
         "ruleId": "compose-build",
         "path": "compose.yaml",
-        "lines": null
+        "lines": {
+          "start": 11,
+          "end": 13
+        }
       },
       {
         "id": "ev-7ffdc9bcf7702bf4",
         "repositoryId": "repo-root",
         "analyzerId": "node-roles",
-        "analyzerVersion": "1.0.0",
+        "analyzerVersion": "1.1.0",
         "ruleId": "client-library",
         "path": "packages/db/package.json",
         "lines": null
+      },
+      {
+        "id": "ev-817b5a27a6bc633a",
+        "repositoryId": "repo-root",
+        "analyzerId": "docker-compose",
+        "analyzerVersion": "1.1.0",
+        "ruleId": "compose-depends-on",
+        "path": "compose.yaml",
+        "lines": {
+          "start": 10,
+          "end": 10
+        }
       },
       {
         "id": "ev-88efcc6167fc341c",
@@ -140,7 +161,7 @@
         "id": "ev-982e7757488bc591",
         "repositoryId": "repo-root",
         "analyzerId": "node-roles",
-        "analyzerVersion": "1.0.0",
+        "analyzerVersion": "1.1.0",
         "ruleId": "client-library",
         "path": "apps/api/package.json",
         "lines": null
@@ -149,10 +170,22 @@
         "id": "ev-9b845b993c8c7644",
         "repositoryId": "repo-root",
         "analyzerId": "node-roles",
-        "analyzerVersion": "1.0.0",
+        "analyzerVersion": "1.1.0",
         "ruleId": "client-library",
         "path": "apps/worker/package.json",
         "lines": null
+      },
+      {
+        "id": "ev-ae7defc06c1041b1",
+        "repositoryId": "repo-root",
+        "analyzerId": "docker-compose",
+        "analyzerVersion": "1.1.0",
+        "ruleId": "compose-build",
+        "path": "compose.yaml",
+        "lines": {
+          "start": 8,
+          "end": 10
+        }
       },
       {
         "id": "ev-c4480ca02ca17390",
@@ -185,6 +218,18 @@
         "lines": null
       },
       {
+        "id": "ev-ee7f9dec39abc7cc",
+        "repositoryId": "repo-root",
+        "analyzerId": "docker-compose",
+        "analyzerVersion": "1.1.0",
+        "ruleId": "compose-depends-on",
+        "path": "compose.yaml",
+        "lines": {
+          "start": 13,
+          "end": 13
+        }
+      },
+      {
         "id": "ev-f2dabac59b188215",
         "repositoryId": "repo-root",
         "analyzerId": "node-manifest",
@@ -197,7 +242,7 @@
         "id": "ev-faa6d22e69079887",
         "repositoryId": "repo-root",
         "analyzerId": "node-roles",
-        "analyzerVersion": "1.0.0",
+        "analyzerVersion": "1.1.0",
         "ruleId": "framework-dependency",
         "path": "apps/web/package.json",
         "lines": null
@@ -222,7 +267,7 @@
           "level": "observed",
           "reasons": ["compose-image"]
         },
-        "evidenceIds": ["ev-1ab32e9147675916"]
+        "evidenceIds": ["ev-484ed33af61a48fa"]
       },
       {
         "id": "ds-e861a6b8cf05ab49",
@@ -233,7 +278,7 @@
           "level": "observed",
           "reasons": ["compose-image"]
         },
-        "evidenceIds": ["ev-1ab32e9147675916"]
+        "evidenceIds": ["ev-47bbf006487dd222"]
       },
       {
         "id": "ext-98cc3d8e40c3c2ea",
@@ -299,7 +344,7 @@
           "level": "observed",
           "reasons": ["compose-build", "framework-dependency"]
         },
-        "evidenceIds": ["ev-37f89fe25ee83d35", "ev-6d887993cf333fd0", "ev-8ea786cf6227aaff"]
+        "evidenceIds": ["ev-37f89fe25ee83d35", "ev-8ea786cf6227aaff", "ev-ae7defc06c1041b1"]
       },
       {
         "id": "svc-efa3472835c6d9f8",
@@ -321,7 +366,7 @@
           "level": "observed",
           "reasons": ["compose-build"]
         },
-        "evidenceIds": ["ev-3a68163e814fce13", "ev-6d887993cf333fd0"]
+        "evidenceIds": ["ev-3a68163e814fce13", "ev-4ec971dd896dc0ea"]
       }
     ],
     "edges": [
@@ -334,7 +379,7 @@
           "level": "observed",
           "reasons": ["compose-depends-on"]
         },
-        "evidenceIds": ["ev-3e8e4a34f2a263e2"]
+        "evidenceIds": ["ev-817b5a27a6bc633a"]
       },
       {
         "id": "dep-15c8b4e7d5b2417c",
@@ -389,7 +434,7 @@
           "level": "observed",
           "reasons": ["compose-depends-on"]
         },
-        "evidenceIds": ["ev-3e8e4a34f2a263e2"]
+        "evidenceIds": ["ev-ee7f9dec39abc7cc"]
       },
       {
         "id": "dep-e1d8249889c354b8",
@@ -400,7 +445,7 @@
           "level": "observed",
           "reasons": ["compose-depends-on"]
         },
-        "evidenceIds": ["ev-3e8e4a34f2a263e2"]
+        "evidenceIds": ["ev-817b5a27a6bc633a"]
       },
       {
         "id": "dep-fb43a3030f1f0e1f",

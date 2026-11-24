@@ -143,6 +143,70 @@ export function redactSensitiveText(value: string, knownHomes: readonly string[]
   return current;
 }
 
+/** `scheme://user:pass@`: greedy to the token's last `@`, so a password may hold `@` or `/`. */
+const URL_CREDENTIALS = /(?<![a-z0-9+.-])([a-z][a-z0-9+.-]*:\/\/)[^\s'"]{1,256}@/gi;
+const BEARER = /\bBearer\s+[A-Za-z0-9._~+/-]+=*/g;
+const PAYMENT_KEYS = /(?<![A-Za-z0-9])[rs]k_(?:live|test)_[A-Za-z0-9]{8,}/g;
+/** A whole key token, an optional closing quote, its separator, then a quoted or bare value. */
+const KEY_VALUE =
+  /(?<![A-Za-z0-9_.-])([A-Za-z0-9_.-]+)(["']?\s*[:=]\s*)("[^"]*"|'(?:[^']|'')*'|[^\s,}\]](?:\[redacted\]|[^\n,}\]])*)/g;
+/** A command-line flag named like a secret, then its argument: `--requirepass x`, `"--password", "x"`. */
+const FLAG_VALUE = /(?<![A-Za-z0-9_-])(--?[A-Za-z0-9_-]+)(=|["']\s*,\s*["']|\s+)([^\s,\]'"]+)/g;
+const SECRET_FLAG_NAME = /pass|pwd|secret|token|key|auth/i;
+const SECRET_KEY_NAME = /pass|pwd|secret|token|key|auth|credential|private|dsn/i;
+const BLOCK_SCALAR = /^(\s*)["']?([A-Za-z0-9_.-]+)["']?\s*:\s*[|>][-+0-9]*\s*$/;
+
+/**
+ * Masks secrets that can sit inside any value, including image names and build contexts:
+ * everything `redactSensitiveText` masks, payment API keys, bearer tokens and credentials in
+ * URLs. It never treats `name:tag` as a key and a value.
+ */
+export function maskSecretsInValue(value: string): string {
+  return redactSensitiveText(value)
+    .replace(PAYMENT_KEYS, '[redacted]')
+    .replace(BEARER, 'Bearer [redacted]')
+    .replace(URL_CREDENTIALS, '$1[redacted]@');
+}
+
+/**
+ * Masks configuration values and excerpt lines before they are shown or stored: everything
+ * `maskSecretsInValue` masks, the value of any key named like a password, secret, token, key,
+ * auth, credential, private or DSN, and the argument of a command-line flag named like one.
+ * Errs towards masking.
+ */
+export function maskConfigValue(value: string): string {
+  return maskSecretsInValue(value)
+    .replace(KEY_VALUE, (whole, key: string, separator: string) =>
+      SECRET_KEY_NAME.test(key) ? `${key}${separator}[redacted]` : whole,
+    )
+    .replace(FLAG_VALUE, (whole, flag: string, separator: string) =>
+      SECRET_FLAG_NAME.test(flag) ? `${flag}${separator}[redacted]` : whole,
+    );
+}
+
+/**
+ * `maskConfigValue` per line, plus YAML block scalars: when a secret-named key opens a `|` or
+ * `>` block, every more-indented line after it is masked too.
+ */
+export function maskConfigLines(lines: readonly string[]): string[] {
+  let blockIndent: number | null = null;
+  return lines.map((line) => {
+    const indent = line.length - line.trimStart().length;
+    if (blockIndent !== null) {
+      if (line.trim() === '' || indent > blockIndent) {
+        return line.trim() === '' ? line : `${line.slice(0, indent)}[redacted]`;
+      }
+      blockIndent = null;
+    }
+    const block = BLOCK_SCALAR.exec(line);
+    if (block && SECRET_KEY_NAME.test(block[2]!)) {
+      blockIndent = block[1]!.length;
+      return `${line.slice(0, line.indexOf(':') + 1)} [redacted]`;
+    }
+    return maskConfigValue(line);
+  });
+}
+
 /** Locale-independent ordering by UTF-16 code unit. */
 export function compareCodeUnits(a: string, b: string): number {
   if (a < b) return -1;

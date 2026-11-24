@@ -8,6 +8,7 @@ import { homedir } from 'node:os';
 import { resolveDataDir, StoreUnavailableError } from '@archwise/storage';
 import { filesystemInventory, resolveRoots } from '@archwise/discovery';
 import {
+  DEFAULT_BUDGETS,
   analysisInputs,
   analyzerInputs,
   runAnalyzers,
@@ -28,6 +29,7 @@ import {
 import { parseCli } from './index.js';
 import { WorkspaceFileError, loadWorkspaceFile } from './workspace-file.js';
 import { startLocalGraphServer } from './local-server.js';
+import { buildExcerptIndex } from './excerpts.js';
 import {
   applyResume,
   formatSessionList,
@@ -180,6 +182,10 @@ if (command.kind === 'output') {
           ...(assets ? { webDistPath: assets } : {}),
           sessions: runtime.kind === 'ready' ? runtime.service : null,
           scan: scanSummary(result, startedAt),
+          excerpts: {
+            index: buildExcerptIndex(graph, result),
+            bytesPerFile: DEFAULT_BUDGETS.bytesPerFile,
+          },
         });
         process.stdout.write(`Archwise API listening at ${server.address}\n`);
         process.stdout.write(`Local session URL: ${server.bootstrapUrl}\n`);

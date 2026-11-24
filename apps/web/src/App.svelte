@@ -15,19 +15,28 @@
   import { chooseWorkspaceGraph } from './session-view.js';
   import { CATALOG_GROUPS, searchCatalog } from './component-catalog.js';
   import { getCoachQuestions } from './architecture-coach.js';
-  import { kindLabel, upgradeGraph, type Graph } from './graph-types.js';
+  import { kindLabel, matchesSearch, upgradeGraph, type Graph } from './graph-types.js';
   import { graphForView, initialView, showsNothingRecognized, type StudioView } from './system-view.js';
-  import { isScanSummary, nodeDisplayLabel, type ScanSummaryView } from './scan-summary.js';
+  import { isScanSummary, type ScanSummaryView } from './scan-summary.js';
   import { scanNotes } from './scan-notes.js';
   import { placeholderChip, revisionChip, workspaceName } from './scan-status.js';
-  import { initialMode, isSearchShortcut, type StudioMode } from './studio-mode.js';
+  import { initialMode, isSearchShortcut, isTextField, type StudioMode } from './studio-mode.js';
   import { applyTheme, nextTheme, readTheme, safeStorage, writeTheme, type Theme } from './theme.js';
   import { nodeStyleFor, readNodeStyle, writeNodeStyle, type NodeStyle, type StyleView } from './node-style.js';
   import ScanNotes from './ScanNotes.svelte';
+  import ComponentList from './ComponentList.svelte';
+  import CounterBar from './CounterBar.svelte';
+  import { countersFor, hiddenLibraries, type Filter } from './counters.js';
+  import Inspector, { type InspectorTab } from './Inspector.svelte';
+  import { excerptIdsFrom } from './excerpt-client.js';
   import StudioTopBar from './StudioTopBar.svelte';
   import './studio.css';
 
   let graphData = $state<Graph | null>(null);
+  /** The latest served graph: its evidence carries the excerpt ids "Show lines" uses. */
+  let latestGraph = $state<Graph | null>(null);
+  let inspectorTab: InspectorTab = $state('details');
+  const excerptIds = $derived(excerptIdsFrom(latestGraph));
   let scan = $state<ScanSummaryView | null>(null);
   let loading = $state(true);
   let loadError = $state<string | null>(null);
@@ -119,7 +128,7 @@
   const shownGraph = $derived(graph ? graphForView(graph, graphView) : null);
   const visible = $derived(
     shownGraph?.nodes.filter((node) =>
-      `${node.label} ${node.technology ?? ''} ${node.id}`.toLowerCase().includes(filter.toLowerCase()),
+      matchesSearch(node, filter),
     ) ?? [],
   );
   const visibleIds = $derived(new Set(visible.map((node) => node.id)));
@@ -128,6 +137,19 @@
     graph ? revisionChip({ scan, graph, storeEnabled, historical, now }) : null,
   );
   const notes = $derived(graph ? scanNotes(graph) : null);
+  // Counters (spec §5.9): each count is a filter; Esc or a second activation clears it.
+  let countFilter: Filter | null = $state(null);
+  const counters = $derived(shownGraph && notes ? countersFor(shownGraph, notes) : null);
+  const hidden = $derived(graph && graphView === 'system' ? hiddenLibraries(graph) : []);
+  $effect(() => {
+    void graphView;
+    countFilter = null;
+  });
+  async function showScanNotes(): Promise<void> {
+    leftShown = true;
+    await tick();
+    document.getElementById('scan-notes-heading')?.focus();
+  }
   // Pieces or cards: derived per view (System, All packages, Sandbox); a person's choice is remembered.
   const styleView: StyleView = $derived.by(() =>
     studioMode === 'sandbox' ? 'sandbox' : graphView === 'all' ? 'all' : 'system',
@@ -141,8 +163,6 @@
     writeNodeStyle(safeStorage(), styleView, style);
     styleRevision += 1;
   }
-  const lineOf = (item: { path: string; lines: { start: number } | null }): string =>
-    item.lines === null ? item.path : `${item.path}:${item.lines.start}`;
   const coachQuestions = $derived(graph ? getCoachQuestions(graph, selectedId) : []);
   let questionIndex = $state(0);
   const currentQuestion = $derived(coachQuestions[questionIndex % Math.max(coachQuestions.length, 1)]);
@@ -196,6 +216,7 @@
       if (!signal.aborted) {
         const chosen = chooseWorkspaceGraph(detail, payload);
         graphData = chosen.graph;
+        latestGraph = payload;
         graphView = initialView(chosen.graph);
         // Only the first load picks the mode; later reloads keep the one the person chose.
         if (!modeChosen) studioMode = initialMode(chosen.graph);
@@ -277,6 +298,8 @@
         searchInput.focus();
       } else if (event.key === 'Escape' && drawerOpen) {
         void closeDrawers();
+      } else if (event.key === 'Escape' && countFilter !== null && !isTextField(event.target)) {
+        countFilter = null;
       }
     };
     document.addEventListener('keydown', onKey);
@@ -339,12 +362,8 @@
         {#if shownGraph}
           <p class="list-count">{visible.length} of {shownGraph.nodes.length} components</p>
         {/if}
-        <nav aria-label="Discovered components">
-          {#each visible as node (node.id)}
-            <button type="button" class="node-item" class:active={selectedId === node.id}
-              title={nodeDisplayLabel(node)} onclick={() => (selectedId = node.id)}>{nodeDisplayLabel(node)}</button>
-          {/each}
-        </nav>
+        <ComponentList nodes={visible} {selectedId} onSelect={(id) => (selectedId = id)} filter={countFilter} {hidden}
+          onShowAll={() => (graphView = 'all')} />
         {#if notes}<ScanNotes view={notes} />{/if}
       {/if}
     </aside>
@@ -372,6 +391,9 @@
           {/if}
         </div>
       </div>
+      {#if counters && studioMode === 'explore' && graph && graph.nodes.length > 0}
+        <CounterBar {counters} filter={countFilter} onFilter={(next) => (countFilter = next)} onShowNotes={() => void showScanNotes()} />
+      {/if}
       {#if nothingRecognized && studioMode === 'explore'}
         <p class="view-notice" role="status">No frontends, services or infrastructure were recognized; showing all packages.</p>
       {/if}
@@ -395,7 +417,7 @@
           </div>
         {/if}
         {#key workspaceKey}
-          <ArchitectureCanvas {graph} view={shownGraph} {visibleIds} bind:selectedId bind:mode={studioMode} {addRequest} {nodeStyle}
+          <ArchitectureCanvas {graph} view={shownGraph} {visibleIds} bind:selectedId bind:mode={studioMode} {addRequest} {nodeStyle} filter={countFilter}
             {initialDocument} onDocumentChange={(text) => autosave?.schedule(text)}
             onRestoreFailed={restoreFailed} />
         {/key}
@@ -404,25 +426,12 @@
     <aside aria-label="Component inspector" class="discovered-inspector" id="inspector-column" class:drawer-open={!wide && rightShown}>
       {#if !wide}<button type="button" class="drawer-close" bind:this={rightClose} onclick={() => void closeDrawers()}>Close inspector</button>{/if}
       <h1>Inspector</h1>
-      {#if selected}
-        <h2>{selected.label}</h2>
-        <p>Kind: {kindLabel(selected.type)}</p>
-        <p>Technology: {selected.technology ?? 'Not identified'}</p>
-        <p>Confidence: {selected.confidence}</p>
-        <ul class="reasons">{#each selected.reasons as reason (reason)}<li>{reason}</li>{/each}</ul>
-        {#if selected.aliases.length > 0}<p>Compose services: {selected.aliases.join(', ')}</p>{/if}
-        {#if selected.outsideWorkspace}<p>Outside the declared workspace</p>{/if}
-        {#if selected.repository}<p>Repository: {selected.repository.label}</p>{/if}
-        <p>Outgoing relations: {shownGraph?.edges.filter((edge) => edge.source === selected.id).length ?? 0}</p>
-        <h2>Evidence</h2>
-        <ul>{#each selected.evidence as item, i (i)}
-          <li><code>{lineOf(item)}</code> <small>— {item.analyzer} / {item.kind}</small></li>
-        {/each}</ul>
-      {:else if selectedId?.startsWith('sandbox-')}
+      {#if selectedId?.startsWith('sandbox-')}
         <h2>Hypothetical component</h2>
         <p>This component exists only in Sandbox; it does not modify repository files.</p>
-      {:else}
-        <p>Select a component on the canvas or in the list to see what it is, what it relates to, and why.</p>
+      {:else if graph && shownGraph}
+        <Inspector node={selected} view={shownGraph} full={graph} {excerptIds} {historical}
+          bind:tab={inspectorTab} onSelect={(id) => (selectedId = id)} />
       {/if}
       {#if currentQuestion}
         <section aria-label="Architecture Coach">

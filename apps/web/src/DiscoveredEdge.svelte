@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { getSmoothStepPath, type EdgeProps } from '@xyflow/svelte';
+  import { EdgeLabel, getSmoothStepPath, type EdgeProps } from '@xyflow/svelte';
   import { prefersReducedMotion } from 'svelte/motion';
   import { dotStopFraction } from './iso/kit.js';
   import { isoId } from './iso/ids.js';
@@ -7,7 +7,7 @@
   let { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data }: EdgeProps = $props();
 
   const marker = isoId('arrow');
-  const [path] = $derived(
+  const [path, labelX, labelY] = $derived(
     getSmoothStepPath({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, borderRadius: 12, offset: 25 }),
   );
   const inferred = $derived(data?.confidence === 'inferred');
@@ -22,6 +22,10 @@
     length = line?.getTotalLength?.() ?? 0;
   });
   const stop = $derived(dotStopFraction(length));
+  // The label is the relation's wording; in focus it adds its first reason (spec §5.7).
+  const text = $derived(
+    String((focused ? (data?.focusLabel ?? data?.label) : data?.label) ?? ''),
+  );
 </script>
 
 <g class="relation-group" class:dimmed={data?.dimmed === true}>
@@ -38,3 +42,6 @@
     </circle>
   {/if}
 </g>
+{#if text}
+  <EdgeLabel x={labelX} y={labelY} class={`relation-label${focused ? ' focused' : ''}${data?.dimmed === true ? ' dimmed' : ''}`}>{text}</EdgeLabel>
+{/if}

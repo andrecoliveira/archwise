@@ -1,5 +1,6 @@
 import type { Edge, Node } from '@xyflow/svelte';
 import { focusSet } from './focus.js';
+import type { Filter } from './counters.js';
 
 /*
  * Canvas decoration (spec §4.5): the Studio's selection is the single source of truth for what
@@ -13,7 +14,11 @@ const DISCOVERED_NODE_TYPES = new Set(['iso', 'discovered']);
 export function decorate(
   list: readonly Node[],
   links: readonly Edge[],
-  options: { readonly selected: string | null; readonly focus: boolean },
+  options: {
+    readonly selected: string | null;
+    readonly focus: boolean;
+    readonly filter?: Filter | null;
+  },
 ): { nodes: Node[]; edges: Edge[] } {
   const onCanvas = options.selected !== null && list.some((item) => item.id === options.selected);
   const selected = onCanvas ? options.selected : null;
@@ -25,13 +30,26 @@ export function decorate(
     : null;
   const inFocus = (id: string): boolean => focus === null || focus.nodes.has(id);
   const key = (edge: Edge): string => `${edge.source}->${edge.target}`;
+  // A counter filter dims what it does not count; a selection's focus takes precedence.
+  const filter = focus?.nodes.size ? null : (options.filter ?? null);
+  const nodeConfidence = (item: Node): unknown =>
+    (item.data as { node?: { confidence?: unknown } }).node?.confidence;
+  const filteredOut = (item: Node): boolean =>
+    filter === 'inferred-components' && nodeConfidence(item) === 'observed';
+  const edgeFilteredOut = (edge: Edge): boolean =>
+    filter === 'inferred-components' ||
+    (filter === 'inferred-relations' && edge.data?.confidence === 'observed');
   return {
     nodes: list.map((item) => {
       const marked = { ...item, selected: item.id === selected };
       return DISCOVERED_NODE_TYPES.has(item.type ?? '')
         ? {
             ...marked,
-            data: { ...item.data, dimmed: !inFocus(item.id), animated: inFocus(item.id) },
+            data: {
+              ...item.data,
+              dimmed: !inFocus(item.id) || filteredOut(item),
+              animated: inFocus(item.id),
+            },
           }
         : marked;
     }),
@@ -42,7 +60,7 @@ export function decorate(
             data: {
               ...edge.data,
               focused: focus?.edges.has(key(edge)) ?? false,
-              dimmed: focus !== null && !focus.edges.has(key(edge)),
+              dimmed: (focus !== null && !focus.edges.has(key(edge))) || edgeFilteredOut(edge),
               animated: true,
             },
           }

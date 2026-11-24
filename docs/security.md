@@ -26,15 +26,34 @@ The local SQLite store ([ADR 0006](decisions/0006-local-store-node-sqlite.md)) l
 
 - absolute workspace root paths (several, for a multi-repository workspace);
 - discovered package names and manifest-relative paths;
+- the closed list of Compose configuration values, masked (see below);
 - Sandbox documents.
 
-It never contains source file contents. It is not synchronized or exported, and the API never returns root paths. Session routes require the local session capability. Mutations also require a same-origin `Origin` header, a JSON content type and a body under 300,000 bytes. Users can delete the directory to remove all stored data.
+It never contains source file contents, environment variables or commands. It is not synchronized or exported, and the API never returns root paths. Session routes require the local session capability. Mutations also require a same-origin `Origin` header, a JSON content type and a body under 300,000 bytes. Users can delete the directory to remove all stored data.
 
 ## Safe scanning
 
 The inventory lists files with `lstat`. It never follows symlinks, so a link cannot lead it outside a root or into a cycle. It never opens sockets, FIFOs or devices. It reads `package.json` manifests, `.gitignore` files and the files the built-in analyzers declare (Compose files, `pnpm-workspace.yaml`, Prisma schemas, and Nx and Lerna configuration names, which are only reported as unsupported). All of these share a per-file and a total byte budget. Whatever an analyzer declares, discovery never reads `.env` or `.env.*` files, `*.pem`, `*.key`, `id_rsa*`, `.npmrc`, `.netrc`, or anything under `.ssh/`, `.aws/` or `.gnupg/`.
 
-Analyzers are pure functions over text. A boundary rule forbids Node built-ins in `@archwise/analyzers`, so they cannot open files, the network or processes. YAML is parsed as data (core schema, unique keys, at most 100 aliases), and Compose interpolation is never resolved. The Docker Compose analyzer reads only `image`, `build` and `depends_on`: `environment`, `env_file`, `secrets`, `command` and `entrypoint` are never looked at. The Prisma analyzer reads only the `provider` literal of a `datasource`, never its connection `url`. File contents never reach the graph, the store, the API or `--json`. See [Discovery](discovery.md#architecture-analyzers). Ignore patterns are matched without regular expressions, so a hostile `.gitignore` cannot stall a scan. See [Discovery](discovery.md#safe-inventory).
+Analyzers are pure functions over text. A boundary rule forbids Node built-ins in `@archwise/analyzers`, so they cannot open files, the network or processes. YAML is parsed as data (core schema, unique keys, at most 100 aliases), and Compose interpolation is never resolved. The Docker Compose analyzer reads only `image`, `build`, `ports` and `depends_on`: `environment`, `env_file`, `secrets`, `configs`, `labels`, `command` and `entrypoint` are never looked at. The Prisma analyzer reads only the `provider` literal of a `datasource`, never its connection `url`.
+
+The graph stores only this closed list of configuration values, masked. It never stores environment variables, commands or source content. The values are a Compose service's image, build context, published ports (host and container numbers only) and `depends_on` names, kept as view-graph properties with their line evidence ([ADR 0008](decisions/0008-excerpts-and-stored-config-values.md)). Each value is masked twice, once in the analyzer and once in the resolver. Image and build values lose payment API keys, bearer tokens, credentials in URLs and the patterns of [Secret handling](#secret-handling), and keep their name and tag. Ports and `depends_on` also lose the value of any key named like a password, secret, token, key, auth, credential, private key or DSN, and the argument of a flag named like one. These values appear in the view graph, in sessions and in `--graph`. They do not appear in the `archwise.graph` revision format or in `--json`. See [Discovery](discovery.md#architecture-analyzers). Ignore patterns are matched without regular expressions, so a hostile `.gitignore` cannot stall a scan. See [Discovery](discovery.md#safe-inventory).
+
+## Evidence excerpts
+
+The Studio's "Show lines" reads the lines an evidence item cites, through `GET /api/v1/evidence/excerpt/<id>` ([ADR 0008](decisions/0008-excerpts-and-stored-config-values.md)). The server returns lines only when every check passes, in this order:
+
+1. **Known id.** The id is one the server computed for an evidence item of its latest scan: a sha256 of root, path, rule and line range, held in memory. The browser never sends a path.
+2. **Clean path.** It is relative, with no empty, `.` or `..` segments, no drive letter and no backslash.
+3. **Not denied.** It is not on the discovery deny list (see [Safe scanning](#safe-scanning)).
+4. **Short range.** The cited range is at most 40 lines. A whole-file item shows its first 40 lines.
+5. **No links.** No path segment from the root to the file is a symbolic link (checked with `lstat`), and the file is a regular file.
+6. **Small enough.** The file is no larger than the inventory's per-file budget (1 MiB).
+7. **Text.** The file decodes as UTF-8, strictly. This is checked before the hash, so a file that was never valid UTF-8 reads as "not UTF-8", not as "changed".
+8. **Unchanged.** The file's sha256 still equals the one the scan recorded. Otherwise the response says "changed" and returns no lines.
+9. **Masked and bounded.** Every returned line is masked like a Compose value (keys and flags named like secrets, URL credentials, bearer tokens, payment keys and the patterns of [Secret handling](#secret-handling)). The continuation lines of a YAML block scalar that a secret-named key opens are masked too, even when the block starts above the cited range. Lines split on `\n`, `\r\n` or `\r`, and each shown line is cut at 400 characters after masking, so a minified file cannot return one huge line. The response lists the cut lines (`truncatedLines`), and the Studio says which ones were cut and how to open them in an editor.
+
+An evidence item whose repository cannot be determined in a multi-root workspace gets no id. In a resumed historical session, the Studio reuses an id only for the same component citing the same item in the latest scan. So the Studio never shows lines from the wrong repository. Responses use `Cache-Control: no-store`. Excerpts are never logged, stored in sessions or exported. The route requires the local session cookie and refuses query strings, like every API route.
 
 A workspace file may point at any directory the user chooses, including outside its own folder. Safety does not depend on where roots point: the scan never reads outside its roots and never writes in them, and a workspace-file entry that resolves to a filesystem root is rejected. Archwise never creates or changes a workspace file.
 

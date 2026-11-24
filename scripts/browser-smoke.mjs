@@ -686,8 +686,87 @@ try {
     const discoveredInspector = systemPage.getByRole('complementary', {
       name: 'Component inspector',
     });
-    await discoveredInspector.getByText('Kind: Service').waitFor();
-    await discoveredInspector.getByText('Compose services: api').waitFor();
+    // The inspector header states claims only; the band explains the level with sentences.
+    await discoveredInspector
+      .getByText('Service · fastify · runs in compose.yaml', { exact: false })
+      .first()
+      .waitFor();
+    await discoveredInspector.getByText('Observed because:').waitFor();
+    await discoveredInspector.getByText('Also called api', { exact: false }).waitFor();
+
+    // Comprehension (spec §5): relations read by their kind; every Inferred component shows
+    // its reasons in the list, on the canvas and in the inspector.
+    await systemPage.waitForFunction(() =>
+      [...globalThis.document.querySelectorAll('.svelte-flow__edge-label.relation-label')].some(
+        (label) => label.textContent?.startsWith('depends on'),
+      ),
+    );
+    const componentList = systemPage.getByRole('navigation', { name: 'Discovered components' });
+    // The fixture's Inferred components: client libraries and a framework-only package.
+    for (const name of ['Stripe', 'BullMQ', '@shop/web']) {
+      const item = componentList
+        .getByRole('button', { name: new RegExp(`^${name.replace('/', '\\/')}`) })
+        .first();
+      assert.ok(
+        (await item.textContent())?.includes('Inferred because:'),
+        `${name} shows its reason in the list`,
+      );
+      assert.ok(
+        (await canvasNodes.filter({ hasText: name }).first().textContent())?.includes(
+          'Inferred because:',
+        ),
+        `${name} shows its reason on the canvas`,
+      );
+      await item.click();
+      await discoveredInspector.getByRole('heading', { name }).waitFor();
+      await discoveredInspector.getByText('Inferred because:').first().waitFor();
+    }
+    // A Relations row selects the other component.
+    await componentList.getByRole('button', { name: /@shop\/api/ }).click();
+    await discoveredInspector.getByRole('tab', { name: 'Relations' }).click();
+    await discoveredInspector
+      .getByRole('tabpanel')
+      .getByRole('button', { name: /Stripe/ })
+      .click();
+    await discoveredInspector.getByRole('heading', { name: 'Stripe' }).waitFor();
+    // Show lines reads a bounded excerpt that is never cached.
+    await componentList.getByRole('button', { name: /@shop\/api/ }).click();
+    await discoveredInspector.getByRole('tab', { name: 'Evidence' }).click();
+    const excerptResponse = systemPage.waitForResponse((response) =>
+      response.url().includes('/api/v1/evidence/excerpt/'),
+    );
+    await discoveredInspector
+      .getByRole('button', { name: 'Show lines of apps/api/package.json' })
+      .first()
+      .click();
+    assert.equal(
+      (await excerptResponse).headers()['cache-control'],
+      'no-store',
+      'Excerpts are never cached',
+    );
+    await discoveredInspector.locator('pre.excerpt').waitFor();
+    assert.ok(
+      (await discoveredInspector.locator('pre.excerpt').textContent())?.includes('@shop/api'),
+      'Show lines renders the cited file',
+    );
+    if (process.env.ARCHWISE_SMOKE_SCREENSHOT_DIR) {
+      await systemPage.screenshot({
+        path: join(process.env.ARCHWISE_SMOKE_SCREENSHOT_DIR, 'inspector-evidence.png'),
+      });
+    }
+    await discoveredInspector.getByRole('tab', { name: 'Details' }).click();
+    // The inferred counter is a filter: it dims what it does not count; Esc clears it.
+    await systemPage.locator('.viewport').focus();
+    await systemPage.keyboard.press('Escape');
+    await systemPage.getByRole('button', { name: /inferred components$/ }).click();
+    await systemPage.waitForFunction(
+      () => globalThis.document.querySelectorAll('.iso-node.dimmed').length > 0,
+    );
+    await systemPage.keyboard.press('Escape');
+    await systemPage.waitForFunction(
+      () => globalThis.document.querySelectorAll('.iso-node.dimmed').length === 0,
+    );
+    await canvasNodes.filter({ hasText: '@shop/api' }).first().click();
 
     // The System view draws pieces; the selection dims what is not connected to it.
     assert.ok(
@@ -979,7 +1058,7 @@ try {
 
   assert.deepEqual(errors, [], 'Browser runtime errors must not occur');
   console.log(
-    'Browser smoke passed: components, handles, edge intent, replica scaling, A/B, autosave, drag positions, JSON export/import, reload, cross-launch resume, rename, delete, no catalog replay, edit-before-refresh, keyboard panel, unrestorable-session protection, a two-repository workspace with repository labels and the scan summary, the System view of a full-stack fixture, both themes with persistence, the bundled font, Scan notes, the 1024 px drawer layout and no remote requests.',
+    'Browser smoke passed: components, handles, edge intent, replica scaling, A/B, autosave, drag positions, JSON export/import, reload, cross-launch resume, rename, delete, no catalog replay, edit-before-refresh, keyboard panel, unrestorable-session protection, a two-repository workspace with repository labels and the scan summary, the System view of a full-stack fixture, readable reasons, relation wording, inspector tabs, evidence excerpts, counter filters, both themes with persistence, the bundled font, Scan notes, the 1024 px drawer layout and no remote requests.',
   );
 } finally {
   await browser?.close();

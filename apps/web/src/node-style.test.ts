@@ -59,7 +59,7 @@ test('storage errors are swallowed', () => {
 
 test('node sizes match the drawings', () => {
   expect(NODE_SIZE).toEqual({
-    pieces: { width: 232, height: 220 },
-    cards: { width: 200, height: 72 },
+    pieces: { width: 232, height: 236 },
+    cards: { width: 200, height: 92 },
   });
 });

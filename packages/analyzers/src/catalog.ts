@@ -1,4 +1,4 @@
-import type { ResourceKind } from '@archwise/application';
+import type { ExternalCategory, ResourceKind } from '@archwise/application';
 
 /*
  * Curated, versioned catalogs used by the built-in analyzers. They are data: tests read them,
@@ -47,6 +47,8 @@ export interface ResourceEntry {
 
 export interface LibraryEntry extends ResourceEntry {
   readonly dependency: string;
+  /** External systems only: what it is for. */
+  readonly category?: ExternalCategory;
 }
 
 export interface ImageEntry extends ResourceEntry {
@@ -69,6 +71,17 @@ const entries = <T extends string>(
   names.map(
     (name) => ({ [key]: name, kind, technology, label }) as ResourceEntry & Record<T, string>,
   );
+
+const external = (
+  technology: string,
+  label: string,
+  category: ExternalCategory,
+  names: readonly string[],
+): LibraryEntry[] =>
+  entries('dependency', 'external-system', technology, label, names).map((entry) => ({
+    ...entry,
+    category,
+  }));
 
 export const LIBRARY_CATALOG: readonly LibraryEntry[] = Object.freeze([
   ...entries('dependency', 'datastore', 'postgresql', 'PostgreSQL', ['pg', 'postgres']),
@@ -93,16 +106,16 @@ export const LIBRARY_CATALOG: readonly LibraryEntry[] = Object.freeze([
   ...entries('dependency', 'queue', 'sqs', 'Amazon SQS', ['@aws-sdk/client-sqs']),
   ...entries('dependency', 'queue', 'pubsub', 'Google Pub/Sub', ['@google-cloud/pubsub']),
   ...entries('dependency', 'queue', 'nats', 'NATS', ['nats']),
-  ...entries('dependency', 'external-system', 'stripe', 'Stripe', ['stripe']),
-  ...entries('dependency', 'external-system', 'sendgrid', 'SendGrid', ['@sendgrid/mail']),
-  ...entries('dependency', 'external-system', 'resend', 'Resend', ['resend']),
-  ...entries('dependency', 'external-system', 'twilio', 'Twilio', ['twilio']),
-  ...entries('dependency', 'external-system', 's3', 'Amazon S3', ['@aws-sdk/client-s3']),
-  ...entries('dependency', 'external-system', 'firebase', 'Firebase', ['firebase-admin']),
-  ...entries('dependency', 'external-system', 'sentry', 'Sentry', ['@sentry/node']),
-  ...entries('dependency', 'external-system', 'openai', 'OpenAI', ['openai']),
-  ...entries('dependency', 'external-system', 'anthropic', 'Anthropic', ['@anthropic-ai/sdk']),
-  ...entries('dependency', 'external-system', 'slack', 'Slack', ['@slack/web-api']),
+  ...external('stripe', 'Stripe', 'payments', ['stripe']),
+  ...external('sendgrid', 'SendGrid', 'email', ['@sendgrid/mail']),
+  ...external('resend', 'Resend', 'email', ['resend']),
+  ...external('twilio', 'Twilio', 'other', ['twilio']),
+  ...external('s3', 'Amazon S3', 'storage', ['@aws-sdk/client-s3']),
+  ...external('firebase', 'Firebase', 'other', ['firebase-admin']),
+  ...external('sentry', 'Sentry', 'monitoring', ['@sentry/node']),
+  ...external('openai', 'OpenAI', 'ai', ['openai']),
+  ...external('anthropic', 'Anthropic', 'ai', ['@anthropic-ai/sdk']),
+  ...external('slack', 'Slack', 'other', ['@slack/web-api']),
 ]);
 
 export const IMAGE_CATALOG: readonly ImageEntry[] = Object.freeze([

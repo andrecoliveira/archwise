@@ -1,6 +1,9 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import {
+  EXTERNAL_CATEGORIES,
+  REASON_CODE_FAMILIES,
+  reasonFamily,
   analysisInputs,
   analyzerInputs,
   runAnalyzers,
@@ -170,6 +173,81 @@ test('a failing analyzer keeps packages', async () => {
     expect(graph.diagnostics).toContain(
       `Analyzer failed: docker-compose in ${label}. Its findings were discarded.`,
     );
+  } finally {
+    await fixture.dispose();
+  }
+});
+
+test('every reason the resolver emits belongs to a declared family', async () => {
+  const compose = SYSTEM_FIXTURE['compose.yaml']!.replace(
+    'services:\n',
+    'services:\n  proxy:\n    image: nginx:1\n',
+  );
+  const extra = {
+    'apps/billing/package.json': `${JSON.stringify({ name: '@shop/billing', dependencies: { pg: '8.0.0', '@sentry/node': '8.0.0' } })}\n`,
+  };
+  const { fixture, inventory } = await scanFixture({
+    ...SYSTEM_FIXTURE,
+    ...extra,
+    'compose.yaml': compose,
+  });
+  try {
+    const graph = graphOf(inventory);
+    const codes = [...graph.nodes, ...graph.edges].flatMap((item) => item.reasons);
+    const families = new Set(codes.map(reasonFamily));
+    for (const family of families) expect(REASON_CODE_FAMILIES).toContain(family);
+    expect([...families].sort()).toEqual([...REASON_CODE_FAMILIES].sort());
+  } finally {
+    await fixture.dispose();
+  }
+});
+
+test('external nodes carry their catalog category', async () => {
+  const extra = {
+    'apps/billing/package.json': `${JSON.stringify({ name: '@shop/billing', dependencies: { '@sentry/node': '8.0.0' } })}\n`,
+  };
+  const { fixture, inventory } = await scanFixture({ ...SYSTEM_FIXTURE, ...extra });
+  try {
+    const graph = graphOf(inventory);
+    const byId = new Map(graph.nodes.map((node) => [node.id, node]));
+    expect(byId.get('external:stripe')?.category).toBe('payments');
+    expect(byId.get('external:sentry')?.category).toBe('monitoring');
+    for (const node of graph.nodes) {
+      if (node.type !== 'external-system') expect('category' in node).toBe(false);
+      else expect(EXTERNAL_CATEGORIES).toContain(node.category);
+    }
+  } finally {
+    await fixture.dispose();
+  }
+});
+
+test('compose properties attach to the resolved component, masked', async () => {
+  const compose = SYSTEM_FIXTURE['compose.yaml']!.replace(
+    '  api:\n    build: ./apps/api\n',
+    '  api:\n    build: ./apps/api\n    ports: ["8080:80"]\n',
+  ).replace('services:\n', 'services:\n  legacy:\n    image: postgres://u:p@x\n');
+  const { fixture, inventory } = await scanFixture({ ...SYSTEM_FIXTURE, 'compose.yaml': compose });
+  try {
+    const graph = graphOf(inventory);
+    const byId = new Map(graph.nodes.map((node) => [node.id, node]));
+    const api = byId.get('package:apps/api/package.json')!;
+    expect(api.properties?.map((p) => [p.name, p.value])).toEqual([
+      ['build', './apps/api'],
+      ['ports', '8080:80'],
+      ['depends_on', 'db, cache'],
+    ]);
+    for (const property of api.properties ?? []) {
+      expect(property.evidence.kind).toBe('compose-property');
+      expect(property.evidence.lines).not.toBeNull();
+    }
+    expect(byId.get('compose:compose.yaml#db')?.properties?.map((p) => p.value)).toEqual([
+      'postgres:16',
+    ]);
+    expect(byId.get('compose:compose.yaml#legacy')?.properties?.[0]?.value).toBe(
+      'postgres://[redacted]@x',
+    );
+    expect(JSON.stringify(graph)).not.toContain('u:p@');
+    expect(JSON.stringify(graph)).not.toContain('example-only');
   } finally {
     await fixture.dispose();
   }

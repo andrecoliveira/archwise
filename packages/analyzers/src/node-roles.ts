@@ -17,7 +17,7 @@ const evidence = (path: string, ruleId: string): FactEvidence[] => [{ path, line
 export const nodeRoles: Analyzer = Object.freeze({
   descriptor: Object.freeze({
     id: 'node-roles',
-    version: '1.0.0',
+    version: '1.1.0',
     inputs: Object.freeze({ fileNames: [], extensions: [] }),
     budget: Object.freeze({ timeMs: 2000, maxFiles: 0 }),
   }),
@@ -55,6 +55,7 @@ export const nodeRoles: Analyzer = Object.freeze({
             label: entry.label,
             confidence: 'inferred',
             compose: null,
+            ...(entry.category ? { category: entry.category } : {}),
             evidence: evidence(pkg.path, 'client-library'),
           });
         }

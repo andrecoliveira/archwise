@@ -276,3 +276,32 @@ test('a file name with one wildcard routes matching names only', () => {
   });
   expect(seen).toEqual(['deploy/compose.dev.yaml']);
 });
+
+test('isFact accepts an optional external category only on external resources', () => {
+  const resource = {
+    type: 'resource',
+    kind: 'external-system',
+    technology: 'stripe',
+    label: 'Stripe',
+    confidence: 'inferred',
+    compose: null,
+    evidence: [{ path: 'package.json', lines: null, ruleId: 'client-library' }],
+  };
+  expect(isFact(resource)).toBe(true);
+  expect(isFact({ ...resource, category: 'payments' })).toBe(true);
+  expect(isFact({ ...resource, category: 'banking' })).toBe(false);
+  expect(isFact({ ...resource, kind: 'datastore', category: 'payments' })).toBe(false);
+});
+
+test('isFact accepts compose-property facts with an allowlisted name only', () => {
+  const property = {
+    type: 'compose-property',
+    compose: { file: 'compose.yaml', service: 'api' },
+    name: 'ports',
+    value: '8080:80',
+    evidence: [{ path: 'compose.yaml', lines: { start: 4, end: 5 }, ruleId: 'compose-property' }],
+  };
+  expect(isFact(property)).toBe(true);
+  expect(isFact({ ...property, name: 'environment' })).toBe(false);
+  expect(isFact({ ...property, value: 1 })).toBe(false);
+});

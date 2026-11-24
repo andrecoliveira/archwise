@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import { discoveredEdge, discoveredNode, graphOf } from './graph-fixtures.js';
-import { isGraph, upgradeGraph } from './graph-types.js';
+import { isGraph, kindLabel, matchesSearch, upgradeGraph, type NodeType } from './graph-types.js';
 import { projectSignature } from './sandbox-persistence.js';
 
 /** A view graph as Phase 3 stored it in sessions. */
@@ -124,4 +124,50 @@ test('upgradeGraph keeps a valid v2 graph and rejects garbage', () => {
       inspectedEntries: 0,
     }),
   ).toBeNull();
+});
+
+test('accepts optional category, properties and excerptId', () => {
+  const evidence = {
+    path: 'compose.yaml',
+    kind: 'compose-property',
+    lines: { start: 4, end: 4 },
+    analyzer: 'docker-compose',
+    excerptId: 'a'.repeat(64),
+  };
+  const graph = graphOf([
+    discoveredNode('stripe', { type: 'external-system', category: 'payments' }),
+    discoveredNode('api', { properties: [{ name: 'ports', value: '8080:80', evidence }] }),
+  ]);
+  expect(isGraph(graph)).toBe(true);
+});
+
+test('rejects a property without evidence', () => {
+  const graph = graphOf([
+    discoveredNode('api', {
+      properties: [{ name: 'ports', value: '8080:80' } as never],
+    }),
+  ]);
+  expect(isGraph(graph)).toBe(false);
+});
+
+test('rejects a non-string excerptId or category', () => {
+  const node = discoveredNode('api');
+  const evidence = [{ ...node.evidence[0]!, excerptId: 7 as never }];
+  expect(isGraph(graphOf([{ ...node, evidence }]))).toBe(false);
+  expect(isGraph(graphOf([{ ...node, category: 3 as never }]))).toBe(false);
+});
+
+test('search matches aliases as well as names and technology', () => {
+  const node = discoveredNode('package:apps/api/package.json', {
+    label: '@shop/api',
+    technology: 'fastify',
+    aliases: ['backend'],
+  });
+  expect(matchesSearch(node, 'BACKEND')).toBe(true);
+  expect(matchesSearch(node, 'fastify')).toBe(true);
+  expect(matchesSearch(node, 'worker')).toBe(false);
+});
+
+test('an unknown kind has a label', () => {
+  expect(kindLabel('kubernetes' as NodeType)).toBe('Unknown kind');
 });

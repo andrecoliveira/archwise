@@ -14,32 +14,81 @@ test('hides modules and outside-workspace packages', () => {
   expect(view.edges).toEqual([]);
 });
 
-test('lifts through a library chain once', () => {
+test('indirect relation keeps every step', () => {
+  const first = discoveredEdge('api', 'db');
+  const second = discoveredEdge('db', 'pg', {
+    confidence: 'inferred',
+    reasons: ['client-library:pg'],
+    evidence: [
+      { path: 'packages/db/package.json', kind: 'client-library', lines: null, analyzer: 'x' },
+    ],
+  });
+  const view = systemGraph(graphOf([api, db, pg], [first, second]));
+  expect(view.edges).toHaveLength(1);
+  const edge = view.edges[0]!;
+  expect(edge).toMatchObject({
+    id: 'indirect:api->pg',
+    type: 'depends-on',
+    source: 'api',
+    target: 'pg',
+    confidence: 'inferred',
+    reasons: [],
+    origin: 'discovered',
+  });
+  expect(edge.indirect?.steps).toEqual([first, second]);
+  expect(edge.indirect?.through).toEqual(['@app/db']);
+  expect(edge.indirect?.others).toEqual([]);
+  expect(edge.evidence).toEqual([...first.evidence, ...second.evidence]);
+});
+
+test('an all-observed chain stays observed', () => {
+  const view = systemGraph(
+    graphOf(
+      [api, core, db, pg],
+      [discoveredEdge('api', 'core'), discoveredEdge('core', 'db'), discoveredEdge('db', 'pg')],
+    ),
+  );
+  expect(view.edges[0]).toMatchObject({ id: 'indirect:api->pg', confidence: 'observed' });
+  expect(view.edges[0]!.indirect?.through).toEqual(['@app/core', '@app/db']);
+});
+
+test('prefers the chain with fewer inferred steps and lists the other', () => {
+  const a = discoveredNode('a', { label: 'a' });
+  const b = discoveredNode('b', { label: 'b' });
+  const view = systemGraph(
+    graphOf(
+      [api, a, b, pg],
+      [
+        discoveredEdge('api', 'a'),
+        discoveredEdge('a', 'pg'),
+        discoveredEdge('api', 'b'),
+        discoveredEdge('b', 'pg', { confidence: 'inferred' }),
+      ],
+    ),
+  );
+  expect(view.edges).toHaveLength(1);
+  expect(view.edges[0]).toMatchObject({ confidence: 'observed' });
+  expect(view.edges[0]!.indirect?.through).toEqual(['a']);
+  expect(view.edges[0]!.indirect?.others).toEqual([['b']]);
+});
+
+test('prefers the shorter chain on equal inferred counts', () => {
   const view = systemGraph(
     graphOf(
       [api, core, db, pg],
       [
         discoveredEdge('api', 'core'),
         discoveredEdge('core', 'db'),
-        discoveredEdge('db', 'pg', { confidence: 'inferred', reasons: ['client-library:pg'] }),
+        discoveredEdge('db', 'pg'),
+        discoveredEdge('core', 'pg'),
       ],
     ),
   );
-  expect(view.edges).toEqual([
-    {
-      id: 'lifted:api->pg',
-      type: 'depends-on',
-      source: 'api',
-      target: 'pg',
-      confidence: 'inferred',
-      reasons: ['via @app/core, @app/db'],
-      origin: 'discovered',
-      evidence: discoveredEdge('db', 'pg').evidence,
-    },
-  ]);
+  expect(view.edges[0]!.indirect?.through).toEqual(['@app/core']);
+  expect(view.edges[0]!.indirect?.others).toEqual([['@app/core', '@app/db']]);
 });
 
-test('does not duplicate a direct edge', () => {
+test('a direct relation wins over an indirect one', () => {
   const direct = discoveredEdge('api', 'pg', { confidence: 'inferred' });
   const view = systemGraph(
     graphOf([api, core, pg], [discoveredEdge('api', 'core'), discoveredEdge('core', 'pg'), direct]),
@@ -47,7 +96,7 @@ test('does not duplicate a direct edge', () => {
   expect(view.edges).toEqual([direct]);
 });
 
-test('cycles through hidden modules terminate', () => {
+test('cycles among hidden libraries terminate', () => {
   const view = systemGraph(
     graphOf(
       [api, core, db, pg],
@@ -59,7 +108,21 @@ test('cycles through hidden modules terminate', () => {
       ],
     ),
   );
-  expect(view.edges.map((e) => e.id)).toEqual(['lifted:api->pg']);
+  expect(view.edges.map((e) => e.id)).toEqual(['indirect:api->pg']);
+});
+
+test('others are capped at 20 chains per pair', () => {
+  const libraries = Array.from({ length: 25 }, (_, i) =>
+    discoveredNode(`lib${String(i).padStart(2, '0')}`),
+  );
+  const view = systemGraph(
+    graphOf(
+      [api, pg, ...libraries],
+      libraries.flatMap((lib) => [discoveredEdge('api', lib.id), discoveredEdge(lib.id, 'pg')]),
+    ),
+  );
+  expect(view.edges).toHaveLength(1);
+  expect(view.edges[0]!.indirect?.others).toHaveLength(20);
 });
 
 test('visible nodes without edges stay visible', () => {
@@ -84,4 +147,13 @@ test('the nothing-recognized notice is for current scans only', () => {
   expect(showsNothingRecognized(librariesOnly, true)).toBe(false);
   expect(showsNothingRecognized(graphOf([api]), false)).toBe(false);
   expect(showsNothingRecognized(graphOf([]), false)).toBe(false);
+});
+
+test('the System view is computed once per graph', () => {
+  const graph = graphOf(
+    [api, core, pg],
+    [discoveredEdge('api', 'core'), discoveredEdge('core', 'pg')],
+  );
+  expect(systemGraph(graph)).toBe(systemGraph(graph));
+  expect(graphForView(graph, 'system')).toBe(systemGraph(graph));
 });

@@ -186,7 +186,9 @@ aside {
   border-radius: 12px;
 }
 .node-item {
-  display: block;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   width: 100%;
   padding: 6px 8px;
   border: 1px solid transparent;
@@ -194,9 +196,85 @@ aside {
   text-align: left;
   color: var(--ink);
   background: transparent;
+}
+.node-item-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.node-item-text > * {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.node-item-text small {
+  color: var(--ink-2);
+  font-size: 11px;
+}
+.node-item-text .node-item-reason {
+  white-space: normal;
+  color: var(--ink-2);
+}
+/* Level markers: line style only — solid Observed, dashed Inferred, dotted Unknown. */
+.level-marker {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-top: 4px;
+  border: 1.8px solid var(--ink-2);
+  border-radius: 50%;
+}
+.level-marker.dashed {
+  border-style: dashed;
+}
+.level-marker.dotted {
+  border-style: dotted;
+}
+.node-item.dimmed {
+  opacity: 0.45;
+}
+.hidden-libraries {
+  margin-top: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+.hidden-libraries-toggle {
+  width: 100%;
+  text-align: left;
+}
+.hidden-libraries ul {
+  margin: 6px 0;
+  padding-left: 18px;
+  color: var(--ink-2);
+  font-size: 12px;
+}
+.hidden-libraries li {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Counters (§5.9): units and confidence split; the active filter is the only accent. */
+.counter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  align-items: center;
+  margin: 0 16px 8px;
+  color: var(--ink-2);
+  font-size: 12px;
+}
+.counter {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.counter-filter {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+.counter-filter[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--ink);
 }
 .node-item:hover {
   background: var(--panel-2);
@@ -964,7 +1042,7 @@ aside {
 }
 
 /*
- * Discovered components as flat cards. Fill = kind; dashed outline + "inferred" = deduced;
+ * Discovered components as flat cards. Fill = kind; dashed outline + "Inferred because: …" = deduced;
  * accent outline = selected. Width matches the 200 px the automatic layout reserves.
  */
 .discovered-node {
@@ -1025,9 +1103,36 @@ aside {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.discovered-inferred {
-  text-decoration: underline dashed;
-  text-underline-offset: 3px;
+.discovered-reason,
+.iso-pill .iso-reason {
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.discovered-node.dotted {
+  border-style: dotted;
+}
+/* Relation labels: the wording in neutral ink; in focus, the first reason too (§5.7). */
+.svelte-flow__edge-label.relation-label {
+  max-width: 260px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--ink-2);
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+.svelte-flow__edge-label.relation-label.focused {
+  color: var(--ink);
+  max-width: 420px;
+}
+.svelte-flow__edge-label.relation-label.dimmed {
+  opacity: 0.4;
 }
 .graph-view-switch {
   display: inline-flex;
@@ -1054,10 +1159,185 @@ aside {
   align-items: center;
   gap: 8px;
 }
-.discovered-inspector .reasons {
+/* Inspector (spec §5.4): text-only header, confidence band, then Details / Relations / Evidence. */
+.inspector {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.inspector-header h2 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.inspector-header p {
+  margin: 2px 0 0;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.inspector-kind {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.kind-swatch {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  border: 1px solid var(--outline);
+}
+.inspector-summary {
+  font-size: 12px;
+}
+/* Confidence is line style only: solid Observed, dashed Inferred, dotted Unknown (§5.10). */
+.confidence-band {
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: var(--ink);
+}
+.confidence-band.inferred {
+  border-style: dashed;
+}
+.confidence-band.unknown {
+  border-style: dotted;
+}
+.band-level {
+  margin: 0 0 4px;
+}
+.band-caution {
+  margin: 6px 0 0;
+  color: var(--ink-2);
+  font-size: 12px;
+}
+.reason-list {
+  margin: 0;
+  padding-left: 16px;
+}
+.reason-list li {
+  margin: 2px 0;
+  overflow-wrap: anywhere;
+}
+.reason-file {
+  color: var(--ink-2);
+}
+.reason-code {
+  display: inline-block;
+  margin-left: 6px;
+  color: var(--ink-3);
+  font-size: 11px;
+}
+.inspector-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1.5px solid var(--line);
+}
+.inspector-tabs [role='tab'] {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: var(--ink-2);
+  padding: 6px 8px;
+}
+.inspector-tabs [role='tab'][aria-selected='true'] {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+.inspector-panel h3 {
+  margin: 12px 0 6px;
+  font-size: 12px;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.inspector-panel .quiet {
+  color: var(--ink-3);
+  font-size: 12px;
+}
+.properties {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 10px;
   margin: 0 0 8px;
-  padding-left: 18px;
-  font-size: 0.9em;
+}
+.properties dt {
+  color: var(--ink-2);
+}
+.properties dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.property-source {
+  display: inline;
+  margin-left: 6px;
+  color: var(--ink-3);
+  font-size: 11px;
+}
+.property-source > summary {
+  display: inline;
+  cursor: help;
+}
+.property-source[open] > span {
+  display: block;
+  color: var(--ink-2);
+}
+.relations,
+.evidence-items,
+.chain {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.relation-row,
+.evidence-items > li {
+  border-top: 1px solid var(--line);
+  padding: 8px 0;
+}
+.relation-row.inferred > .relation-wording {
+  text-decoration: underline dashed var(--ink-3);
+}
+.relation-target {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+}
+.relation-kind {
+  margin-left: auto;
+  color: var(--ink-3);
+  font-size: 11px;
+}
+.relation-row p,
+.evidence-items p {
+  margin: 4px 0;
+}
+.chain > li {
+  padding-left: 10px;
+  border-left: 1.5px solid var(--line);
+  margin: 4px 0;
+}
+.evidence-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.evidence-rule {
+  color: var(--ink-2);
+}
+.excerpt {
+  margin: 6px 0 0;
+  padding: 8px;
+  max-height: 320px;
+  overflow: auto;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: pre;
 }
 
 /* Revision chip: when the scan ran and whether it is complete. */

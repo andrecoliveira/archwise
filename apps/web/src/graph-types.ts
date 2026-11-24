@@ -44,6 +44,15 @@ export interface GraphEvidence {
   readonly kind: string;
   readonly lines: { readonly start: number; readonly end: number } | null;
   readonly analyzer: string;
+  /** Served graphs only: the latest scan's key for "Show lines" (ADR 0008). */
+  readonly excerptId?: string;
+}
+
+/** An allowlisted Compose value, masked, with the evidence that states it. */
+export interface GraphProperty {
+  readonly name: string;
+  readonly value: string;
+  readonly evidence: GraphEvidence;
 }
 
 export interface GraphNode {
@@ -60,6 +69,19 @@ export interface GraphNode {
   readonly evidence: readonly GraphEvidence[];
   /** The owning repository; present only in multi-root workspaces. */
   readonly repository?: { readonly id: string; readonly label: string };
+  /** External systems only: what it is for (`payments`, `email`, …). */
+  readonly category?: string;
+  readonly properties?: readonly GraphProperty[];
+}
+
+/** A System-view relation drawn across hidden libraries (spec §5.8); browser-side only. */
+export interface IndirectRelation {
+  /** The discovered relations of the chain used, in order. */
+  readonly steps: readonly GraphEdge[];
+  /** Labels of the hidden libraries in that chain. */
+  readonly through: readonly string[];
+  /** The `through` lists of other chains between the same two components, sorted. */
+  readonly others: readonly (readonly string[])[];
 }
 
 export interface GraphEdge {
@@ -71,6 +93,7 @@ export interface GraphEdge {
   readonly reasons: readonly string[];
   readonly origin: 'discovered';
   readonly evidence: readonly GraphEvidence[];
+  readonly indirect?: IndirectRelation;
 }
 
 export interface GraphGap {
@@ -99,7 +122,13 @@ const KIND_LABELS: Readonly<Record<NodeType, string>> = {
 };
 
 export function kindLabel(type: NodeType): string {
-  return KIND_LABELS[type];
+  return KIND_LABELS[type] ?? 'Unknown kind';
+}
+
+/** Search over names, technology, aliases (spec §5.6) and the id; case-insensitive. */
+export function matchesSearch(node: GraphNode, query: string): boolean {
+  const text = [node.label, node.technology ?? '', ...node.aliases, node.id].join(' ');
+  return text.toLowerCase().includes(query.toLowerCase());
 }
 
 type Shape = Record<string, unknown>;
@@ -129,7 +158,14 @@ function isEvidence(value: unknown): boolean {
     isString(value.path) &&
     isString(value.kind) &&
     isLines(value.lines) &&
-    isString(value.analyzer)
+    isString(value.analyzer) &&
+    (value.excerptId === undefined || isString(value.excerptId))
+  );
+}
+
+function isProperty(value: unknown): boolean {
+  return (
+    isRecord(value) && isString(value.name) && isString(value.value) && isEvidence(value.evidence)
   );
 }
 
@@ -151,7 +187,10 @@ function isNode(value: unknown): boolean {
     value.origin === 'discovered' &&
     Array.isArray(value.evidence) &&
     value.evidence.every(isEvidence) &&
-    isRepository(value.repository)
+    isRepository(value.repository) &&
+    (value.category === undefined || isString(value.category)) &&
+    (value.properties === undefined ||
+      (Array.isArray(value.properties) && value.properties.every(isProperty)))
   );
 }
 

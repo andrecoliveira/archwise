@@ -9,6 +9,9 @@ import {
   isValidLabel,
   isValidTimestamp,
   LIMITS,
+  maskConfigLines,
+  maskConfigValue,
+  maskSecretsInValue,
   redactSensitiveText,
 } from '../src/index.js';
 import { syntheticSecrets } from './secrets.js';
@@ -209,5 +212,78 @@ describe('length and well-formedness are measured consistently', () => {
   );
   test('rejects lone surrogates in paths', () => {
     expect(checkRelativePath('src/a\ud800.ts')).toBe('ill-formed-unicode');
+  });
+});
+
+describe('maskConfigValue', () => {
+  test('maskConfigValue keeps images and masks credentials', () => {
+    expect(maskConfigValue('registry.example.com/app:${TAG}')).toBe(
+      'registry.example.com/app:${TAG}',
+    );
+    expect(maskConfigValue('postgres://user:pass@db:5432/x')).toBe(
+      'postgres://[redacted]@db:5432/x',
+    );
+    expect(maskConfigValue('password: hunter2')).toBe('password: [redacted]');
+    expect(maskConfigValue('API_TOKEN=abc')).toBe('API_TOKEN=[redacted]');
+    expect(maskConfigValue('"secretKey": "x"')).toBe('"secretKey": [redacted]');
+    expect(maskConfigValue('8080:80')).toBe('8080:80');
+    const key = `sk-${'a'.repeat(24)}`;
+    expect(maskConfigValue(`image ${key}`)).toBe('image [redacted]');
+  });
+
+  test('a quoted value is masked up to its closing quote', () => {
+    expect(maskConfigValue('{ "password": "p w", "port": 1 }')).toBe(
+      '{ "password": [redacted], "port": 1 }',
+    );
+  });
+});
+
+describe('masking gaps found in review', () => {
+  test.each([
+    ['DB_PASS: hunter2', 'DB_PASS: [redacted]'],
+    ['MYSQL_PWD=hunter2', 'MYSQL_PWD=[redacted]'],
+    ['AUTH_HEADER: Bearer abc', 'AUTH_HEADER: [redacted]'],
+    [
+      'command: redis-server --requirepass hunter2',
+      'command: redis-server --requirepass [redacted]',
+    ],
+    ['command: ["--password", "hunter2"]', 'command: ["--password", "[redacted]"]'],
+    ['postgres://user:p@ss@db/x', 'postgres://[redacted]@db/x'],
+    ["password: 'it''s'", 'password: [redacted]'],
+    [`stripe ${'sk'}_live_${'a'.repeat(24)}`, 'stripe [redacted]'],
+    ['Authorization: Bearer abc.def', 'Authorization: [redacted]'],
+  ])('%s', (input, expected) => {
+    expect(maskConfigValue(input)).toBe(expected);
+  });
+
+  test('image and build values keep their names and tags', () => {
+    for (const image of [
+      'quay.io/keycloak/keycloak:21.1',
+      'tokenizer:latest',
+      'monkey:1.2',
+      'my-keyserver:5000/app',
+      './apps/auth',
+    ]) {
+      expect(maskSecretsInValue(image)).toBe(image);
+    }
+    expect(maskSecretsInValue('postgres://u:p@x')).toBe('postgres://[redacted]@x');
+  });
+
+  test('a secret block scalar masks its continuation lines', () => {
+    expect(
+      maskConfigLines([
+        '    environment:',
+        '      PGPASSWORD: >-',
+        '        hunter2',
+        '        more',
+        '      PGUSER: app',
+      ]),
+    ).toEqual([
+      '    environment:',
+      '      PGPASSWORD: [redacted]',
+      '        [redacted]',
+      '        [redacted]',
+      '      PGUSER: app',
+    ]);
   });
 });

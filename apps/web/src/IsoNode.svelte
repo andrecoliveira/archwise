@@ -5,6 +5,7 @@
   import { pieceForNode, pieceForPreset } from './iso/piece-map.js';
   import { findCatalogComponent } from './component-catalog.js';
   import { kindLabel, type GraphNode } from './graph-types.js';
+  import { nodeReasonLine, secondLine } from './claims.js';
 
   /** A hypothetical Sandbox component, with its modeled state. */
   interface Proposed {
@@ -35,10 +36,9 @@
   const detail = $derived.by(() => {
     if (proposed) return `${findCatalogComponent(proposed.preset)?.name ?? proposed.preset} · hypothetical`;
     if (!node) return '';
-    return [kindLabel(node.type), node.technology, node.repository?.label, inferred ? 'inferred' : null]
-      .filter((part) => part)
-      .join(' · ');
+    return [kindLabel(node.type), secondLine(node)].filter((part) => part).join(' · ');
   });
+  const reason = $derived(node ? nodeReasonLine(node) : null);
   const status = $derived.by(() => {
     if (!proposed) return null;
     if (proposed.status === 'failed') return 'Failed (modeled)';
@@ -64,6 +64,7 @@
   <div class="iso-pill">
     <strong title={label}>{label}</strong>
     <small title={detail}>{detail}</small>
+    {#if reason}<small class="iso-reason" title={reason}>{reason}</small>{/if}
     {#if status}<small class="iso-status">{status}</small>{/if}
     {#if proposed}<span class="proposed-tag">Proposed</span>{/if}
   </div>

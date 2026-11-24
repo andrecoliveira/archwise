@@ -38,11 +38,18 @@ To see several repositories as one system, pass `--repo` once per repository, fo
 
 ## What to verify
 
-1. The Studio opens in **Explore**, on the **System** view, when your project has components (an empty project opens in **Sandbox**). It uses the dark theme; the **◐** button switches to light, and the choice survives a reload. It shows frontends, services, datastores, queues and external services found in package manifests, Docker Compose and Prisma schemas. Libraries are hidden, and their connections appear on the services that use them, marked "via …". Inferred items are dashed. **All packages** shows every package. A project with only libraries opens on All packages and says why.
-2. Selecting a component shows its kind, technology, confidence with reasons, any Compose services that build it, and its evidence (`path` or `path:line`, with analyzer and rule) in the inspector. With several repositories, each package shows its repository label, the inspector shows the repository, and the top bar shows "N repositories". Open the revision chip ("scanned … · complete") for each repository's counts. **Scan notes**, at the bottom of the left column, list the files that were not analyzed, with the reason, and every other scan note.
-3. The **Find component** search in the top bar narrows visible packages and edges. Press `/` or Cmd/Ctrl+K to focus it.
+1. The Studio opens in **Explore**, on the **System** view, when your project has components (an empty project opens in **Sandbox**). It uses the dark theme; the **◐** button switches to light, and the choice survives a reload. It shows frontends, services, datastores, queues and external services found in package manifests, Docker Compose and Prisma schemas. Libraries are hidden ("Libraries · N hidden" in the left column lists them), and their connections appear on the services that use them as indirect relations, labelled "depends on · through …". Inferred items are dashed, and every Inferred component shows "Inferred because: …" in the list and on the canvas. The counters above the canvas read like "7 components · 3 inferred": activate "3 inferred" to dim everything else, and activate it again or press Esc to clear it. **All packages** shows every package. A project with only libraries opens on All packages and says why.
+2. Selecting a component fills the inspector:
+   - a text-only header with the name, the kind and a summary line such as "Service · fastify · runs in compose.yaml · uses 4 · used by 1";
+   - the confidence band, "Observed because:" or "Inferred because:", with each reason as a sentence, its file and line, and its code;
+   - **Details**: Compose values (image, build context, published ports, `depends_on`) with their source, and "Also called" names;
+   - **Relations**: "Uses" and "Used by", each with its wording, level and reasons; an indirect relation lists its steps. Activating a row selects the other component;
+   - **Evidence**: grouped by file, with **Copy `path:line`** and **Show lines**, which shows at most 40 masked lines of at most 400 characters each; a cut line is announced under the excerpt. A file that changed since the scan says so instead.
+
+   With several repositories, each package shows its repository label, the inspector shows the repository, and the top bar shows "N repositories". Open the revision chip ("scanned … · complete") for each repository's counts. **Scan notes**, at the bottom of the left column, list the files that were not analyzed, with the reason, and every other scan note.
+3. The **Find component** search in the top bar narrows visible packages and edges; it matches names, technologies and Compose service names (aliases). Press `/` or Cmd/Ctrl+K to focus it.
 4. Zoom, pan and automatic layout work on the Svelte Flow canvas.
-   - **Pieces and cards.** The System view draws each component as an isometric piece (a server cabinet for a service, a laptop for a frontend, disks for a datastore, a conveyor belt for a queue, a globe for an external service), each on its own plinth. **Cards** in the top bar switches to flat cards, and your choice is remembered for that view. All packages and Sandbox start in cards.
+   - **Pieces and cards.** The System view draws each component as an isometric piece (a server cabinet for a service, a laptop for a frontend, disks for a datastore, a conveyor belt for a queue, a card terminal for a payments service such as Stripe, a globe for any other external service), each on its own plinth. **Cards** in the top bar switches to flat cards, and your choice is remembered for that view. All packages and Sandbox start in cards.
    - **Selection.** Selecting a component lights its plinth in amber and dims everything it does not connect to. Its relations turn amber, and a dot travels along each one, stopping before the arrowhead. Inferred pieces and relations are dashed.
    - **Keyboard.** Click or Tab into the canvas. Arrow keys pan the view (they never move a component), `+` and `-` zoom between 25% and 300%, and `0` fits everything. Tab moves through components (relations are not tab stops in Explore), Enter or Space selects one and lights its plinth, and Esc clears the selection. Selecting from the list lights the plinth too.
    - **Reduced motion.** With your operating system's "reduce motion" setting on, nothing animates.
@@ -66,7 +73,8 @@ To see several repositories as one system, pass `--repo` once per repository, fo
     - Every control shows a visible focus ring.
     - Enter or Space activates buttons.
     - `/` focuses the search, except while you type in a field.
-    - Esc closes drawers and the Sessions panel.
+    - Esc closes drawers and the Sessions panel, and clears a counter filter.
+    - In the inspector, Tab reaches the tabs; Left and Right switch between Details, Relations and Evidence. Relation rows and the evidence buttons are reachable with Tab, and a property's source opens with Enter.
 15. Stop the local server with Ctrl+C. No project files should have been modified.
 
 ## Current limits and safety

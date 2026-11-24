@@ -47,3 +47,55 @@ test('screen-reader help describes this canvas, not node moving or deleting', ()
   expect(text).not.toMatch(/arrow keys to move|delete/i);
   expect(text).toMatch(/Enter/);
 });
+
+const judged = (id: string, confidence: string): Node => ({
+  ...node(id),
+  data: { node: { id, confidence } },
+});
+const relation = (source: string, target: string, confidence: string): Edge => ({
+  ...edge(source, target),
+  data: { origin: 'discovered', confidence },
+});
+const FILTER_NODES = [judged('web', 'observed'), judged('queue', 'inferred')];
+const FILTER_EDGES = [relation('web', 'queue', 'inferred'), relation('queue', 'web', 'observed')];
+
+test('inferred-components filter dims observed nodes and all edges', () => {
+  const { nodes, edges } = decorate(FILTER_NODES, FILTER_EDGES, {
+    selected: null,
+    focus: true,
+    filter: 'inferred-components',
+  });
+  expect(nodes.filter((n) => n.data.dimmed).map((n) => n.id)).toEqual(['web']);
+  expect(edges.every((e) => e.data!.dimmed === true)).toBe(true);
+});
+
+test('inferred-relations filter dims observed edges and no nodes', () => {
+  const { nodes, edges } = decorate(FILTER_NODES, FILTER_EDGES, {
+    selected: null,
+    focus: true,
+    filter: 'inferred-relations',
+  });
+  expect(nodes.some((n) => n.data.dimmed)).toBe(false);
+  expect(edges.filter((e) => e.data!.dimmed).map((e) => e.id)).toEqual(['queue->web']);
+});
+
+test('filter adds no colour: only dimming changes', () => {
+  const plain = decorate(FILTER_NODES, FILTER_EDGES, { selected: null, focus: true });
+  const filtered = decorate(FILTER_NODES, FILTER_EDGES, {
+    selected: null,
+    focus: true,
+    filter: 'inferred-components',
+  });
+  const strip = (data: Record<string, unknown>) => ({ ...data, dimmed: undefined });
+  expect(filtered.nodes.map((n) => strip(n.data))).toEqual(plain.nodes.map((n) => strip(n.data)));
+  expect(filtered.edges.map((e) => strip(e.data!))).toEqual(plain.edges.map((e) => strip(e.data!)));
+});
+
+test('a selection focus wins over a filter', () => {
+  const { nodes } = decorate(FILTER_NODES, FILTER_EDGES, {
+    selected: 'web',
+    focus: true,
+    filter: 'inferred-components',
+  });
+  expect(nodes.some((n) => n.data.dimmed)).toBe(false);
+});

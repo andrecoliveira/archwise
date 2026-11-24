@@ -1,3 +1,5 @@
+import { EXTERNAL_CATEGORIES, type ExternalCategory } from './reason-codes.js';
+
 /*
  * Analyzer contract (Phase 4). Analyzers are pure, synchronous functions over text that
  * discovery has already read within budgets. They never touch the filesystem, execute code or
@@ -7,6 +9,10 @@
 
 export const RESOURCE_KINDS = ['datastore', 'queue', 'external-system'] as const;
 export type ResourceKind = (typeof RESOURCE_KINDS)[number];
+
+/** The only Compose keys whose values are kept (ADR 0008); never environment or commands. */
+export const COMPOSE_PROPERTY_NAMES = ['image', 'build', 'ports', 'depends_on'] as const;
+export type ComposePropertyName = (typeof COMPOSE_PROPERTY_NAMES)[number];
 
 export const FACT_CONFIDENCES = ['observed', 'inferred'] as const;
 export type FactConfidence = (typeof FACT_CONFIDENCES)[number];
@@ -51,6 +57,8 @@ export type Fact =
       readonly label: string;
       readonly confidence: FactConfidence;
       readonly compose: ComposeRef | null;
+      /** External systems only: what it is for. Optional; older analyzers omit it. */
+      readonly category?: ExternalCategory;
       readonly evidence: readonly FactEvidence[];
     }
   | {
@@ -59,6 +67,14 @@ export type Fact =
       readonly service: string;
       readonly package: string | null;
       readonly image: string | null;
+      readonly evidence: readonly FactEvidence[];
+    }
+  | {
+      /** One allowlisted Compose value of a service, masked by the analyzer. */
+      readonly type: 'compose-property';
+      readonly compose: ComposeRef;
+      readonly name: ComposePropertyName;
+      readonly value: string;
       readonly evidence: readonly FactEvidence[];
     }
   | {
@@ -257,7 +273,10 @@ export function isFact(value: unknown): value is Fact {
           'confidence',
           'compose',
           'evidence',
+          ...(Object.hasOwn(value, 'category') ? ['category'] : []),
         ]) &&
+        (!Object.hasOwn(value, 'category') ||
+          (value.kind === 'external-system' && oneOf(value.category, EXTERNAL_CATEGORIES))) &&
         oneOf(value.kind, RESOURCE_KINDS) &&
         isString(value.technology) &&
         isString(value.label) &&
@@ -271,6 +290,13 @@ export function isFact(value: unknown): value is Fact {
         isString(value.service) &&
         (value.package === null || isString(value.package)) &&
         (value.image === null || isString(value.image))
+      );
+    case 'compose-property':
+      return (
+        hasKeys(value, ['type', 'compose', 'name', 'value', 'evidence']) &&
+        isComposeRef(value.compose) &&
+        oneOf(value.name, COMPOSE_PROPERTY_NAMES) &&
+        isString(value.value)
       );
     case 'datastore-technology':
       return (

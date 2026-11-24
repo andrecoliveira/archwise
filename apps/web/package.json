@@ -17,6 +17,7 @@
     "svelte": "5.57.3"
   },
   "devDependencies": {
+    "@archwise/application": "workspace:*",
     "@sveltejs/vite-plugin-svelte": "7.3.1",
     "@testing-library/svelte": "5.4.2",
     "jsdom": "31.0.0",
