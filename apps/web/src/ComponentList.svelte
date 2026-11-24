@@ -30,7 +30,7 @@
   {#each nodes as node (node.id)}
     {@const reason = nodeReasonLine(node)}
     <button type="button" class="node-item" class:active={selectedId === node.id} class:dimmed={dimmed(node)}
-      aria-pressed={selectedId === node.id} onclick={() => onSelect(node.id)}>
+      aria-current={selectedId === node.id ? 'true' : undefined} onclick={() => onSelect(node.id)}>
       <span class={`level-marker ${lineStyle(confidenceLevel(node))}`} aria-hidden="true"></span>
       <span class="node-item-text">
         <strong title={primaryName(node)}>{primaryName(node)}</strong>

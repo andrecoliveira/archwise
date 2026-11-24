@@ -1,6 +1,6 @@
 # web
 
-Svelte 5 and Svelte Flow Architecture Studio (ADR 0005). It covers Explore mode for the discovered package graph and its evidence, plus the Sandbox: component catalog, custom nodes, inspector, semantic connections, the deterministic hypothetical simulation, A/B comparison, session autosave and resume through the local session API (`session-client.ts`, `autosave.ts`, `SessionsPanel.svelte`), JSON import/export, and the offline coach. It has no filesystem access and receives the graph only from the authenticated local API.
+Svelte 5 and Svelte Flow Architecture Studio (ADR 0005). It covers Explore mode for the discovered graph and its evidence (the reason catalog `reason-catalog.ts`, claim wording `claims.ts`, indirect relations in `system-view.ts`, counters `counters.ts`, the `Inspector.svelte` with "Show lines" through `excerpt-client.ts`), plus the Sandbox: component catalog, custom nodes, inspector, semantic connections, the deterministic hypothetical simulation, A/B comparison, session autosave and resume through the local session API (`session-client.ts`, `autosave.ts`, `SessionsPanel.svelte`), JSON import/export, and the offline coach. It has no filesystem access and receives the graph only from the authenticated local API.
 
 The simulator, persistence and coach live here temporarily during the Alpha; ADR 0005 records their planned extraction into packages.
 

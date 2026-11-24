@@ -138,23 +138,24 @@ Phase 4 turns the inventory into a system-level graph ([spec](superpowers/specs/
 
 | Analyzer | Version | Reads | Produces |
 |---|---|---|---|
-| `node-roles` | 1.0.0 | parsed `package.json` only | package roles and client-library infrastructure |
+| `node-roles` | 1.1.0 | parsed `package.json` only | package roles and client-library infrastructure |
 | `node-workspace` | 1.0.0 | `pnpm-workspace.yaml`; `nx.json`, `project.json`, `lerna.json` as gaps | packages outside the declared workspace |
-| `docker-compose` | 1.0.0 | `compose.yaml`, `compose.yml`, `docker-compose.yaml`, `docker-compose.yml`; `compose.<name>.yaml` and `docker-compose.<name>.yml` variants as gaps | Compose services, images and `depends_on` |
+| `docker-compose` | 1.1.0 | `compose.yaml`, `compose.yml`, `docker-compose.yaml`, `docker-compose.yml`; `compose.<name>.yaml` and `docker-compose.<name>.yml` variants as gaps | Compose services, images, `depends_on` and the allowlisted properties, with line ranges |
 | `prisma-schema` | 1.0.0 | `*.prisma` | the `datasource` provider |
 
-The catalogs of frameworks, client libraries and container images live in `packages/analyzers/src/catalog.ts`.
+The catalogs of frameworks, client libraries and container images live in `packages/analyzers/src/catalog.ts`. Each external-system entry has a **category**: `payments` (Stripe), `email` (SendGrid, Resend), `storage` (Amazon S3), `monitoring` (Sentry), `ai` (OpenAI, Anthropic) or `other` (Twilio, Firebase, Slack); `auth` is reserved. The category reaches the view graph as the node's optional `category`. The Studio uses it to choose the piece (Stripe is a payments terminal) and for the summary line ("Payments API").
 
 **Roles.** A package depending on a frontend framework (Next, Nuxt, SvelteKit, Remix, Astro, Angular, Vue, Svelte, Solid, React DOM, Expo, React Native) is a frontend. A package depending on a server framework (Express, Fastify, NestJS, Koa, Hono, hapi, Apollo Server, tRPC) is a service. Both kinds of dependency count, development ones included, and frontend wins when both are present. A role from a dependency is `inferred`. A package that a Compose service builds is an `observed` service. Every other package is a library (`module`).
 
 **Client libraries.** A runtime dependency in the catalog, such as `pg`, `ioredis`, `bullmq`, `kafkajs`, `stripe` or `@aws-sdk/client-s3`, adds an `inferred` datastore, queue or external system and a `depends-on` edge from the package. Development dependencies never do, so test-only drivers do not create phantom databases. An ORM without a known engine (`@prisma/client`, TypeORM, Sequelize, Drizzle, Knex) targets "Database (unknown engine)" and the gap `unidentified-datastore`. A Prisma `datasource` provider in the same package names the engine instead.
 
-**Docker Compose.** Compose files are parsed as data with the YAML 1.2 core schema, merge keys, unique keys and at most 100 aliases. A file with any error is the gap `invalid-syntax`. Only `image`, `build` and `depends_on` are read. `environment`, `env_file`, `secrets`, `command` and `entrypoint` are never looked at, and `${…}` interpolation is never resolved.
+**Docker Compose.** Compose files are parsed as data with the YAML 1.2 core schema, merge keys, unique keys and at most 100 aliases. A file with any error is the gap `invalid-syntax`. Only `image`, `build`, `ports` and `depends_on` are read. `environment`, `env_file`, `secrets`, `configs`, `labels`, `command` and `entrypoint` are never looked at, and `${…}` interpolation is never resolved. Evidence carries line ranges: a service's own lines, and the lines of its `depends_on`.
 - An image in the catalog, such as `postgres`, `redis`, `rabbitmq` or `bitnami/kafka`, becomes an `observed` datastore or queue, named after the Compose service. The registry host, tag and digest are ignored.
-- A `build` context that is a package directory links that package to the Compose service. The package keeps its node, and the inspector lists every Compose service that builds it.
+- A `build` context that is a package directory links that package to the Compose service. The package keeps its node, and the inspector lists every Compose service that builds it as "Also called".
 - A build context matching no package is a service with the gap `unmatched-build-context`.
 - Any other image is a service whose technology is the image name.
 - `depends_on`, in list or map form, becomes `observed` edges.
+- **Properties** ([ADR 0008](decisions/0008-excerpts-and-stored-config-values.md)). The values of `image`, the `build` context, published `ports` (host and container numbers only; interpolated parts are dropped) and `depends_on` attach to the component the service resolves to, each with its line evidence. They are masked (credentials in URLs, values of keys named like passwords, secrets, tokens or keys) and shown under the inspector's **Details**.
 - Override and environment variants (`compose.<name>.yaml`, `compose.<name>.yml`, `docker-compose.<name>.yaml` and `docker-compose.<name>.yml`, such as `docker-compose.override.yml` or `compose.prod.yaml`) are the gap `unsupported`: they are listed under "Not analyzed", never merged.
 
 **Merging.** Infrastructure inferred from client libraries attaches to the Compose service of the same technology when the workspace has exactly one. With none, Archwise draws a workspace-wide node such as `datastore:postgresql`. With several, it draws that node, reports `Ambiguous resource: <label> (<candidates>)`, and draws no edge to any of the candidates.
@@ -180,9 +181,9 @@ The catalogs of frameworks, client libraries and container images live in `packa
 
 `package.json` stays parsed by discovery. Analyzer input files obey the same per-file and total byte budgets and the binary check as manifests.
 
-**Output.** `--graph` prints the view graph version 2. Nodes carry `type`, `technology`, `confidence` (`observed` or `inferred`), `reasons`, `outsideWorkspace`, `aliases` and evidence with `lines` and `analyzer`. The graph also has a `gaps` list. `--json` (inventory version 2) is unchanged.
+**Output.** `--graph` prints the view graph version 2. Nodes carry `type`, `technology`, `confidence` (`observed` or `inferred`), `reasons`, `outsideWorkspace`, `aliases` and evidence with `lines` and `analyzer`, plus the optional `category` (external systems) and `properties` (Compose values). The graph also has a `gaps` list. Reason codes are `<family>` or `<family>:<parameter>`; the closed list of families is `REASON_CODE_FAMILIES` in `@archwise/application`, and the Studio reads each one as a sentence. `--json` (inventory version 2) is unchanged.
 
-**Studio.** Explore opens on the **System** view, which hides libraries and packages outside the workspace. A hidden library's edges are lifted to the services that depend on it, for example `api → PostgreSQL` with the reason "via @app/db". **All packages** shows everything. When nothing is recognized, the Studio opens on All packages and says so. Inferred nodes and edges are dashed.
+**Studio.** Explore opens on the **System** view, which hides libraries and packages outside the workspace; "Libraries · N hidden" lists them and offers **All packages**, which shows everything. A relation that runs through hidden libraries is an **indirect relation**, for example `api → PostgreSQL` labelled "depends on · through @app/db". It keeps every step with its own level and reasons, takes the weakest step's confidence, and carries the union of the steps' evidence. With several chains it uses the one with the fewest inferred steps, then the shortest, and lists the others under "Also through …". When nothing is recognized, the Studio opens on All packages and says so. Line style carries confidence: solid Observed, dashed Inferred, dotted Unknown. Every claim shows its level and its reasons as sentences.
 
 ## Repository detection
 

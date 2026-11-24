@@ -92,7 +92,7 @@ test('observed band reads "Observed because:" with sentences', () => {
   const band = container.querySelector('.confidence-band')!;
   expect(band.textContent).toContain('Observed because:');
   expect(band.textContent).toContain('Compose builds it as service api');
-  expect(band.textContent).toContain('compose.yaml · lines 2–6');
+  expect(band.textContent).toContain('Compose builds it as service api · compose.yaml · lines 2–6');
   expect(band.textContent).toContain('depends on fastify, a server framework');
   expect([...band.querySelectorAll('code')].map((c) => c.textContent)).toEqual([
     'compose-build:api',

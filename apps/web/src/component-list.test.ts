@@ -30,7 +30,9 @@ test('each item shows name, second line and level marker', () => {
   const item = screen.getByRole('button', { name: /@shop\/api/ });
   expect(item.textContent).toContain('fastify · apps/api');
   expect(item.querySelector('.level-marker.solid')).not.toBeNull();
-  expect(item.getAttribute('aria-pressed')).toBe('true');
+  // The selection is the current item, not a pressed toggle (toggles take the accent fill).
+  expect(item.getAttribute('aria-current')).toBe('true');
+  expect(item.hasAttribute('aria-pressed')).toBe(false);
   expect(container.querySelector('nav[aria-label="Discovered components"]')).not.toBeNull();
 });
 
