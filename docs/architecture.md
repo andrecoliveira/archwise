@@ -56,6 +56,8 @@ See [Sessions and the local store](sessions.md).
 
 The server exposes versioned JSON endpoints and Server-Sent Events initially for scan progress and graph patches. It binds to `127.0.0.1` by default, validates `Origin`, requires a random per-session capability token, limits request size, and accepts only registered workspace identifiers rather than arbitrary paths.
 
+Today it serves the view graph (`/api/v1/graph`), the scan summary (`/api/v1/scan`), health, the session routes and evidence excerpts (`/api/v1/evidence/excerpt/<id>`). The served graph's evidence items carry an `excerptId`: an opaque key for an evidence item of the latest scan, held only in server memory. An excerpt is at most 40 lines, masked and never cached. The graph stored in sessions never carries these ids. See [ADR 0008](decisions/0008-excerpts-and-stored-config-values.md) and [Security](security.md#evidence-excerpts).
+
 ### Browser workspace
 
 Svelte 5 renders the application shell; Svelte Flow renders interactive graphs (see ADR 0005). The UI never receives unrestricted filesystem access.

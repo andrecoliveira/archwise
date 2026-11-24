@@ -5,6 +5,7 @@ import { extname, relative, resolve, sep } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import type { SessionService } from '@archwise/application';
 import type { ArchitectureGraph } from './graph.js';
+import { readExcerpt, type ExcerptIndex } from './excerpts.js';
 import type { ScanSummary } from './inventory-output.js';
 import { json } from './http.js';
 import { handleSessionRoute, isSessionRoute } from './session-routes.js';
@@ -36,7 +37,11 @@ export interface ServerOptions {
   readonly sessions?: SessionService | null;
   /** Counts of the scan that produced the graph, served at /api/v1/scan. */
   readonly scan?: ScanSummary;
+  /** Evidence excerpts of the latest scan (ADR 0008); absent serves no excerpts. */
+  readonly excerpts?: { readonly index: ExcerptIndex; readonly bytesPerFile: number };
 }
+
+const EXCERPT_ROUTE = /^\/api\/v1\/evidence\/excerpt\/([0-9a-f]{64})$/;
 
 function equalSecret(value: string | undefined, secret: string): boolean {
   if (!value) return false;
@@ -125,6 +130,8 @@ export async function startLocalGraphServer(
       );
     }
   }
+  // The served graph carries excerpt ids; the caller's graph (stored in sessions) does not.
+  const served = options.excerpts ? options.excerpts.index.decorate(graph) : graph;
   const session = randomBytes(32).toString('hex');
   const bootstrap = randomBytes(32).toString('hex');
   let bootstrapUsed = false;
@@ -199,7 +206,18 @@ export async function startLocalGraphServer(
         return;
       }
       if (url.pathname === '/api/v1/graph') {
-        json(res, 200, graph, head);
+        json(res, 200, served, head);
+        return;
+      }
+      const excerpt = EXCERPT_ROUTE.exec(url.pathname);
+      if (excerpt && options.excerpts) {
+        const entry = options.excerpts.index.lookup(excerpt[1]!);
+        if (!entry) {
+          json(res, 404, { error: 'Not found' }, head);
+          return;
+        }
+        const result = await readExcerpt(entry, { bytesPerFile: options.excerpts.bytesPerFile });
+        json(res, result.status === 'unavailable' ? 422 : 200, result, head);
         return;
       }
       if (url.pathname === '/api/v1/scan' && options.scan) {

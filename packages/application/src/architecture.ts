@@ -30,6 +30,11 @@ export interface ViewEvidence {
   readonly kind: string;
   readonly lines: { readonly start: number; readonly end: number } | null;
   readonly analyzer: string;
+  /**
+   * Served graphs only: the latest scan's opaque key for reading this item's lines
+   * (`/api/v1/evidence/excerpt/<id>`). Never stored or exported.
+   */
+  readonly excerptId?: string;
 }
 
 export interface ArchitectureNode {
