@@ -230,6 +230,52 @@ aside {
 .level-marker.dotted {
   border-style: dotted;
 }
+.node-item.dimmed {
+  opacity: 0.45;
+}
+.hidden-libraries {
+  margin-top: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+.hidden-libraries-toggle {
+  width: 100%;
+  text-align: left;
+}
+.hidden-libraries ul {
+  margin: 6px 0;
+  padding-left: 18px;
+  color: var(--ink-2);
+  font-size: 12px;
+}
+.hidden-libraries li {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Counters (§5.9): units and confidence split; the active filter is the only accent. */
+.counter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  align-items: center;
+  margin: 0 16px 8px;
+  color: var(--ink-2);
+  font-size: 12px;
+}
+.counter {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.counter-filter {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+.counter-filter[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--ink);
+}
 .node-item:hover {
   background: var(--panel-2);
 }

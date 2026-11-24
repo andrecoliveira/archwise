@@ -20,11 +20,13 @@
   import { isScanSummary, type ScanSummaryView } from './scan-summary.js';
   import { scanNotes } from './scan-notes.js';
   import { placeholderChip, revisionChip, workspaceName } from './scan-status.js';
-  import { initialMode, isSearchShortcut, type StudioMode } from './studio-mode.js';
+  import { initialMode, isSearchShortcut, isTextField, type StudioMode } from './studio-mode.js';
   import { applyTheme, nextTheme, readTheme, safeStorage, writeTheme, type Theme } from './theme.js';
   import { nodeStyleFor, readNodeStyle, writeNodeStyle, type NodeStyle, type StyleView } from './node-style.js';
   import ScanNotes from './ScanNotes.svelte';
   import ComponentList from './ComponentList.svelte';
+  import CounterBar from './CounterBar.svelte';
+  import { countersFor, hiddenLibraries, type Filter } from './counters.js';
   import Inspector, { type InspectorTab } from './Inspector.svelte';
   import { excerptIdsFrom } from './excerpt-client.js';
   import StudioTopBar from './StudioTopBar.svelte';
@@ -135,6 +137,19 @@
     graph ? revisionChip({ scan, graph, storeEnabled, historical, now }) : null,
   );
   const notes = $derived(graph ? scanNotes(graph) : null);
+  // Counters (spec §5.9): each count is a filter; Esc or a second activation clears it.
+  let countFilter: Filter | null = $state(null);
+  const counters = $derived(shownGraph && notes ? countersFor(shownGraph, notes) : null);
+  const hidden = $derived(graph && graphView === 'system' ? hiddenLibraries(graph) : []);
+  $effect(() => {
+    void graphView;
+    countFilter = null;
+  });
+  async function showScanNotes(): Promise<void> {
+    leftShown = true;
+    await tick();
+    document.getElementById('scan-notes-heading')?.focus();
+  }
   // Pieces or cards: derived per view (System, All packages, Sandbox); a person's choice is remembered.
   const styleView: StyleView = $derived.by(() =>
     studioMode === 'sandbox' ? 'sandbox' : graphView === 'all' ? 'all' : 'system',
@@ -283,6 +298,8 @@
         searchInput.focus();
       } else if (event.key === 'Escape' && drawerOpen) {
         void closeDrawers();
+      } else if (event.key === 'Escape' && countFilter !== null && !isTextField(event.target)) {
+        countFilter = null;
       }
     };
     document.addEventListener('keydown', onKey);
@@ -345,7 +362,8 @@
         {#if shownGraph}
           <p class="list-count">{visible.length} of {shownGraph.nodes.length} components</p>
         {/if}
-        <ComponentList nodes={visible} {selectedId} onSelect={(id) => (selectedId = id)} />
+        <ComponentList nodes={visible} {selectedId} onSelect={(id) => (selectedId = id)} filter={countFilter} {hidden}
+          onShowAll={() => (graphView = 'all')} />
         {#if notes}<ScanNotes view={notes} />{/if}
       {/if}
     </aside>
@@ -373,6 +391,9 @@
           {/if}
         </div>
       </div>
+      {#if counters && studioMode === 'explore' && graph && graph.nodes.length > 0}
+        <CounterBar {counters} filter={countFilter} onFilter={(next) => (countFilter = next)} onShowNotes={() => void showScanNotes()} />
+      {/if}
       {#if nothingRecognized && studioMode === 'explore'}
         <p class="view-notice" role="status">No frontends, services or infrastructure were recognized; showing all packages.</p>
       {/if}
@@ -396,7 +417,7 @@
           </div>
         {/if}
         {#key workspaceKey}
-          <ArchitectureCanvas {graph} view={shownGraph} {visibleIds} bind:selectedId bind:mode={studioMode} {addRequest} {nodeStyle}
+          <ArchitectureCanvas {graph} view={shownGraph} {visibleIds} bind:selectedId bind:mode={studioMode} {addRequest} {nodeStyle} filter={countFilter}
             {initialDocument} onDocumentChange={(text) => autosave?.schedule(text)}
             onRestoreFailed={restoreFailed} />
         {/key}

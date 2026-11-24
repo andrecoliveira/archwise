@@ -16,6 +16,7 @@
   import CanvasKeys from './CanvasKeys.svelte';
   import { canvasKeyAction } from './canvas-keys.js';
   import { NODE_SIZE, type NodeStyle } from './node-style.js';
+  import type { Filter } from './counters.js';
   import { kindLabel } from './graph-types.js';
   import { edgeLabels } from './claims.js';
   import FitViewOnLayout from './FitViewOnLayout.svelte';
@@ -51,6 +52,7 @@
     onDocumentChange = () => {},
     onRestoreFailed = () => {},
     nodeStyle = 'cards',
+    filter = null,
   }: {
     /** The discovered graph; the Sandbox signature always hashes this full graph. */
     graph: Graph;
@@ -68,6 +70,8 @@
     onRestoreFailed?: (message: string) => void;
     /** Isometric pieces or flat cards (spec §4.3). */
     nodeStyle?: NodeStyle;
+    /** A counter filter (spec §5.9): dims what it does not count, in Explore only. */
+    filter?: Filter | null;
   } = $props();
   let counter = $state(0);
   // A remount (session switch) must not replay a catalog request the previous canvas handled.
@@ -111,7 +115,7 @@
   }
 
   $effect(() => {
-    const options = { selected: selectedId, focus: mode === 'explore' };
+    const options = { selected: selectedId, focus: mode === 'explore', filter: mode === 'explore' ? filter : null };
     untrack(() => {
       const next = decorate(nodes, edges, options);
       nodes = next.nodes;
@@ -374,7 +378,7 @@
       ...item,
       position: previous.get(item.id) ?? item.position,
     }));
-    const decorated = decorate(positioned, links, untrack(() => ({ selected: selectedId, focus: mode === 'explore' })));
+    const decorated = decorate(positioned, links, untrack(() => ({ selected: selectedId, focus: mode === 'explore', filter: mode === 'explore' ? filter : null })));
     nodes = decorated.nodes;
     edges = decorated.edges;
     if (mode === 'sandbox') {
@@ -385,7 +389,7 @@
     void layoutNodes(positioned, links, NODE_SIZE[nodeStyle])
       .then((placed) => {
         if (!cancelled && nonce === layoutNonce) {
-          nodes = decorate(placed, untrack(() => edges), untrack(() => ({ selected: selectedId, focus: mode === 'explore' }))).nodes;
+          nodes = decorate(placed, untrack(() => edges), untrack(() => ({ selected: selectedId, focus: mode === 'explore', filter: mode === 'explore' ? filter : null }))).nodes;
           if (mode === 'explore') fitTrigger += 1;
           if (mode === 'sandbox') {
             const positions = new Map(placed.map((item) => [item.id, item.position]));

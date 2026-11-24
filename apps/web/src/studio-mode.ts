@@ -8,7 +8,7 @@ export function initialMode(graph: Graph): StudioMode {
   return graph.nodes.length > 0 ? 'explore' : 'sandbox';
 }
 
-function isTextField(target: EventTarget | null): boolean {
+export function isTextField(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false;
   if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return true;
   if (target instanceof HTMLElement && target.isContentEditable) return true;

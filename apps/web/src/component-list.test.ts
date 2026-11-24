@@ -47,3 +47,28 @@ test('activating an item selects it', async () => {
   await fireEvent.click(screen.getByRole('button', { name: /PostgreSQL/ }));
   expect(onSelect).toHaveBeenCalledWith('pg');
 });
+
+test('hidden libraries row lists them and offers All packages', async () => {
+  const onShowAll = vi.fn();
+  const libraries = ['@shop/db', '@shop/core', '@shop/ui'].map((label) =>
+    discoveredNode(label, { label }),
+  );
+  render(ComponentList, {
+    props: { nodes: [api], selectedId: null, onSelect: vi.fn(), hidden: libraries, onShowAll },
+  });
+  const row = screen.getByRole('button', { name: 'Libraries · 3 hidden' });
+  expect(row.getAttribute('aria-expanded')).toBe('false');
+  await fireEvent.click(row);
+  expect(row.getAttribute('aria-expanded')).toBe('true');
+  expect(screen.getByText('@shop/core')).toBeTruthy();
+  await fireEvent.click(screen.getByRole('button', { name: 'Show all packages' }));
+  expect(onShowAll).toHaveBeenCalled();
+});
+
+test('the inferred filter dims the other items', () => {
+  const { container } = render(ComponentList, {
+    props: { nodes: [api, pg], selectedId: null, onSelect: vi.fn(), filter: 'inferred-components' },
+  });
+  const items = [...container.querySelectorAll('.node-item')];
+  expect(items.map((item) => item.classList.contains('dimmed'))).toEqual([true, false]);
+});

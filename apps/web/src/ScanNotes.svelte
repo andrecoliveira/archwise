@@ -6,7 +6,7 @@
 </script>
 
 <section class="scan-notes" aria-label="Scan notes">
-  <h2>Scan notes</h2>
+  <h2 id="scan-notes-heading" tabindex="-1">Scan notes</h2>
   <p class="scan-notes-headline">{view.headline}</p>
   {#if !empty}
     <ul>
