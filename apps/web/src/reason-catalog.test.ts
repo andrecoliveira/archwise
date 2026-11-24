@@ -4,7 +4,7 @@ import { discoveredNode } from './graph-fixtures.js';
 import type { GraphEvidence } from './graph-types.js';
 import { REASON_SENTENCE_FAMILIES, describeReason, evidenceKey } from './reason-catalog.js';
 
-const text = (view: { parts: { text: string }[] }): string =>
+const text = (view: { readonly parts: readonly { readonly text: string }[] }): string =>
   view.parts.map((part) => part.text).join('');
 const at = (path: string, kind: string, lines: GraphEvidence['lines'] = null): GraphEvidence => ({
   path,
