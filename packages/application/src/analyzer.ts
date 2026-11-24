@@ -1,3 +1,5 @@
+import { EXTERNAL_CATEGORIES, type ExternalCategory } from './reason-codes.js';
+
 /*
  * Analyzer contract (Phase 4). Analyzers are pure, synchronous functions over text that
  * discovery has already read within budgets. They never touch the filesystem, execute code or
@@ -51,6 +53,8 @@ export type Fact =
       readonly label: string;
       readonly confidence: FactConfidence;
       readonly compose: ComposeRef | null;
+      /** External systems only: what it is for. Optional; older analyzers omit it. */
+      readonly category?: ExternalCategory;
       readonly evidence: readonly FactEvidence[];
     }
   | {
@@ -257,7 +261,10 @@ export function isFact(value: unknown): value is Fact {
           'confidence',
           'compose',
           'evidence',
+          ...(Object.hasOwn(value, 'category') ? ['category'] : []),
         ]) &&
+        (!Object.hasOwn(value, 'category') ||
+          (value.kind === 'external-system' && oneOf(value.category, EXTERNAL_CATEGORIES))) &&
         oneOf(value.kind, RESOURCE_KINDS) &&
         isString(value.technology) &&
         isString(value.label) &&

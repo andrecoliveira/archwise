@@ -14,3 +14,4 @@ export * from './analyzer.js';
 export * from './run-analyzers.js';
 export * from './analysis-inputs.js';
 export * from './architecture.js';
+export * from './reason-codes.js';

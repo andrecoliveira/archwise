@@ -1,4 +1,5 @@
 import { compareCodeUnits, redactSensitiveText } from '@archwise/domain';
+import type { ExternalCategory } from './reason-codes.js';
 import type {
   ComposeRef,
   Fact,
@@ -43,6 +44,8 @@ export interface ArchitectureNode {
   readonly evidence: readonly ViewEvidence[];
   /** The owning repository; present only in multi-root workspaces. */
   readonly repository?: { readonly id: string; readonly label: string };
+  /** External systems only: what it is for, from the analyzer catalog. */
+  readonly category?: ExternalCategory;
 }
 
 export interface ArchitectureEdge {
@@ -103,6 +106,7 @@ interface NodeDraft {
   aliases: Set<string>;
   evidence: ViewEvidence[];
   repository?: { id: string; label: string };
+  category?: ExternalCategory;
 }
 
 interface EdgeDraft {
@@ -276,6 +280,7 @@ export function resolveArchitecture(
   const composeTargets = new Map<string, string>();
   const composeResources = new Map<string, string[]>();
   const labels = new Map<string, string>();
+  const categories = new Map<string, ExternalCategory>();
   const technologyOf = new Map<
     string,
     { technology: string; label: string; evidence: ViewEvidence[] }
@@ -320,6 +325,10 @@ export function resolveArchitecture(
       composeTargets.set(composeKey(at, ref), id);
     } else if (fact.type === 'resource') {
       labels.set(`${fact.kind}:${fact.technology}`, fact.label);
+      const categoryKey = `${fact.kind}:${fact.technology}`;
+      if (fact.category !== undefined && !categories.has(categoryKey)) {
+        categories.set(categoryKey, fact.category);
+      }
       if (fact.compose === null) continue;
       const id = composeNodeId(at, fact.compose);
       const repository = repositoryOf(at);
@@ -442,6 +451,7 @@ export function resolveArchitecture(
     if (candidates.length === 1) return candidates[0]!;
     const id = `${RESOURCE_PREFIX[kind]}:${technology}`;
     const label = labels.get(key) ?? technology;
+    const category = kind === 'external-system' ? categories.get(key) : undefined;
     if (!nodes.has(id)) {
       nodes.set(id, {
         id,
@@ -454,6 +464,7 @@ export function resolveArchitecture(
         outsideWorkspace: false,
         aliases: new Set(),
         evidence: [],
+        ...(category ? { category } : {}),
       });
       if (candidates.length > 1) {
         diagnostics.add(
@@ -529,6 +540,7 @@ export function resolveArchitecture(
         origin: 'discovered',
         evidence: tidyEvidence(node.evidence, node.id.startsWith('package:')),
         ...(node.repository ? { repository: node.repository } : {}),
+        ...(node.category ? { category: node.category } : {}),
       })),
     edges: [...edges.values()]
       .sort((a, b) => compareCodeUnits(a.id, b.id))

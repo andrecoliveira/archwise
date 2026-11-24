@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { isFact, type AnalyzerInput, type Fact, type PackageFact } from '@archwise/application';
+import { EXTERNAL_CATEGORIES, isFact, type AnalyzerInput, type Fact, type PackageFact } from '@archwise/application';
 import { LIBRARY_CATALOG, ROLE_CATALOG, nodeRoles } from '../src/index.js';
 
 const pkg = (
@@ -103,4 +103,27 @@ test('every emitted fact passes isFact', () => {
 
 test('a package with no matches emits nothing', () => {
   expect(run([pkg('package.json', ['lodash'])])).toEqual([]);
+});
+
+test('every external catalog entry has a category', () => {
+  const expected: Record<string, string> = {
+    stripe: 'payments',
+    sendgrid: 'email',
+    resend: 'email',
+    s3: 'storage',
+    firebase: 'other',
+    twilio: 'other',
+    slack: 'other',
+    sentry: 'monitoring',
+    openai: 'ai',
+    anthropic: 'ai',
+  };
+  for (const entry of LIBRARY_CATALOG) {
+    if (entry.kind === 'external-system') {
+      expect(EXTERNAL_CATEGORIES).toContain(entry.category);
+      expect(entry.category).toBe(expected[entry.technology]);
+    } else {
+      expect(entry.category).toBeUndefined();
+    }
+  }
 });

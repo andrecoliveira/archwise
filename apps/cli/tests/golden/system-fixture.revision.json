@@ -29,7 +29,7 @@
       {
         "repositoryId": "repo-root",
         "analyzerId": "node-roles",
-        "analyzerVersion": "1.0.0",
+        "analyzerVersion": "1.1.0",
         "status": "complete"
       },
       {
@@ -59,7 +59,7 @@
         "id": "ev-26eea040748bfcfb",
         "repositoryId": "repo-root",
         "analyzerId": "node-roles",
-        "analyzerVersion": "1.0.0",
+        "analyzerVersion": "1.1.0",
         "ruleId": "framework-dependency",
         "path": "examples/demo/package.json",
         "lines": null
@@ -68,7 +68,7 @@
         "id": "ev-37f89fe25ee83d35",
         "repositoryId": "repo-root",
         "analyzerId": "node-roles",
-        "analyzerVersion": "1.0.0",
+        "analyzerVersion": "1.1.0",
         "ruleId": "framework-dependency",
         "path": "apps/api/package.json",
         "lines": null
@@ -104,7 +104,7 @@
         "id": "ev-7ffdc9bcf7702bf4",
         "repositoryId": "repo-root",
         "analyzerId": "node-roles",
-        "analyzerVersion": "1.0.0",
+        "analyzerVersion": "1.1.0",
         "ruleId": "client-library",
         "path": "packages/db/package.json",
         "lines": null
@@ -140,7 +140,7 @@
         "id": "ev-982e7757488bc591",
         "repositoryId": "repo-root",
         "analyzerId": "node-roles",
-        "analyzerVersion": "1.0.0",
+        "analyzerVersion": "1.1.0",
         "ruleId": "client-library",
         "path": "apps/api/package.json",
         "lines": null
@@ -149,7 +149,7 @@
         "id": "ev-9b845b993c8c7644",
         "repositoryId": "repo-root",
         "analyzerId": "node-roles",
-        "analyzerVersion": "1.0.0",
+        "analyzerVersion": "1.1.0",
         "ruleId": "client-library",
         "path": "apps/worker/package.json",
         "lines": null
@@ -197,7 +197,7 @@
         "id": "ev-faa6d22e69079887",
         "repositoryId": "repo-root",
         "analyzerId": "node-roles",
-        "analyzerVersion": "1.0.0",
+        "analyzerVersion": "1.1.0",
         "ruleId": "framework-dependency",
         "path": "apps/web/package.json",
         "lines": null

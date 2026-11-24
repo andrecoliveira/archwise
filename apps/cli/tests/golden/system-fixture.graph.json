@@ -56,7 +56,8 @@
           "lines": null,
           "analyzer": "node-roles"
         }
-      ]
+      ],
+      "category": "payments"
     },
     {
       "id": "package:apps/api/package.json",
