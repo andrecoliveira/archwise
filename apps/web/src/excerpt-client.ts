@@ -94,16 +94,34 @@ export function excerptMessage(result: ExcerptResult): string | null {
   }
 }
 
-/** Evidence key → excerpt id, from the latest served graph (nodes, properties and edges). */
+/** Who cites an evidence item, plus the item: equal paths in two repositories stay apart. */
+export function excerptOwnerKey(owner: string, item: GraphEvidence): string {
+  return `${owner}\u0000${evidenceKey(item)}`;
+}
+
+/**
+ * Owner key → excerpt id, from the latest served graph, so a resumed historical session can
+ * offer "Show lines" for evidence the latest scan still has. A key that maps to two different
+ * ids is ambiguous and dropped: the Studio never shows lines it cannot attribute.
+ */
 export function excerptIdsFrom(graph: Graph | null): Map<string, string> {
   const ids = new Map<string, string>();
-  const add = (item: GraphEvidence): void => {
-    if (item.excerptId !== undefined) ids.set(evidenceKey(item), item.excerptId);
+  const conflicts = new Set<string>();
+  const add = (owner: string, item: GraphEvidence): void => {
+    if (item.excerptId === undefined) return;
+    const key = excerptOwnerKey(owner, item);
+    const known = ids.get(key);
+    if (conflicts.has(key) || (known !== undefined && known !== item.excerptId)) {
+      conflicts.add(key);
+      ids.delete(key);
+      return;
+    }
+    ids.set(key, item.excerptId);
   };
   for (const node of graph?.nodes ?? []) {
-    node.evidence.forEach(add);
-    node.properties?.forEach((property) => add(property.evidence));
+    for (const item of node.evidence) add(node.id, item);
+    for (const property of node.properties ?? []) add(node.id, property.evidence);
   }
-  for (const edge of graph?.edges ?? []) edge.evidence.forEach(add);
+  for (const edge of graph?.edges ?? []) for (const item of edge.evidence) add(edge.id, item);
   return ids;
 }

@@ -53,7 +53,7 @@ The Studio's "Show lines" reads the lines an evidence item cites, through `GET /
 8. **Text.** The file decodes as UTF-8, strictly.
 9. **Masked.** Every returned line passes `maskConfigValue`.
 
-An evidence item whose repository cannot be determined in a multi-root workspace gets no id, so the Studio never shows lines from the wrong repository. Responses use `Cache-Control: no-store`. Excerpts are never logged, stored in sessions or exported. The route requires the local session cookie and refuses query strings, like every API route.
+An evidence item whose repository cannot be determined in a multi-root workspace gets no id. In a resumed historical session, the Studio reuses an id only for the same component citing the same item in the latest scan. So the Studio never shows lines from the wrong repository. Responses use `Cache-Control: no-store`. Excerpts are never logged, stored in sessions or exported. The route requires the local session cookie and refuses query strings, like every API route.
 
 A workspace file may point at any directory the user chooses, including outside its own folder. Safety does not depend on where roots point: the scan never reads outside its roots and never writes in them, and a workspace-file entry that resolves to a filesystem root is rejected. Archwise never creates or changes a workspace file.
 

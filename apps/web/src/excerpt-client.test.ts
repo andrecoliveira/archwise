@@ -1,7 +1,6 @@
 import { expect, test, vi } from 'vitest';
 import { discoveredNode, graphOf } from './graph-fixtures.js';
-import { evidenceKey } from './reason-catalog.js';
-import { excerptIdsFrom, excerptMessage, fetchExcerpt } from './excerpt-client.js';
+import { excerptIdsFrom, excerptMessage, excerptOwnerKey, fetchExcerpt } from './excerpt-client.js';
 
 const ID = 'a'.repeat(64);
 const reply = (status: number, body: unknown) =>
@@ -64,6 +63,36 @@ test('excerptIdsFrom maps evidence keys to the latest scan ids', () => {
     discoveredNode('b', { evidence: [{ ...item, path: 'b/package.json' }] }),
   ]);
   const ids = excerptIdsFrom(graph);
-  expect(ids.get(evidenceKey(item))).toBe(ID);
+  expect(ids.get(excerptOwnerKey('a', item))).toBe(ID);
   expect(ids.size).toBe(1);
+});
+
+test('two repositories with the same evidence key keep their own ids', () => {
+  const item = { path: 'package.json', kind: 'package-manifest', lines: null, analyzer: 'm' };
+  const other = 'c'.repeat(64);
+  const ids = excerptIdsFrom(
+    graphOf([
+      discoveredNode('package:r-a/package.json', { evidence: [{ ...item, excerptId: ID }] }),
+      discoveredNode('package:r-b/package.json', { evidence: [{ ...item, excerptId: other }] }),
+    ]),
+  );
+  expect(ids.get(excerptOwnerKey('package:r-a/package.json', item))).toBe(ID);
+  expect(ids.get(excerptOwnerKey('package:r-b/package.json', item))).toBe(other);
+  // A component that never had an id for that item gets none from another component.
+  expect(ids.get(excerptOwnerKey('datastore:postgresql', item))).toBeUndefined();
+});
+
+test('an owner key that maps to two ids is dropped', () => {
+  const item = { path: 'package.json', kind: 'package-manifest', lines: null, analyzer: 'm' };
+  const ids = excerptIdsFrom(
+    graphOf([
+      discoveredNode('a', {
+        evidence: [
+          { ...item, excerptId: ID },
+          { ...item, excerptId: 'd'.repeat(64) },
+        ],
+      }),
+    ]),
+  );
+  expect(ids.get(excerptOwnerKey('a', item))).toBeUndefined();
 });

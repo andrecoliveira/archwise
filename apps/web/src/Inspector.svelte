@@ -11,7 +11,7 @@
   } from './claims.js';
   import { kindLabel, type Graph, type GraphEdge, type GraphEvidence, type GraphNode } from './graph-types.js';
   import { evidenceFile, evidenceKey } from './reason-catalog.js';
-  import { excerptMessage, fetchExcerpt, type ExcerptResult } from './excerpt-client.js';
+  import { excerptMessage, excerptOwnerKey, fetchExcerpt, type ExcerptResult } from './excerpt-client.js';
 
   export type InspectorTab = 'details' | 'relations' | 'evidence';
 
@@ -87,7 +87,7 @@
   const copiedOf = (key: string): string | undefined =>
     notes.owner === (node?.id ?? null) ? notes.copied[key] : undefined;
   const excerptIdOf = (item: GraphEvidence): string | undefined =>
-    item.excerptId ?? excerptIds.get(evidenceKey(item));
+    item.excerptId ?? (node ? excerptIds.get(excerptOwnerKey(node.id, item)) : undefined);
 
   async function showLines(item: GraphEvidence, id: string): Promise<void> {
     own();

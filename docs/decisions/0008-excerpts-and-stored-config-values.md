@@ -44,7 +44,7 @@ Until now, Archwise had a simple rule: file contents never reach the graph, the 
 
 Every returned line passes through `maskConfigValue`. Responses carry `Cache-Control: no-store`. Excerpts are never cached, logged, stored in sessions or included in exports. The route requires the local session cookie, like every API route.
 
-In a resumed historical session, the Studio offers "Show lines" only for evidence whose identifier also exists in the latest scan.
+In a resumed historical session, the Studio offers "Show lines" only for evidence that the same component still cites in the latest scan. The match is by component and evidence item (path, rule, analyzer and lines), and an ambiguous match offers nothing.
 
 ## Consequences
 

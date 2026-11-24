@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import Inspector from './Inspector.svelte';
 import { discoveredEdge, discoveredNode, graphOf } from './graph-fixtures.js';
 import type { GraphEvidence, GraphNode } from './graph-types.js';
-import { evidenceKey } from './reason-catalog.js';
+import { excerptIdsFrom } from './excerpt-client.js';
 import { systemGraph } from './system-view.js';
 
 afterEach(cleanup);
@@ -204,9 +204,16 @@ test("historical evidence maps to the latest scan's excerpt id or says it is una
     evidence: [at('compose.yaml', 'compose-build', { start: 2, end: 6 }), at('old.yaml', 'x')],
   });
   const fetcher = vi.fn(() => Promise.resolve(new Response(JSON.stringify({ status: 'changed' }))));
-  const excerptIds = new Map([
-    [evidenceKey(at('compose.yaml', 'compose-build', { start: 2, end: 6 })), ID],
-  ]);
+  const excerptIds = excerptIdsFrom(
+    graphOf([
+      discoveredNode('api', {
+        evidence: [at('compose.yaml', 'compose-build', { start: 2, end: 6 }, { excerptId: ID })],
+      }),
+      discoveredNode('other', {
+        evidence: [at('old.yaml', 'x', null, { excerptId: 'e'.repeat(64) })],
+      }),
+    ]),
+  );
   const { container } = render(Inspector, {
     props: props({ node: stored, tab: 'evidence', historical: true, excerptIds, fetcher }),
   });
