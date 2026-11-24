@@ -125,3 +125,34 @@ test('upgradeGraph keeps a valid v2 graph and rejects garbage', () => {
     }),
   ).toBeNull();
 });
+
+test('accepts optional category, properties and excerptId', () => {
+  const evidence = {
+    path: 'compose.yaml',
+    kind: 'compose-property',
+    lines: { start: 4, end: 4 },
+    analyzer: 'docker-compose',
+    excerptId: 'a'.repeat(64),
+  };
+  const graph = graphOf([
+    discoveredNode('stripe', { type: 'external-system', category: 'payments' }),
+    discoveredNode('api', { properties: [{ name: 'ports', value: '8080:80', evidence }] }),
+  ]);
+  expect(isGraph(graph)).toBe(true);
+});
+
+test('rejects a property without evidence', () => {
+  const graph = graphOf([
+    discoveredNode('api', {
+      properties: [{ name: 'ports', value: '8080:80' } as never],
+    }),
+  ]);
+  expect(isGraph(graph)).toBe(false);
+});
+
+test('rejects a non-string excerptId or category', () => {
+  const node = discoveredNode('api');
+  const evidence = [{ ...node.evidence[0]!, excerptId: 7 as never }];
+  expect(isGraph(graphOf([{ ...node, evidence }]))).toBe(false);
+  expect(isGraph(graphOf([{ ...node, category: 3 as never }]))).toBe(false);
+});

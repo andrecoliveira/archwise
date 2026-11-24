@@ -44,6 +44,15 @@ export interface GraphEvidence {
   readonly kind: string;
   readonly lines: { readonly start: number; readonly end: number } | null;
   readonly analyzer: string;
+  /** Served graphs only: the latest scan's key for "Show lines" (ADR 0008). */
+  readonly excerptId?: string;
+}
+
+/** An allowlisted Compose value, masked, with the evidence that states it. */
+export interface GraphProperty {
+  readonly name: string;
+  readonly value: string;
+  readonly evidence: GraphEvidence;
 }
 
 export interface GraphNode {
@@ -60,6 +69,9 @@ export interface GraphNode {
   readonly evidence: readonly GraphEvidence[];
   /** The owning repository; present only in multi-root workspaces. */
   readonly repository?: { readonly id: string; readonly label: string };
+  /** External systems only: what it is for (`payments`, `email`, …). */
+  readonly category?: string;
+  readonly properties?: readonly GraphProperty[];
 }
 
 export interface GraphEdge {
@@ -129,7 +141,14 @@ function isEvidence(value: unknown): boolean {
     isString(value.path) &&
     isString(value.kind) &&
     isLines(value.lines) &&
-    isString(value.analyzer)
+    isString(value.analyzer) &&
+    (value.excerptId === undefined || isString(value.excerptId))
+  );
+}
+
+function isProperty(value: unknown): boolean {
+  return (
+    isRecord(value) && isString(value.name) && isString(value.value) && isEvidence(value.evidence)
   );
 }
 
@@ -151,7 +170,10 @@ function isNode(value: unknown): boolean {
     value.origin === 'discovered' &&
     Array.isArray(value.evidence) &&
     value.evidence.every(isEvidence) &&
-    isRepository(value.repository)
+    isRepository(value.repository) &&
+    (value.category === undefined || isString(value.category)) &&
+    (value.properties === undefined ||
+      (Array.isArray(value.properties) && value.properties.every(isProperty)))
   );
 }
 
