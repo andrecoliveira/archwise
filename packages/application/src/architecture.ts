@@ -1,4 +1,9 @@
-import { compareCodeUnits, maskConfigValue, redactSensitiveText } from '@archwise/domain';
+import {
+  compareCodeUnits,
+  maskConfigValue,
+  maskSecretsInValue,
+  redactSensitiveText,
+} from '@archwise/domain';
 import type { ExternalCategory } from './reason-codes.js';
 import { COMPOSE_PROPERTY_NAMES } from './analyzer.js';
 import type {
@@ -387,7 +392,10 @@ export function resolveArchitecture(
     if (!target || !item) continue;
     target.properties.push({
       name: fact.name,
-      value: maskConfigValue(fact.value),
+      value:
+        fact.name === 'image' || fact.name === 'build'
+          ? maskSecretsInValue(fact.value)
+          : maskConfigValue(fact.value),
       evidence: view(at, item),
     });
   }

@@ -3,7 +3,7 @@ import { lstat, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { InventoryResult } from '@archwise/application';
 import { isDeniedInput } from '@archwise/discovery';
-import { compareCodeUnits, maskConfigValue } from '@archwise/domain';
+import { compareCodeUnits, maskConfigLines } from '@archwise/domain';
 import type { ArchitectureGraph, ViewEvidence } from './graph.js';
 
 /*
@@ -178,6 +178,8 @@ export async function readExcerpt(
   const start = entry.lines?.start ?? 1;
   const end = entry.lines?.end ?? Math.min(all.length, EXCERPT_MAX_LINES);
   if (start > all.length) return { status: 'changed' };
-  const lines = all.slice(start - 1, Math.min(end, all.length)).map(maskConfigValue);
+  // Mask from the top of the file, so a secret block scalar that starts above the range is known.
+  const masked = maskConfigLines(all.slice(0, Math.min(end, all.length)));
+  const lines = masked.slice(start - 1);
   return { status: 'ok', path: entry.path, start, end: start + lines.length - 1, lines };
 }

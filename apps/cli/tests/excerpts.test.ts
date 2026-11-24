@@ -290,3 +290,10 @@ describe('buildExcerptIndex', () => {
     });
   });
 });
+
+test('a secret block scalar that opens above the range stays masked', async () => {
+  const text = 'services:\n  db:\n    environment:\n      PGPASSWORD: >-\n        hunter2\n';
+  await put(base, 'compose.yaml', text);
+  const result = await readExcerpt(entry(base, 'compose.yaml', text, { start: 5, end: 5 }), LIMITS);
+  expect(result).toMatchObject({ status: 'ok', lines: ['        [redacted]'] });
+});

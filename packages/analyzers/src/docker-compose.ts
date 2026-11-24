@@ -1,4 +1,4 @@
-import { maskConfigValue } from '@archwise/domain';
+import { maskConfigValue, maskSecretsInValue } from '@archwise/domain';
 import type {
   Analyzer,
   ComposePropertyName,
@@ -87,6 +87,11 @@ function propertyValue(name: ComposePropertyName, definition: Mapping): string |
       return names.length > 0 ? names.join(', ') : null;
     }
   }
+}
+
+/** Image names and build paths are not `key: value` text: `keycloak:21.1` keeps its tag. */
+export function maskProperty(name: ComposePropertyName, value: string): string {
+  return name === 'image' || name === 'build' ? maskSecretsInValue(value) : maskConfigValue(value);
 }
 
 const PROPERTY_NAMES: readonly ComposePropertyName[] = ['image', 'build', 'ports', 'depends_on'];
@@ -197,7 +202,7 @@ export const dockerCompose: Analyzer = Object.freeze({
             type: 'compose-property',
             compose,
             name,
-            value: maskConfigValue(value),
+            value: maskProperty(name, value),
             evidence: evidence(
               file.path,
               'compose-property',

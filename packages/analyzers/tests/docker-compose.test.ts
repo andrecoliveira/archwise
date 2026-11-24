@@ -269,3 +269,10 @@ test('ports keep numbers only', () => {
       .map((fact) => fact.value),
   ).toEqual(['3000, 80', '80']);
 });
+
+test('image properties keep names that look like keys', () => {
+  const output = run('services:\n  idp:\n    image: quay.io/keycloak/keycloak:21.1\n');
+  expect(ofType(output, 'compose-property').map((fact) => fact.value)).toEqual([
+    'quay.io/keycloak/keycloak:21.1',
+  ]);
+});
