@@ -15,8 +15,26 @@
         {
           "path": "compose.yaml",
           "kind": "compose-image",
-          "lines": null,
+          "lines": {
+            "start": 6,
+            "end": 7
+          },
           "analyzer": "docker-compose"
+        }
+      ],
+      "properties": [
+        {
+          "name": "image",
+          "value": "redis:7",
+          "evidence": {
+            "path": "compose.yaml",
+            "kind": "compose-property",
+            "lines": {
+              "start": 7,
+              "end": 7
+            },
+            "analyzer": "docker-compose"
+          }
         }
       ]
     },
@@ -34,8 +52,26 @@
         {
           "path": "compose.yaml",
           "kind": "compose-image",
-          "lines": null,
+          "lines": {
+            "start": 2,
+            "end": 5
+          },
           "analyzer": "docker-compose"
+        }
+      ],
+      "properties": [
+        {
+          "name": "image",
+          "value": "postgres:16",
+          "evidence": {
+            "path": "compose.yaml",
+            "kind": "compose-property",
+            "lines": {
+              "start": 3,
+              "end": 3
+            },
+            "analyzer": "docker-compose"
+          }
         }
       ]
     },
@@ -85,8 +121,39 @@
         {
           "path": "compose.yaml",
           "kind": "compose-build",
-          "lines": null,
+          "lines": {
+            "start": 8,
+            "end": 10
+          },
           "analyzer": "docker-compose"
+        }
+      ],
+      "properties": [
+        {
+          "name": "build",
+          "value": "./apps/api",
+          "evidence": {
+            "path": "compose.yaml",
+            "kind": "compose-property",
+            "lines": {
+              "start": 9,
+              "end": 9
+            },
+            "analyzer": "docker-compose"
+          }
+        },
+        {
+          "name": "depends_on",
+          "value": "db, cache",
+          "evidence": {
+            "path": "compose.yaml",
+            "kind": "compose-property",
+            "lines": {
+              "start": 10,
+              "end": 10
+            },
+            "analyzer": "docker-compose"
+          }
         }
       ]
     },
@@ -135,8 +202,39 @@
         {
           "path": "compose.yaml",
           "kind": "compose-build",
-          "lines": null,
+          "lines": {
+            "start": 11,
+            "end": 13
+          },
           "analyzer": "docker-compose"
+        }
+      ],
+      "properties": [
+        {
+          "name": "build",
+          "value": "./apps/worker",
+          "evidence": {
+            "path": "compose.yaml",
+            "kind": "compose-property",
+            "lines": {
+              "start": 12,
+              "end": 12
+            },
+            "analyzer": "docker-compose"
+          }
+        },
+        {
+          "name": "depends_on",
+          "value": "cache",
+          "evidence": {
+            "path": "compose.yaml",
+            "kind": "compose-property",
+            "lines": {
+              "start": 13,
+              "end": 13
+            },
+            "analyzer": "docker-compose"
+          }
         }
       ]
     },
@@ -270,7 +368,10 @@
         {
           "path": "compose.yaml",
           "kind": "compose-depends-on",
-          "lines": null,
+          "lines": {
+            "start": 10,
+            "end": 10
+          },
           "analyzer": "docker-compose"
         }
       ]
@@ -287,7 +388,10 @@
         {
           "path": "compose.yaml",
           "kind": "compose-depends-on",
-          "lines": null,
+          "lines": {
+            "start": 10,
+            "end": 10
+          },
           "analyzer": "docker-compose"
         }
       ]
@@ -321,7 +425,10 @@
         {
           "path": "compose.yaml",
           "kind": "compose-depends-on",
-          "lines": null,
+          "lines": {
+            "start": 13,
+            "end": 13
+          },
           "analyzer": "docker-compose"
         }
       ]

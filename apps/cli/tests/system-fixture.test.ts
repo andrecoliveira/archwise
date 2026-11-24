@@ -220,3 +220,35 @@ test('external nodes carry their catalog category', async () => {
     await fixture.dispose();
   }
 });
+
+test('compose properties attach to the resolved component, masked', async () => {
+  const compose = SYSTEM_FIXTURE['compose.yaml']!.replace(
+    '  api:\n    build: ./apps/api\n',
+    '  api:\n    build: ./apps/api\n    ports: ["8080:80"]\n',
+  ).replace('services:\n', 'services:\n  legacy:\n    image: postgres://u:p@x\n');
+  const { fixture, inventory } = await scanFixture({ ...SYSTEM_FIXTURE, 'compose.yaml': compose });
+  try {
+    const graph = graphOf(inventory);
+    const byId = new Map(graph.nodes.map((node) => [node.id, node]));
+    const api = byId.get('package:apps/api/package.json')!;
+    expect(api.properties?.map((p) => [p.name, p.value])).toEqual([
+      ['build', './apps/api'],
+      ['ports', '8080:80'],
+      ['depends_on', 'db, cache'],
+    ]);
+    for (const property of api.properties ?? []) {
+      expect(property.evidence.kind).toBe('compose-property');
+      expect(property.evidence.lines).not.toBeNull();
+    }
+    expect(byId.get('compose:compose.yaml#db')?.properties?.map((p) => p.value)).toEqual([
+      'postgres:16',
+    ]);
+    expect(byId.get('compose:compose.yaml#legacy')?.properties?.[0]?.value).toBe(
+      'postgres://[redacted]@x',
+    );
+    expect(JSON.stringify(graph)).not.toContain('u:p@');
+    expect(JSON.stringify(graph)).not.toContain('example-only');
+  } finally {
+    await fixture.dispose();
+  }
+});

@@ -143,6 +143,25 @@ export function redactSensitiveText(value: string, knownHomes: readonly string[]
   return current;
 }
 
+const URL_CREDENTIALS = /(?<![a-z0-9+.-])([a-z][a-z0-9+.-]*:\/\/)[^\s/@'"]+@/gi;
+/** A whole key token, an optional closing quote, its separator, then a quoted or bare value. */
+const KEY_VALUE =
+  /(?<![A-Za-z0-9_.-])([A-Za-z0-9_.-]+)(["']?\s*[:=]\s*)("[^"]*"|'[^']*'|[^\s,}\]][^\n,}\]]*)/g;
+const SECRET_KEY_NAME = /password|passwd|secret|token|key/i;
+
+/**
+ * Masks configuration values and excerpt lines before they are shown or stored: everything
+ * `redactSensitiveText` masks, credentials in URLs (`scheme://user:pass@`), and the value of
+ * any key named like a password, secret, token or key. Errs towards masking.
+ */
+export function maskConfigValue(value: string): string {
+  return redactSensitiveText(value)
+    .replace(URL_CREDENTIALS, '$1[redacted]@')
+    .replace(KEY_VALUE, (whole, key: string, separator: string) =>
+      SECRET_KEY_NAME.test(key) ? `${key}${separator}[redacted]` : whole,
+    );
+}
+
 /** Locale-independent ordering by UTF-16 code unit. */
 export function compareCodeUnits(a: string, b: string): number {
   if (a < b) return -1;

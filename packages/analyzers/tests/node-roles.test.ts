@@ -1,5 +1,11 @@
 import { expect, test } from 'vitest';
-import { EXTERNAL_CATEGORIES, isFact, type AnalyzerInput, type Fact, type PackageFact } from '@archwise/application';
+import {
+  EXTERNAL_CATEGORIES,
+  isFact,
+  type AnalyzerInput,
+  type Fact,
+  type PackageFact,
+} from '@archwise/application';
 import { LIBRARY_CATALOG, ROLE_CATALOG, nodeRoles } from '../src/index.js';
 
 const pkg = (

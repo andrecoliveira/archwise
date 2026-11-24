@@ -9,6 +9,7 @@ import {
   isValidLabel,
   isValidTimestamp,
   LIMITS,
+  maskConfigValue,
   redactSensitiveText,
 } from '../src/index.js';
 import { syntheticSecrets } from './secrets.js';
@@ -209,5 +210,28 @@ describe('length and well-formedness are measured consistently', () => {
   );
   test('rejects lone surrogates in paths', () => {
     expect(checkRelativePath('src/a\ud800.ts')).toBe('ill-formed-unicode');
+  });
+});
+
+describe('maskConfigValue', () => {
+  test('maskConfigValue keeps images and masks credentials', () => {
+    expect(maskConfigValue('registry.example.com/app:${TAG}')).toBe(
+      'registry.example.com/app:${TAG}',
+    );
+    expect(maskConfigValue('postgres://user:pass@db:5432/x')).toBe(
+      'postgres://[redacted]@db:5432/x',
+    );
+    expect(maskConfigValue('password: hunter2')).toBe('password: [redacted]');
+    expect(maskConfigValue('API_TOKEN=abc')).toBe('API_TOKEN=[redacted]');
+    expect(maskConfigValue('"secretKey": "x"')).toBe('"secretKey": [redacted]');
+    expect(maskConfigValue('8080:80')).toBe('8080:80');
+    const key = `sk-${'a'.repeat(24)}`;
+    expect(maskConfigValue(`image ${key}`)).toBe('image [redacted]');
+  });
+
+  test('a quoted value is masked up to its closing quote', () => {
+    expect(maskConfigValue('{ "password": "p w", "port": 1 }')).toBe(
+      '{ "password": [redacted], "port": 1 }',
+    );
   });
 });

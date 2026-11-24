@@ -53,7 +53,7 @@ test('catalog images become observed resources', () => {
     label: 'PostgreSQL',
     confidence: 'observed',
     compose: { file: 'compose.yaml', service: 'db' },
-    evidence: [{ path: 'compose.yaml', lines: null, ruleId: 'compose-image' }],
+    evidence: [{ path: 'compose.yaml', lines: { start: 2, end: 3 }, ruleId: 'compose-image' }],
   });
 });
 
@@ -66,7 +66,7 @@ test('other images become generic compose services', () => {
       service: 'search',
       package: null,
       image: 'acme/search',
-      evidence: [{ path: 'compose.yaml', lines: null, ruleId: 'compose-service' }],
+      evidence: [{ path: 'compose.yaml', lines: { start: 2, end: 3 }, ruleId: 'compose-service' }],
     },
   ]);
 });
@@ -118,11 +118,16 @@ test('depends_on list and map forms', () => {
       to: { compose: { file: 'compose.yaml', service: 'db' } },
       confidence: 'observed',
       reason: 'compose-depends-on',
-      evidence: [{ path: 'compose.yaml', lines: null, ruleId: 'compose-depends-on' }],
+      evidence: [
+        { path: 'compose.yaml', lines: { start: 3, end: 3 }, ruleId: 'compose-depends-on' },
+      ],
     },
     expect.objectContaining({
       from: { compose: { file: 'compose.yaml', service: 'worker' } },
       to: { compose: { file: 'compose.yaml', service: 'db' } },
+      evidence: [
+        { path: 'compose.yaml', lines: { start: 6, end: 7 }, ruleId: 'compose-depends-on' },
+      ],
     }),
   ]);
 });
@@ -200,4 +205,67 @@ test('other Compose variants are unsupported, not silently skipped', () => {
     expect(output.gaps).toEqual([{ path, reason: 'unsupported' }]);
     expect(output.facts).toEqual([]);
   }
+});
+
+const PROPERTIES_FIXTURE = [
+  'services:',
+  '  api:',
+  '    build: ./apps/api',
+  '    ports:',
+  '      - "127.0.0.1:8080:80/tcp"',
+  '      - target: 9090',
+  '        published: 9091',
+  '    depends_on: [db]',
+  '    environment:',
+  '      DB_PASSWORD: s3cret',
+  '    command: ["node", "x"]',
+  '  db:',
+  '    image: postgres:16',
+].join('\n');
+
+test('emits allowlisted properties with line evidence', () => {
+  const output = run(PROPERTIES_FIXTURE, { packages: [pkg('apps/api')] });
+  const properties = ofType(output, 'compose-property').map((fact) => [
+    fact.compose.service,
+    fact.name,
+    fact.value,
+    fact.evidence[0]?.lines,
+    fact.evidence[0]?.ruleId,
+  ]);
+  expect(properties).toEqual([
+    ['api', 'build', './apps/api', { start: 3, end: 3 }, 'compose-property'],
+    ['api', 'ports', '8080:80, 9091:9090', { start: 4, end: 7 }, 'compose-property'],
+    ['api', 'depends_on', 'db', { start: 8, end: 8 }, 'compose-property'],
+    ['db', 'image', 'postgres:16', { start: 13, end: 13 }, 'compose-property'],
+  ]);
+  const text = JSON.stringify(output.facts);
+  expect(text).not.toContain('s3cret');
+  expect(text).not.toContain('"node"');
+  expect(text).not.toContain('environment');
+  const service = ofType(output, 'compose-service')[0]!;
+  expect(service.evidence[0]?.lines).toEqual({ start: 2, end: 11 });
+  const resource = ofType(output, 'resource')[0]!;
+  expect(resource.evidence[0]?.lines).toEqual({ start: 12, end: 13 });
+  const relation = ofType(output, 'relation')[0]!;
+  expect(relation.evidence[0]?.lines).toEqual({ start: 8, end: 8 });
+});
+
+test('ports keep numbers only', () => {
+  const output = run(
+    [
+      'services:',
+      '  a:',
+      '    image: x',
+      '    ports: ["3000", "${PORT}:80"]',
+      '  b:',
+      '    image: y',
+      '    ports:',
+      '      - target: 80',
+    ].join('\n'),
+  );
+  expect(
+    ofType(output, 'compose-property')
+      .filter((fact) => fact.name === 'ports')
+      .map((fact) => fact.value),
+  ).toEqual(['3000, 80', '80']);
 });

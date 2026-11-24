@@ -292,3 +292,16 @@ test('isFact accepts an optional external category only on external resources', 
   expect(isFact({ ...resource, category: 'banking' })).toBe(false);
   expect(isFact({ ...resource, kind: 'datastore', category: 'payments' })).toBe(false);
 });
+
+test('isFact accepts compose-property facts with an allowlisted name only', () => {
+  const property = {
+    type: 'compose-property',
+    compose: { file: 'compose.yaml', service: 'api' },
+    name: 'ports',
+    value: '8080:80',
+    evidence: [{ path: 'compose.yaml', lines: { start: 4, end: 5 }, ruleId: 'compose-property' }],
+  };
+  expect(isFact(property)).toBe(true);
+  expect(isFact({ ...property, name: 'environment' })).toBe(false);
+  expect(isFact({ ...property, value: 1 })).toBe(false);
+});
