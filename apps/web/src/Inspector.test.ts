@@ -260,3 +260,30 @@ test('a relation without reasons says so instead of an empty list', () => {
   const panel = container.querySelector('[role="tabpanel"]')!;
   expect(panel.textContent).toContain('Observed because: no reason recorded');
 });
+
+test('a cut line is announced under the excerpt', async () => {
+  const fetcher = vi.fn(() =>
+    Promise.resolve(
+      new Response(
+        JSON.stringify({
+          status: 'ok',
+          path: 'compose.yaml',
+          start: 2,
+          end: 2,
+          lines: ['x…'],
+          truncatedLines: [2],
+        }),
+      ),
+    ),
+  );
+  const { container } = render(Inspector, { props: props({ tab: 'evidence', fetcher }) });
+  const panel = container.querySelector('[role="tabpanel"]') as HTMLElement;
+  await fireEvent.click(
+    within(panel).getByRole('button', { name: 'Show lines of compose.yaml:2' }),
+  );
+  await vi.waitFor(() =>
+    expect(panel.textContent).toContain(
+      'Line 2 was cut at 400 characters. Copy compose.yaml:2 to open it in your editor.',
+    ),
+  );
+});

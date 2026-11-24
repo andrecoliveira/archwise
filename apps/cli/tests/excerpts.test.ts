@@ -122,6 +122,7 @@ describe('readExcerpt', () => {
       start: 2,
       end: 4,
       lines: ['  db:', '    image: postgres', '    password: [redacted]'],
+      truncatedLines: [],
     });
   });
 
@@ -340,6 +341,7 @@ test('a very long line is cut at the character cap', async () => {
   const line = result.status === 'ok' ? result.lines[0]! : '';
   expect(line).toHaveLength(EXCERPT_MAX_LINE_CHARS + 1);
   expect(line.endsWith('…')).toBe(true);
+  expect(result).toMatchObject({ truncatedLines: [1] });
 });
 
 test('invalid UTF-8 is reported as such even when the scan hashed the lossy text', async () => {

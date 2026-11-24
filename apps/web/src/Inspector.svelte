@@ -11,7 +11,7 @@
   } from './claims.js';
   import { kindLabel, type Graph, type GraphEdge, type GraphEvidence, type GraphNode } from './graph-types.js';
   import { evidenceFile, evidenceKey } from './reason-catalog.js';
-  import { excerptMessage, excerptOwnerKey, fetchExcerpt, type ExcerptResult } from './excerpt-client.js';
+  import { excerptMessage, excerptOwnerKey, fetchExcerpt, truncationNote, type ExcerptResult } from './excerpt-client.js';
 
   export type InspectorTab = 'details' | 'relations' | 'evidence';
 
@@ -230,6 +230,7 @@
                   <p class="quiet" role="status">Loading lines…</p>
                 {:else if excerpt && excerpt.status === 'ok'}
                   <pre class="excerpt" aria-label={`Lines ${excerpt.start}–${excerpt.end} of ${excerpt.path}`}>{excerpt.lines.join('\n')}</pre>
+                  {#if truncationNote(excerpt)}<p class="quiet excerpt-note">{truncationNote(excerpt)}</p>{/if}
                 {:else if excerpt}
                   <p class="quiet" role="status">{excerptMessage(excerpt)}</p>
                 {/if}

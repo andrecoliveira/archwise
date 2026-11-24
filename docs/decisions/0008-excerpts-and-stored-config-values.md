@@ -39,7 +39,7 @@ Until now, Archwise had a simple rule: file contents never reach the graph, the 
 4. **Not denied.** The file is not on the discovery deny list (`.env*`, keys, `.npmrc`, `.netrc`, `.ssh`, `.aws`, `.gnupg`).
 5. **Short range.** The range is at most 40 lines. A whole-file item shows its first 40 lines.
 6. **Small enough.** The file is no larger than the inventory's per-file budget (1 MiB).
-7. **Readable and unchanged.** The file is valid UTF-8 (checked first), and its sha256 still equals the scan's. A file that changed shows a "changed since scan" notice instead of lines. Each shown line is cut at 400 characters after masking.
+7. **Readable and unchanged.** The file is valid UTF-8 (checked first), and its sha256 still equals the scan's. A file that changed shows a "changed since scan" notice instead of lines. Each shown line is cut at 400 characters after masking; the response lists the cut lines, and the Studio announces them.
 
 Every returned line passes through `maskConfigLines`, which applies `maskConfigValue` per line and also masks the continuation lines of a YAML block scalar (`|` or `>`) opened by a secret-named key, even when the block starts above the cited range. Responses carry `Cache-Control: no-store`. Excerpts are never cached, logged, stored in sessions or included in exports. The route requires the local session cookie, like every API route.
 

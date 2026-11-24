@@ -44,7 +44,7 @@ To see several repositories as one system, pass `--repo` once per repository, fo
    - the confidence band, "Observed because:" or "Inferred because:", with each reason as a sentence, its file and line, and its code;
    - **Details**: Compose values (image, build context, published ports, `depends_on`) with their source, and "Also called" names;
    - **Relations**: "Uses" and "Used by", each with its wording, level and reasons; an indirect relation lists its steps. Activating a row selects the other component;
-   - **Evidence**: grouped by file, with **Copy `path:line`** and **Show lines**, which shows at most 40 masked lines. A file that changed since the scan says so instead.
+   - **Evidence**: grouped by file, with **Copy `path:line`** and **Show lines**, which shows at most 40 masked lines of at most 400 characters each; a cut line is announced under the excerpt. A file that changed since the scan says so instead.
 
    With several repositories, each package shows its repository label, the inspector shows the repository, and the top bar shows "N repositories". Open the revision chip ("scanned … · complete") for each repository's counts. **Scan notes**, at the bottom of the left column, list the files that were not analyzed, with the reason, and every other scan note.
 3. The **Find component** search in the top bar narrows visible packages and edges; it matches names, technologies and Compose service names (aliases). Press `/` or Cmd/Ctrl+K to focus it.

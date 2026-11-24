@@ -236,6 +236,7 @@ test('excerpt route requires the session, sets no-store and refuses query string
       start: 1,
       end: 3,
       lines: ['{', '  "name": "example"', '}'],
+      truncatedLines: [],
     });
     expect((await fetch(`${url}?x=1`, { headers: { cookie } })).status).toBe(400);
     const unknown = await fetch(`${server.address}/api/v1/evidence/excerpt/${'0'.repeat(64)}`, {

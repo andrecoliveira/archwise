@@ -1,13 +1,26 @@
 import { expect, test, vi } from 'vitest';
 import { discoveredNode, graphOf } from './graph-fixtures.js';
-import { excerptIdsFrom, excerptMessage, excerptOwnerKey, fetchExcerpt } from './excerpt-client.js';
+import {
+  excerptIdsFrom,
+  excerptMessage,
+  excerptOwnerKey,
+  fetchExcerpt,
+  truncationNote,
+} from './excerpt-client.js';
 
 const ID = 'a'.repeat(64);
 const reply = (status: number, body: unknown) =>
   vi.fn(() => Promise.resolve(new Response(JSON.stringify(body), { status })));
 
 test('fetches an excerpt by id and returns its lines', async () => {
-  const body = { status: 'ok', path: 'compose.yaml', start: 2, end: 3, lines: ['a', 'b'] };
+  const body = {
+    status: 'ok',
+    path: 'compose.yaml',
+    start: 2,
+    end: 3,
+    lines: ['a', 'b'],
+    truncatedLines: [3],
+  };
   const fetcher = reply(200, body);
   expect(await fetchExcerpt(ID, fetcher)).toEqual(body);
   expect(fetcher).toHaveBeenCalledWith(`/api/v1/evidence/excerpt/${ID}`, {
@@ -95,4 +108,23 @@ test('an owner key that maps to two ids is dropped', () => {
     ]),
   );
   expect(ids.get(excerptOwnerKey('a', item))).toBeUndefined();
+});
+
+test('an older server without truncatedLines reads as nothing cut', async () => {
+  const body = { status: 'ok', path: 'a.yaml', start: 1, end: 1, lines: ['x'] };
+  expect(await fetchExcerpt(ID, reply(200, body))).toEqual({ ...body, truncatedLines: [] });
+  expect(await fetchExcerpt(ID, reply(200, { ...body, truncatedLines: ['3'] }))).toEqual({
+    status: 'error',
+  });
+});
+
+test('the truncation note names the cut lines and how to see them', () => {
+  const ok = { status: 'ok', path: 'compose.yaml', start: 1, end: 5, lines: [] } as const;
+  expect(truncationNote({ ...ok, truncatedLines: [] })).toBeNull();
+  expect(truncationNote({ ...ok, truncatedLines: [3] })).toBe(
+    'Line 3 was cut at 400 characters. Copy compose.yaml:3 to open it in your editor.',
+  );
+  expect(truncationNote({ ...ok, truncatedLines: [2, 4] })).toBe(
+    '2 lines were cut at 400 characters (lines 2, 4). Copy compose.yaml:2 to open the file in your editor.',
+  );
 });

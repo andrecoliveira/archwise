@@ -33,6 +33,8 @@ export type ExcerptResult =
       readonly start: number;
       readonly end: number;
       readonly lines: readonly string[];
+      /** File line numbers that were cut at EXCERPT_MAX_LINE_CHARS. */
+      readonly truncatedLines: readonly number[];
     }
   | { readonly status: 'changed' }
   | {
@@ -194,10 +196,18 @@ export async function readExcerpt(
   // Mask from the top of the file, so a secret block scalar that starts above the range is known.
   const masked = maskConfigLines(all.slice(0, Math.min(end, all.length)));
   // Mask whole lines first, then cut long ones, so a cut never exposes part of a secret.
-  const lines = masked
-    .slice(start - 1)
-    .map((line) =>
-      line.length > EXCERPT_MAX_LINE_CHARS ? `${line.slice(0, EXCERPT_MAX_LINE_CHARS)}…` : line,
-    );
-  return { status: 'ok', path: entry.path, start, end: start + lines.length - 1, lines };
+  const truncatedLines: number[] = [];
+  const lines = masked.slice(start - 1).map((line, index) => {
+    if (line.length <= EXCERPT_MAX_LINE_CHARS) return line;
+    truncatedLines.push(start + index);
+    return `${line.slice(0, EXCERPT_MAX_LINE_CHARS)}…`;
+  });
+  return {
+    status: 'ok',
+    path: entry.path,
+    start,
+    end: start + lines.length - 1,
+    lines,
+    truncatedLines,
+  };
 }

@@ -16,6 +16,8 @@ export type ExcerptResult =
       readonly start: number;
       readonly end: number;
       readonly lines: readonly string[];
+      /** File line numbers the server cut at 400 characters; [] from older servers. */
+      readonly truncatedLines: readonly number[];
     }
   | { readonly status: 'changed' }
   | { readonly status: 'unavailable'; readonly reason: UnavailableReason }
@@ -51,7 +53,9 @@ function parse(value: unknown): ExcerptResult {
     Number.isInteger(value.start) &&
     Number.isInteger(value.end) &&
     Array.isArray(value.lines) &&
-    value.lines.every((line) => typeof line === 'string')
+    value.lines.every((line) => typeof line === 'string') &&
+    (value.truncatedLines === undefined ||
+      (Array.isArray(value.truncatedLines) && value.truncatedLines.every(Number.isInteger)))
   ) {
     return {
       status: 'ok',
@@ -59,6 +63,7 @@ function parse(value: unknown): ExcerptResult {
       start: value.start as number,
       end: value.end as number,
       lines: value.lines,
+      truncatedLines: (value.truncatedLines as number[] | undefined) ?? [],
     };
   }
   return { status: 'error' };
@@ -78,6 +83,18 @@ export async function fetchExcerpt(
   } catch {
     return { status: 'error' };
   }
+}
+
+export const EXCERPT_MAX_LINE_CHARS = 400;
+
+/** Says which lines were cut and how to read them whole; null when nothing was cut. */
+export function truncationNote(result: Extract<ExcerptResult, { status: 'ok' }>): string | null {
+  const cut = result.truncatedLines;
+  if (cut.length === 0) return null;
+  const at = `${result.path}:${cut[0]}`;
+  return cut.length === 1
+    ? `Line ${cut[0]} was cut at ${EXCERPT_MAX_LINE_CHARS} characters. Copy ${at} to open it in your editor.`
+    : `${cut.length} lines were cut at ${EXCERPT_MAX_LINE_CHARS} characters (lines ${cut.join(', ')}). Copy ${at} to open the file in your editor.`;
 }
 
 /** The sentence shown instead of lines; null when there are lines to show. */
